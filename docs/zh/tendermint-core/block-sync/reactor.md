@@ -1,6 +1,3 @@
----
-order: 2
----
 # Reactor
 
 The Blocksync Reactor's high level responsibility is to enable peers who are

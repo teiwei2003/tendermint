@@ -1,154 +1,775 @@
 module.exports = {
-    theme: 'cosmos',
-    title: 'Tendermint Core',
     locales: {
-        "/": {
-            lang: "en-US",
-            title: "Tendermint Core Documentation"
+        '/': {
+            title: "Tendermint Docs",
+            description: "Tendermint is an open source, public blockchain protocol that provides fundamental infrastructure for a decentralized economy and enables open participation in the creation of new financial primitives to power the innovation of money.",
         },
-        zh: {
-            lang: "zh-CN",
-            title: "Tendermint Core 文档"
+        '/zh/': {
+            title: "Tendermint 文档",
+            description: "Tendermint is an open source, public blockchain protocol that provides fundamental infrastructure for a decentralized economy and enables open participation in the creation of new financial primitives to power the innovation of money.",
         },
-        ja: {
-            lang: "ja-JP",
-            title: "Tendermint Core ドキュメント"
+        '/ja/': {
+            title: "Tendermint ドキュメント",
+            description: "Tendermint is an open source, public blockchain protocol that provides fundamental infrastructure for a decentralized economy and enables open participation in the creation of new financial primitives to power the innovation of money.",
         }
     },
-    base: process.env.VUEPRESS_BASE,
-    themeConfig: {
-        repo: 'tendermint/tendermint',
-        docsRepo: 'tendermint/tendermint',
-        docsDir: 'docs',
-        editLinks: true,
-        label: 'core',
-        algolia: {
-            id: "BH4D9OD16A",
-            key: "59f0e2deb984aa9cdf2b3a5fd24ac501",
-            index: "tendermint"
+    markdown: {
+        extendMarkdown: (md) => {
+            md.use(require("markdown-it-footnote"));
         },
-        versions: [{
-                "label": "简体中文",
-                "key": "zh"
-            },
-            {
-                "label": "日本語",
-                "key": "ja"
-            }
-        ],
-        topbar: {
-            banner: false,
-        },
-        sidebar: {
-            auto: true,
-            nav: [{
-                title: 'Resources',
-                children: [{
-                    title: 'RPC',
-                    path: 'https://docs.tendermint.com/master/rpc/',
-                    static: true
-                }, ]
-            }]
-        },
-        gutter: {
-            title: 'Help & Support',
-            editLink: true,
-            forum: {
-                title: 'Tendermint Forum',
-                text: 'Join the Tendermint forum to learn more',
-                url: 'https://forum.cosmos.network/c/tendermint',
-                bg: '#0B7E0B',
-                logo: 'tendermint'
-            },
-            github: {
-                title: 'Found an Issue?',
-                text: 'Help us improve this page by suggesting edits on GitHub.'
-            }
-        },
-        footer: {
-            question: {
-                text: 'Chat with Tendermint developers in <a href=\'https://discord.gg/cosmosnetwork\' target=\'_blank\'>Discord</a> or reach out on the <a href=\'https://forum.cosmos.network/c/tendermint\' target=\'_blank\'>Tendermint Forum</a> to learn more.'
-            },
-            logo: '/logo-bw.svg',
-            textLink: {
-                text: 'tendermint.com',
-                url: 'https://tendermint.com'
-            },
-            services: [{
-                    service: 'medium',
-                    url: 'https://medium.com/@tendermint'
-                },
-                {
-                    service: 'twitter',
-                    url: 'https://twitter.com/tendermint_team'
-                },
-                {
-                    service: 'linkedin',
-                    url: 'https://www.linkedin.com/company/tendermint/'
-                },
-                {
-                    service: 'reddit',
-                    url: 'https://reddit.com/r/cosmosnetwork'
-                },
-                {
-                    service: 'telegram',
-                    url: 'https://t.me/cosmosproject'
-                },
-                {
-                    service: 'youtube',
-                    url: 'https://www.youtube.com/c/CosmosProject'
-                }
-            ],
-            smallprint: 'The development of Tendermint Core is led primarily by [Interchain GmbH](https://interchain.berlin/). Funding for this development comes primarily from the Interchain Foundation, a Swiss non-profit. The Tendermint trademark is owned by Tendermint Inc, the for-profit entity that also maintains this website.',
-            links: [{
-                    title: 'Documentation',
-                    children: [{
-                            title: 'Cosmos SDK',
-                            url: 'https://docs.cosmos.network'
-                        },
-                        {
-                            title: 'Cosmos Hub',
-                            url: 'https://hub.cosmos.network'
-                        }
-                    ]
-                },
-                {
-                    title: 'Community',
-                    children: [{
-                            title: 'Tendermint blog',
-                            url: 'https://medium.com/@tendermint'
-                        },
-                        {
-                            title: 'Forum',
-                            url: 'https://forum.cosmos.network/c/tendermint'
-                        }
-                    ]
-                },
-                {
-                    title: 'Contributing',
-                    children: [{
-                            title: 'Contributing to the docs',
-                            url: 'https://github.com/tendermint/tendermint'
-                        },
-                        {
-                            title: 'Source code on GitHub',
-                            url: 'https://github.com/tendermint/tendermint'
-                        },
-                        {
-                            title: 'Careers at Tendermint',
-                            url: 'https://tendermint.com/careers'
-                        }
-                    ]
-                }
-            ]
-        }
     },
     plugins: [
         [
-            '@vuepress/google-analytics',
+            "@vuepress/register-components",
             {
-                ga: 'UA-51029217-11'
-            }
-        ]
-    ]
+                componentsDir: "theme/components",
+            },
+        ],
+        [
+            "vuepress-plugin-mathjax",
+            {
+                target: "svg",
+                macros: {
+                    "*": "\\times",
+                },
+            },
+        ],
+    ],
+    head: [
+        [
+            "link",
+            {
+                rel: "stylesheet",
+                type: "text/css",
+                href: "https://cloud.typography.com/7420256/6416592/css/fonts.css",
+            },
+        ],
+        [
+            "link",
+            {
+                rel: "stylesheet",
+                type: "text/css",
+                href: "https://www.terra.money/static/fonts/jetbrainsMono.css?updated=190220"
+            },
+        ],
+        [
+            "link",
+            {
+                rel: "stylesheet",
+                type: "text/css",
+                href: "https://fonts.googleapis.com/css?family=Material+Icons|Material+Icons+Outlined",
+            },
+        ],
+
+        [
+            "link",
+            {
+                rel: "stylesheet",
+                type: "text/css",
+                href: "https://fonts.googleapis.com/css?family=Noto+Sans+KR:400,500,700&display=swap",
+            },
+        ],
+        [
+            "link",
+            {
+                rel: "icon",
+                type: "image/png",
+                href: "/img/favicon.png",
+            },
+        ],
+        [
+            "script",
+            {},
+            `window.onload = function() {
+requestAnimationFrame(function() {
+    if (location.hash) {
+    const element = document.getElementById(location.hash.slice(1))
+
+    if (element) {
+        element.scrollIntoView()
+    }
+    }
+})
+}`,
+        ],
+    ],
+    themeConfig: {
+        locales: {
+            '/': {
+                selectText: 'Languages',
+                label: 'English',
+                nav: [
+                    { text: "Overview", link: "/" },
+                    { text: "Introduction", link: "/introduction/" },
+                    { text: "Roadmap", link: "/roadmap/" },
+                    { text: "App Development", link: "/app-dev/" },
+                    { text: "Tutorials", link: "/tutorials/" },
+                    { text: "Nodes", link: "/nodes/" },
+                    { text: "Architecture", link: "/architecture/" },
+                    { text: "RFC", link: "/rfc/" },
+                    { text: "Security", link: "/security/" },
+                    { text: "Tendermint Core", link: "/tendermint-core/" },
+                    { text: "Tools", link: "/tools/" },
+                    {
+                        text: "GitHub",
+                        link: "https://github.com/teiwei2003/tendermint/tree/master/docs",
+                        icon: "/img/github.svg",
+                    },
+                ],
+                sidebar: {
+                    "/introduction/": [
+                        "/introduction/",
+                        "/introduction/what-is-tendermint",
+                        "/introduction/quick-start",
+                        "/introduction/install",
+                        "/introduction/architecture",
+                    ],
+                    "/roadmap/": [
+                        "/roadmap/",
+                        "/roadmap/roadmap",
+                    ],
+                    "/app-dev/": [
+                        "/app-dev/",
+                        "/app-dev/getting-started",
+                        "/app-dev/abci-cli",
+                        "/app-dev/app-architecture",
+                        "/app-dev/indexing-transactions",
+                    ],
+                    "/tutorials/": [
+                        "/tutorials/",
+                        "/tutorials/go",
+                        "/tutorials/go-built-in",
+                        "/tutorials/java",
+                        "/tutorials/kotlin",
+                    ],
+                    "/nodes/": [
+                        "/nodes/",
+                        "/nodes/configuration",
+                        "/nodes/state-sync",
+                        "/nodes/validators",
+                        "/nodes/running-in-production",
+                        "/nodes/remote-signer",
+                        "/nodes/light-client",
+                        "/nodes/metrics",
+                        "/nodes/logging",
+                    ],
+                    "/architecture/": [
+                        "/architecture/",
+                        "/architecture/adr-001-logging",
+                        "/architecture/adr-002-event-subscription",
+                        "/architecture/adr-003-abci-app-rpc",
+                        "/architecture/adr-004-historical-validators",
+                        "/architecture/adr-005-consensus-params",
+                        "/architecture/adr-006-trust-metric",
+                        "/architecture/adr-007-trust-metric-usage",
+                        "/architecture/adr-008-priv-validator",
+                        "/architecture/adr-009-ABCI-design",
+                        "/architecture/adr-010-crypto-changes",
+                        "/architecture/adr-011-monitoring",
+                        "/architecture/adr-012-peer-transport",
+                        "/architecture/adr-013-symmetric-crypto",
+                        "/architecture/adr-014-secp-malleability",
+                        "/architecture/adr-015-crypto-encoding",
+                        "/architecture/adr-016-protocol-versions",
+                        "/architecture/adr-017-chain-versions",
+                        "/architecture/adr-018-ABCI-Validators",
+                        "/architecture/adr-019-multisigs",
+                        "/architecture/adr-020-block-size",
+                        "/architecture/adr-021-abci-events",
+                        "/architecture/adr-022-abci-errors",
+                        "/architecture/adr-023-ABCI-propose-tx",
+                        "/architecture/adr-024-sign-bytes",
+                        "/architecture/adr-025-commit",
+                        "/architecture/adr-026-general-merkle-proof",
+                        "/architecture/adr-029-check-tx-consensus",
+                        "/architecture/adr-030-consensus-refactor",
+                        "/architecture/adr-033-pubsub",
+                        "/architecture/adr-034-priv-validator-file-structure",
+                        "/architecture/adr-035-documentation",
+                        "/architecture/adr-036-empty-blocks-abci",
+                        "/architecture/adr-037-deliver-block",
+                        "/architecture/adr-038-non-zero-start-height",
+                        "/architecture/adr-039-peer-behaviour",
+                        "/architecture/adr-040-blockchain-reactor-refactor",
+                        "/architecture/adr-041-proposer-selection-via-abci",
+                        "/architecture/adr-042-state-sync",
+                        "/architecture/adr-043-blockchain-riri-org",
+                        "/architecture/adr-044-lite-client-with-weak-subjectivity",
+                        "/architecture/adr-045-abci-evidence",
+                        "/architecture/adr-046-light-client-implementation",
+                        "/architecture/adr-047-handling-evidence-from-light-client",
+                        "/architecture/adr-050-improved-trusted-peering",
+                        "/architecture/adr-051-double-signing-risk-reduction",
+                        "/architecture/adr-052-tendermint-mode",
+                        "/architecture/adr-053-state-sync-prototype",
+                        "/architecture/adr-054-crypto-encoding-2",
+                        "/architecture/adr-055-protobuf-design",
+                        "/architecture/adr-056-light-client-amnesia-attacks",
+                        "/architecture/adr-057-RPC",
+                        "/architecture/adr-058-event-hashing",
+                        "/architecture/adr-059-evidence-composition-and-lifecycle",
+                        "/architecture/adr-060-go-api-stability",
+                        "/architecture/adr-061-p2p-refactor-scope",
+                        "/architecture/adr-062-p2p-architecture",
+                        "/architecture/adr-063-privval-grpc",
+                        "/architecture/adr-064-batch-verification",
+                        "/architecture/adr-065-custom-event-indexing",
+                        "/architecture/adr-066-e2e-testing",
+                        "/architecture/adr-067-mempool-refactor",
+                        "/architecture/adr-068-reverse-sync",
+                        "/architecture/adr-069-flexible-node-intitalization",
+                        "/architecture/adr-071-proposer-based-timestamps",
+                        "/architecture/adr-072-request-for-comments",
+                        "/architecture/adr-073-libp2p",
+                    ],
+                    "/rfc/": [
+                        "/rfc/",
+                        "/rfc/rfc-002-ipc-ecosystem",
+                        "/rfc/rfc-003-performance-questions",
+                        "/rfc/rfc-006-event-subscription",
+                        "/rfc/rfc-template",
+                    ],
+                    "/security/": [
+                        "/security/",
+                        "/security/vulnerability-names",
+                    ],
+                    "/tendermint-core/": [
+                        "/tendermint-core/",
+                        {
+                            title: "Block Sync",
+                            collapsable: true,
+                            children: [
+                                "/tendermint-core/block-sync/",
+                                "/tendermint-core/block-sync/reactor",
+                                "/tendermint-core/block-sync/implementation",
+                            ],
+                        },
+                        {
+                            title: "Consensus",
+                            collapsable: true,
+                            children: [
+                                "/tendermint-core/consensus/",
+                                "/tendermint-core/consensus/reactor",
+                            ],
+                        },
+                        {
+                            title: "Evidence",
+                            collapsable: true,
+                            children: [
+                                "/tendermint-core/evidence/",
+                            ],
+                        },
+                        {
+                            title: "Mempool",
+                            collapsable: true,
+                            children: [
+                                "/tendermint-core/mempool/",
+                                "/tendermint-core/mempool/config",
+                            ],
+                        },
+                        {
+                            title: "PEX",
+                            collapsable: true,
+                            children: [
+                                "/tendermint-core/pex/",
+                            ],
+                        },
+                        {
+                            title: "State Sync",
+                            collapsable: true,
+                            children: [
+                                "/tendermint-core/state-sync/",
+                            ],
+                        },
+                        "/tendermint-core/block-structure",
+                        "/tendermint-core/configuration",
+                        "/tendermint-core/how-to-read-logs",
+                        "/tendermint-core/light-client",
+                        "/tendermint-core/metrics",
+                        "/tendermint-core/rpc",
+                        "/tendermint-core/running-in-production",
+                        "/tendermint-core/subscription",
+                        "/tendermint-core/using-tendermint",
+                        "/tendermint-core/validators",
+                    ],
+                    "/tools/": [
+                        "/tools/",
+                        {
+                            title: "debugging",
+                            collapsable: true,
+                            children: [
+                                "/tools/debugging/",
+                                "/tools/debugging/pro",
+                            ],
+                        },
+                        "/tools/docker-compose",
+                        "/tools/terraform-and-ansible",
+                    ],
+                    "/": [{
+                        title: "Overview",
+                        children: [
+                            "/DOCS_README",
+                        ],
+                        collapsable: false,
+                    }, ],
+                },
+            },
+            '/zh/': {
+                selectText: '选择语言',
+                // 该语言在下拉菜单中的标签
+                label: '简体中文',
+                nav: [
+                    { text: "概要", link: "/zh/" },
+                    { text: "介绍", link: "/zh/introduction/" },
+                    { text: "学习路径", link: "/zh/roadmap/" },
+                    { text: "App开发", link: "/zh/app-dev/" },
+                    { text: "教程", link: "/zh/tutorials/" },
+                    { text: "节点", link: "/zh/nodes/" },
+                    { text: "体系结构", link: "/zh/architecture/" },
+                    { text: "RFC", link: "/zh/rfc/" },
+                    { text: "安全", link: "/zh/security/" },
+                    { text: "Tendermint核心", link: "/zh/tendermint-core/" },
+                    { text: "工具", link: "/zh/tools/" },
+                    {
+                        text: "GitHub",
+                        link: "https://github.com/teiwei2003/tendermint/tree/master/docs",
+                        icon: "/img/github.svg",
+                    },
+                ],
+                sidebar: {
+                    "/zh/introduction/": [
+                        "/zh/introduction/",
+                        "/zh/introduction/what-is-tendermint",
+                        "/zh/introduction/quick-start",
+                        "/zh/introduction/install",
+                        "/zh/introduction/architecture",
+                    ],
+                    "/zh/roadmap/": [
+                        "/zh/roadmap/",
+                        "/zh/roadmap/roadmap",
+                    ],
+                    "/zh/app-dev/": [
+                        "/zh/app-dev/",
+                        "/zh/app-dev/getting-started",
+                        "/zh/app-dev/abci-cli",
+                        "/zh/app-dev/app-architecture",
+                        "/zh/app-dev/indexing-transactions",
+                    ],
+                    "/zh/tutorials/": [
+                        "/zh/tutorials/",
+                        "/zh/tutorials/go",
+                        "/zh/tutorials/go-built-in",
+                        "/zh/tutorials/java",
+                        "/zh/tutorials/kotlin",
+                    ],
+                    "/zh/nodes/": [
+                        "/zh/nodes/",
+                        "/zh/nodes/configuration",
+                        "/zh/nodes/state-sync",
+                        "/zh/nodes/validators",
+                        "/zh/nodes/running-in-production",
+                        "/zh/nodes/remote-signer",
+                        "/zh/nodes/light-client",
+                        "/zh/nodes/metrics",
+                        "/zh/nodes/logging",
+                    ],
+                    "/zh/architecture/": [
+                        "/zh/architecture/",
+                        "/zh/architecture/adr-001-logging",
+                        "/zh/architecture/adr-002-event-subscription",
+                        "/zh/architecture/adr-003-abci-app-rpc",
+                        "/zh/architecture/adr-004-historical-validators",
+                        "/zh/architecture/adr-005-consensus-params",
+                        "/zh/architecture/adr-006-trust-metric",
+                        "/zh/architecture/adr-007-trust-metric-usage",
+                        "/zh/architecture/adr-008-priv-validator",
+                        "/zh/architecture/adr-009-ABCI-design",
+                        "/zh/architecture/adr-010-crypto-changes",
+                        "/zh/architecture/adr-011-monitoring",
+                        "/zh/architecture/adr-012-peer-transport",
+                        "/zh/architecture/adr-013-symmetric-crypto",
+                        "/zh/architecture/adr-014-secp-malleability",
+                        "/zh/architecture/adr-015-crypto-encoding",
+                        "/zh/architecture/adr-016-protocol-versions",
+                        "/zh/architecture/adr-017-chain-versions",
+                        "/zh/architecture/adr-018-ABCI-Validators",
+                        "/zh/architecture/adr-019-multisigs",
+                        "/zh/architecture/adr-020-block-size",
+                        "/zh/architecture/adr-021-abci-events",
+                        "/zh/architecture/adr-022-abci-errors",
+                        "/zh/architecture/adr-023-ABCI-propose-tx",
+                        "/zh/architecture/adr-024-sign-bytes",
+                        "/zh/architecture/adr-025-commit",
+                        "/zh/architecture/adr-026-general-merkle-proof",
+                        "/zh/architecture/adr-029-check-tx-consensus",
+                        "/zh/architecture/adr-030-consensus-refactor",
+                        "/zh/architecture/adr-033-pubsub",
+                        "/zh/architecture/adr-034-priv-validator-file-structure",
+                        "/zh/architecture/adr-035-documentation",
+                        "/zh/architecture/adr-036-empty-blocks-abci",
+                        "/zh/architecture/adr-037-deliver-block",
+                        "/zh/architecture/adr-038-non-zero-start-height",
+                        "/zh/architecture/adr-039-peer-behaviour",
+                        "/zh/architecture/adr-040-blockchain-reactor-refactor",
+                        "/zh/architecture/adr-041-proposer-selection-via-abci",
+                        "/zh/architecture/adr-042-state-sync",
+                        "/zh/architecture/adr-043-blockchain-riri-org",
+                        "/zh/architecture/adr-044-lite-client-with-weak-subjectivity",
+                        "/zh/architecture/adr-045-abci-evidence",
+                        "/zh/architecture/adr-046-light-client-implementation",
+                        "/zh/architecture/adr-047-handling-evidence-from-light-client",
+                        "/zh/architecture/adr-050-improved-trusted-peering",
+                        "/zh/architecture/adr-051-double-signing-risk-reduction",
+                        "/zh/architecture/adr-052-tendermint-mode",
+                        "/zh/architecture/adr-053-state-sync-prototype",
+                        "/zh/architecture/adr-054-crypto-encoding-2",
+                        "/zh/architecture/adr-055-protobuf-design",
+                        "/zh/architecture/adr-056-light-client-amnesia-attacks",
+                        "/zh/architecture/adr-057-RPC",
+                        "/zh/architecture/adr-058-event-hashing",
+                        "/zh/architecture/adr-059-evidence-composition-and-lifecycle",
+                        "/zh/architecture/adr-060-go-api-stability",
+                        "/zh/architecture/adr-061-p2p-refactor-scope",
+                        "/zh/architecture/adr-062-p2p-architecture",
+                        "/zh/architecture/adr-063-privval-grpc",
+                        "/zh/architecture/adr-064-batch-verification",
+                        "/zh/architecture/adr-065-custom-event-indexing",
+                        "/zh/architecture/adr-066-e2e-testing",
+                        "/zh/architecture/adr-067-mempool-refactor",
+                        "/zh/architecture/adr-068-reverse-sync",
+                        "/zh/architecture/adr-069-flexible-node-intitalization",
+                        "/zh/architecture/adr-071-proposer-based-timestamps",
+                        "/zh/architecture/adr-072-request-for-comments",
+                        "/zh/architecture/adr-073-libp2p",
+                    ],
+                    "/zh/rfc/": [
+                        "/zh/rfc/",
+                        "/zh/rfc/rfc-002-ipc-ecosystem",
+                        "/zh/rfc/rfc-003-performance-questions",
+                        "/zh/rfc/rfc-006-event-subscription",
+                        "/zh/rfc/rfc-template",
+                    ],
+                    "/zh/security/": [
+                        "/zh/security/",
+                        "/zh/security/vulnerability-names",
+                    ],
+                    "/zh/tendermint-core/": [
+                        "/zh/tendermint-core/",
+                        {
+                            title: "Block Sync",
+                            collapsable: true,
+                            children: [
+                                "/zh/tendermint-core/block-sync/",
+                                "/zh/tendermint-core/block-sync/reactor",
+                                "/zh/tendermint-core/block-sync/implementation",
+                            ],
+                        },
+                        {
+                            title: "Consensus",
+                            collapsable: true,
+                            children: [
+                                "/zh/tendermint-core/consensus/",
+                                "/zh/tendermint-core/consensus/reactor",
+                            ],
+                        },
+                        {
+                            title: "Evidence",
+                            collapsable: true,
+                            children: [
+                                "/zh/tendermint-core/evidence/",
+                            ],
+                        },
+                        {
+                            title: "Mempool",
+                            collapsable: true,
+                            children: [
+                                "/zh/tendermint-core/mempool/",
+                                "/zh/tendermint-core/mempool/config",
+                            ],
+                        },
+                        {
+                            title: "PEX",
+                            collapsable: true,
+                            children: [
+                                "/zh/tendermint-core/pex/",
+                            ],
+                        },
+                        {
+                            title: "State Sync",
+                            collapsable: true,
+                            children: [
+                                "/zh/tendermint-core/state-sync/",
+                            ],
+                        },
+                        "/zh/tendermint-core/block-structure",
+                        "/zh/tendermint-core/configuration",
+                        "/zh/tendermint-core/how-to-read-logs",
+                        "/zh/tendermint-core/light-client",
+                        "/zh/tendermint-core/metrics",
+                        "/zh/tendermint-core/rpc",
+                        "/zh/tendermint-core/running-in-production",
+                        "/zh/tendermint-core/subscription",
+                        "/zh/tendermint-core/using-tendermint",
+                        "/zh/tendermint-core/validators",
+                    ],
+                    "/zh/tools/": [
+                        "/zh/tools/",
+                        {
+                            title: "debugging",
+                            collapsable: true,
+                            children: [
+                                "/zh/tools/debugging/",
+                                "/zh/tools/debugging/pro",
+                            ],
+                        },
+                        "/zh/tools/docker-compose",
+                        "/zh/tools/terraform-and-ansible",
+                    ],
+                    "/zh/": [{
+                        title: "Overview",
+                        children: [
+                            "/zh/DOCS_README",
+                        ],
+                        collapsable: false,
+                    }, ],
+                },
+            },
+            '/ja/': {
+                selectText: '言語選択',
+                // 该语言在下拉菜单中的标签
+                label: '日本語',
+                nav: [
+                    { text: "概要", link: "/ja/" },
+                    { text: "紹介", link: "/ja/introduction/" },
+                    { text: "ロード", link: "/ja/roadmap/" },
+                    { text: "App開発", link: "/ja/app-dev/" },
+                    { text: "チュートリアル", link: "/ja/tutorials/" },
+                    { text: "ノード", link: "/ja/nodes/" },
+                    { text: "アーキテクチャ", link: "/ja/architecture/" },
+                    { text: "RFC", link: "/ja/rfc/" },
+                    { text: "セキュリティ", link: "/ja/security/" },
+                    { text: "Tendermintコア", link: "/ja/tendermint-core/" },
+                    { text: "ツール", link: "/ja/tools/" },
+                    {
+                        text: "GitHub",
+                        link: "https://github.com/teiwei2003/tendermint/tree/master/docs",
+                        icon: "/img/github.svg",
+                    },
+                ],
+                sidebar: {
+                    "/ja/introduction/": [
+                        "/ja/introduction/",
+                        "/ja/introduction/what-is-tendermint",
+                        "/ja/introduction/quick-start",
+                        "/ja/introduction/install",
+                        "/ja/introduction/architecture",
+                    ],
+                    "/ja/roadmap/": [
+                        "/ja/roadmap/",
+                        "/ja/roadmap/roadmap",
+                    ],
+                    "/ja/app-dev/": [
+                        "/ja/app-dev/",
+                        "/ja/app-dev/getting-started",
+                        "/ja/app-dev/abci-cli",
+                        "/ja/app-dev/app-architecture",
+                        "/ja/app-dev/indexing-transactions",
+                    ],
+                    "/ja/tutorials/": [
+                        "/ja/tutorials/",
+                        "/ja/tutorials/go",
+                        "/ja/tutorials/go-built-in",
+                        "/ja/tutorials/java",
+                        "/ja/tutorials/kotlin",
+                    ],
+                    "/ja/nodes/": [
+                        "/ja/nodes/",
+                        "/ja/nodes/configuration",
+                        "/ja/nodes/state-sync",
+                        "/ja/nodes/validators",
+                        "/ja/nodes/running-in-production",
+                        "/ja/nodes/remote-signer",
+                        "/ja/nodes/light-client",
+                        "/ja/nodes/metrics",
+                        "/ja/nodes/logging",
+                    ],
+                    "/ja/architecture/": [
+                        "/ja/architecture/",
+                        "/ja/architecture/adr-001-logging",
+                        "/ja/architecture/adr-002-event-subscription",
+                        "/ja/architecture/adr-003-abci-app-rpc",
+                        "/ja/architecture/adr-004-historical-validators",
+                        "/ja/architecture/adr-005-consensus-params",
+                        "/ja/architecture/adr-006-trust-metric",
+                        "/ja/architecture/adr-007-trust-metric-usage",
+                        "/ja/architecture/adr-008-priv-validator",
+                        "/ja/architecture/adr-009-ABCI-design",
+                        "/ja/architecture/adr-010-crypto-changes",
+                        "/ja/architecture/adr-011-monitoring",
+                        "/ja/architecture/adr-012-peer-transport",
+                        "/ja/architecture/adr-013-symmetric-crypto",
+                        "/ja/architecture/adr-014-secp-malleability",
+                        "/ja/architecture/adr-015-crypto-encoding",
+                        "/ja/architecture/adr-016-protocol-versions",
+                        "/ja/architecture/adr-017-chain-versions",
+                        "/ja/architecture/adr-018-ABCI-Validators",
+                        "/ja/architecture/adr-019-multisigs",
+                        "/ja/architecture/adr-020-block-size",
+                        "/ja/architecture/adr-021-abci-events",
+                        "/ja/architecture/adr-022-abci-errors",
+                        "/ja/architecture/adr-023-ABCI-propose-tx",
+                        "/ja/architecture/adr-024-sign-bytes",
+                        "/ja/architecture/adr-025-commit",
+                        "/ja/architecture/adr-026-general-merkle-proof",
+                        "/ja/architecture/adr-029-check-tx-consensus",
+                        "/ja/architecture/adr-030-consensus-refactor",
+                        "/ja/architecture/adr-033-pubsub",
+                        "/ja/architecture/adr-034-priv-validator-file-structure",
+                        "/ja/architecture/adr-035-documentation",
+                        "/ja/architecture/adr-036-empty-blocks-abci",
+                        "/ja/architecture/adr-037-deliver-block",
+                        "/ja/architecture/adr-038-non-zero-start-height",
+                        "/ja/architecture/adr-039-peer-behaviour",
+                        "/ja/architecture/adr-040-blockchain-reactor-refactor",
+                        "/ja/architecture/adr-041-proposer-selection-via-abci",
+                        "/ja/architecture/adr-042-state-sync",
+                        "/ja/architecture/adr-043-blockchain-riri-org",
+                        "/ja/architecture/adr-044-lite-client-with-weak-subjectivity",
+                        "/ja/architecture/adr-045-abci-evidence",
+                        "/ja/architecture/adr-046-light-client-implementation",
+                        "/ja/architecture/adr-047-handling-evidence-from-light-client",
+                        "/ja/architecture/adr-050-improved-trusted-peering",
+                        "/ja/architecture/adr-051-double-signing-risk-reduction",
+                        "/ja/architecture/adr-052-tendermint-mode",
+                        "/ja/architecture/adr-053-state-sync-prototype",
+                        "/ja/architecture/adr-054-crypto-encoding-2",
+                        "/ja/architecture/adr-055-protobuf-design",
+                        "/ja/architecture/adr-056-light-client-amnesia-attacks",
+                        "/ja/architecture/adr-057-RPC",
+                        "/ja/architecture/adr-058-event-hashing",
+                        "/ja/architecture/adr-059-evidence-composition-and-lifecycle",
+                        "/ja/architecture/adr-060-go-api-stability",
+                        "/ja/architecture/adr-061-p2p-refactor-scope",
+                        "/ja/architecture/adr-062-p2p-architecture",
+                        "/ja/architecture/adr-063-privval-grpc",
+                        "/ja/architecture/adr-064-batch-verification",
+                        "/ja/architecture/adr-065-custom-event-indexing",
+                        "/ja/architecture/adr-066-e2e-testing",
+                        "/ja/architecture/adr-067-mempool-refactor",
+                        "/ja/architecture/adr-068-reverse-sync",
+                        "/ja/architecture/adr-069-flexible-node-intitalization",
+                        "/ja/architecture/adr-071-proposer-based-timestamps",
+                        "/ja/architecture/adr-072-request-for-comments",
+                        "/ja/architecture/adr-073-libp2p",
+                    ],
+                    "/ja/rfc/": [
+                        "/ja/rfc/",
+                        "/ja/rfc/rfc-002-ipc-ecosystem",
+                        "/ja/rfc/rfc-003-performance-questions",
+                        "/ja/rfc/rfc-006-event-subscription",
+                        "/ja/rfc/rfc-template",
+                    ],
+                    "/ja/security/": [
+                        "/ja/security/",
+                        "/ja/security/vulnerability-names",
+                    ],
+                    "/ja/tendermint-core/": [
+                        "/ja/tendermint-core/",
+                        {
+                            title: "Block Sync",
+                            collapsable: true,
+                            children: [
+                                "/ja/tendermint-core/block-sync/",
+                                "/ja/tendermint-core/block-sync/reactor",
+                                "/ja/tendermint-core/block-sync/implementation",
+                            ],
+                        },
+                        {
+                            title: "Consensus",
+                            collapsable: true,
+                            children: [
+                                "/ja/tendermint-core/consensus/",
+                                "/ja/tendermint-core/consensus/reactor",
+                            ],
+                        },
+                        {
+                            title: "Evidence",
+                            collapsable: true,
+                            children: [
+                                "/ja/tendermint-core/evidence/",
+                            ],
+                        },
+                        {
+                            title: "Mempool",
+                            collapsable: true,
+                            children: [
+                                "/ja/tendermint-core/mempool/",
+                                "/ja/tendermint-core/mempool/config",
+                            ],
+                        },
+                        {
+                            title: "PEX",
+                            collapsable: true,
+                            children: [
+                                "/ja/tendermint-core/pex/",
+                            ],
+                        },
+                        {
+                            title: "State Sync",
+                            collapsable: true,
+                            children: [
+                                "/ja/tendermint-core/state-sync/",
+                            ],
+                        },
+                        "/ja/tendermint-core/block-structure",
+                        "/ja/tendermint-core/configuration",
+                        "/ja/tendermint-core/how-to-read-logs",
+                        "/ja/tendermint-core/light-client",
+                        "/ja/tendermint-core/metrics",
+                        "/ja/tendermint-core/rpc",
+                        "/ja/tendermint-core/running-in-production",
+                        "/ja/tendermint-core/subscription",
+                        "/ja/tendermint-core/using-tendermint",
+                        "/ja/tendermint-core/validators",
+                    ],
+                    "/ja/tools/": [
+                        "/ja/tools/",
+                        {
+                            title: "debugging",
+                            collapsable: true,
+                            children: [
+                                "/ja/tools/debugging/",
+                                "/ja/tools/debugging/pro",
+                            ],
+                        },
+                        "/ja/tools/docker-compose",
+                        "/ja/tools/terraform-and-ansible",
+                    ],
+                    "/ja/": [{
+                        title: "Overview",
+                        children: [
+                            "/ja/DOCS_README",
+                        ],
+                        collapsable: false,
+                    }, ],
+                },
+            },
+        },
+        sidebarDepth: 3,
+        // overrideTheme: 'dark',
+        // prefersTheme: 'dark',
+        // overrideTheme: { light: [6, 18], dark: [18, 6] },
+        // theme: 'default-prefers-color-scheme',
+        logo: "/imgs/tmint-logo-blue.png",
+        lastUpdated: "Updated on",
+        repo: "teiwei2003/tendermint/tree/master/docs",
+        editLinks: true,
+        editLinkText: "Edit this page on GitHub",
+        docsBranch: 'main',
+        docsDir: "docs",
+        algolia: {
+            apiKey: "5957091e293f7b97f2994bde312aed99",
+            indexName: "terra-project",
+        },
+    },
 };

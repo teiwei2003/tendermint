@@ -1,10 +1,3 @@
----
-order: 1
-parent:
-  title: Node Operators
-  order: 4
----
-
 # Overview
 
 This section will focus on how to operate full nodes, validators and light clients.

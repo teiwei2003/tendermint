@@ -1,7 +1,3 @@
----
-order: 2
----
-
 # Configuration
 
 Here we describe configuration options around mempool.
@@ -92,7 +88,7 @@ Cache size determines the size of the cache holding transactions we have already
 
 ## Keep Invalid Transactions In Cache
 
-Keep invalid transactions in cache determines wether a transaction in the cache, which is invalid, should be evicted. An invalid transaction here may mean that the transaction may rely on a different tx that has not been included in a block. 
+Keep invalid transactions in cache determines wether a transaction in the cache, which is invalid, should be evicted. An invalid transaction here may mean that the transaction may rely on a different tx that has not been included in a block.
 
 ## Max Transaction Bytes
 

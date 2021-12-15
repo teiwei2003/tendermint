@@ -1,20 +1,16 @@
----
-order: 7
----
-
 # Remote signer
 
 Tendermint provides a remote signer option for validators. A remote signer enables the operator to store the validator key on a different machine minimizing the attack surface if a server were to be compromised.
 
 The remote signer protocol implements a [client and server architecture](https://en.wikipedia.org/wiki/Client%E2%80%93server_model). When Tendermint requires the public key or signature for a proposal or vote it requests it from the remote signer.
 
-To run a secure validator and remote signer system it is recommended to use a VPC (virtual private cloud) or a private connection. 
+To run a secure validator and remote signer system it is recommended to use a VPC (virtual private cloud) or a private connection.
 
 There are two different configurations that can be used: Raw or gRPC.
 
 ## Raw
 
-While both options use tcp or unix sockets the raw option uses tcp or unix sockets without http. The raw protocol sets up Tendermint as the server and the remote signer as the client. This aids in not exposing the remote signer to public network. 
+While both options use tcp or unix sockets the raw option uses tcp or unix sockets without http. The raw protocol sets up Tendermint as the server and the remote signer as the client. This aids in not exposing the remote signer to public network.
 
 > Warning: Raw will be deprecated in a future major release, we recommend implementing your key management server against the gRPC configuration.
 

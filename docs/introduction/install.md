@@ -1,7 +1,3 @@
----
-order: 3
----
-
 # Install Tendermint
 
 ## From Binary

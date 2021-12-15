@@ -1,9 +1,4 @@
----
-order: 1
-parent:
-  title: State Sync
-  order: 4
----
+# State Sync
 
 
 State sync allows new nodes to rapidly bootstrap and join the network by discovering, fetching,

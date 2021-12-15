@@ -1,10 +1,3 @@
----
-order: 1
-parent:
-  title: Tooling
-  order: 8
----
-
 # Overview
 
 Tendermint has some tools that are associated with it for:

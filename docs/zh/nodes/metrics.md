@@ -1,7 +1,3 @@
----
-order: 4
----
-
 # Metrics
 
 Tendermint can report and serve the Prometheus metrics, which in their turn can

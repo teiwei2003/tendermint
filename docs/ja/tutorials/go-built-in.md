@@ -1,7 +1,3 @@
-<!---
-order: 2
---->
-
 # Creating a built-in application in Go
 
 ## Guide assumptions
@@ -23,7 +19,7 @@ yourself with the syntax.
 By following along with this guide, you'll create a Tendermint Core project
 called kvstore, a (very) simple distributed BFT key-value store.
 
-> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master. 
+> Note: please use a released version of Tendermint with this guide. The guides will work with the latest version. Please, do not use master.
 
 ## Built-in app vs external app
 
@@ -57,7 +53,7 @@ go mod init github.com/<github_username>/<repo_name>
 
 Inside the example directory create a `main.go` file with the following content:
 
-> Note: there is no need to clone or fork Tendermint in this tutorial. 
+> Note: there is no need to clone or fork Tendermint in this tutorial.
 
 ```go
 package main

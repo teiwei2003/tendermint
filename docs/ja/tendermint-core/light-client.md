@@ -1,7 +1,3 @@
----
-order: 13
----
-
 # Light Client
 
 Light clients are an important part of the complete blockchain system for most
@@ -38,7 +34,7 @@ a provider and a set of witnesses. This sets the trust period: the period that
 full nodes should be accountable for faulty behavior and a trust level: the
 fraction of validators in a validator set with which we trust that at least one
 is correct. As Tendermint consensus can withstand 1/3 byzantine faults, this is
-the default trust level, however, for greater security you can increase it (max:  
+the default trust level, however, for greater security you can increase it (max:
 1).
 
 Similar to a full node, light clients can also be subject to byzantine attacks.

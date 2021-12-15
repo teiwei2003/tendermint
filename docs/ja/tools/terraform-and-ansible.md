@@ -1,7 +1,3 @@
----
-order: 3
----
-
 # Terraform & Ansible
 
 > Note: These commands/files are not being maintained by the tendermint team currently. Please use them carefully.

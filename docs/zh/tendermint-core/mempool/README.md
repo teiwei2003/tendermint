@@ -1,9 +1,4 @@
----
-order: 1
-parent:
-  title: Mempool
-  order: 2
----
+# Mempool
 
 The mempool is a in memory pool of potentially valid transactions,
 both to broadcast to other nodes, as well as to provide to the
