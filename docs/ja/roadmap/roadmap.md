@@ -1,7 +1,3 @@
----
-order: 1
----
-
 # Tendermint Roadmap
 
 *Last Updated: Friday 8 October 2021*

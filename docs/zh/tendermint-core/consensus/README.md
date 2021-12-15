@@ -1,10 +1,3 @@
----
-order: 1
-parent:
-  title: Consensus
-  order: 6
----
-
 # Consensus
 
 Tendermint Consensus is a distributed protocol executed by validator processes to agree on

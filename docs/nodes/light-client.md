@@ -1,7 +1,3 @@
----
-order: 6
----
-
 # Configure a Light Client
 
 Tendermint comes with a built-in `tendermint light` command, which can be used

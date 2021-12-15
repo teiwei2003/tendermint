@@ -1,10 +1,3 @@
----
-order: 1
-parent:
-  title: Understanding Tendermint
-  order: 5
----
-
 # Overview
 
 This section dives into the internals of Go-Tendermint.

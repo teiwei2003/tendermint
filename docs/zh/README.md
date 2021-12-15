@@ -1,10 +1,3 @@
----
-title: Tendermint Core Documentation
-description: Tendermint Core is a blockchain application platform.
-footer:
-  newsletter: false
----
-
 # Tendermint
 
 欢迎使用 Tendermint 核心文档！

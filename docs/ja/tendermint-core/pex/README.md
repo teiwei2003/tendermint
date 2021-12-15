@@ -1,10 +1,3 @@
----
-order: 1
-parent:
-  title: Peer Exchange
-  order: 5
----
-
 # Peer Strategy and Exchange
 
 Here we outline the design of the PeerStore

@@ -1,7 +1,3 @@
----
-order: 7
----
-
 # Subscribing to events via Websocket
 
 Tendermint emits different events, which you can subscribe to via

@@ -1,10 +1,3 @@
----
-order: false
-parent:
-  title: Introduction
-  order: 1
----
-
 # Overview
 
 ## Quick Start

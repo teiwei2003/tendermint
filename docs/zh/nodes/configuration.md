@@ -1,7 +1,3 @@
----
-order: 3
----
-
 # Configuration
 
 Tendermint Core can be configured via a TOML file in
@@ -594,7 +590,7 @@ This section will cover settings within the p2p section of the `config.toml`.
 - `pex` = turns the peer exchange reactor on or off. Validator node will want the `pex` turned off so it would not begin gossiping to unknown peers on the network. PeX can also be turned off for statically configured networks with fixed network connectivity. For full nodes on open, dynamic networks, it should be turned on.
 - `private-peer-ids` = is a comma-separated list of node ids that will _not_ be exposed to other peers (i.e., you will not tell other peers about the ids in this list). This can be filled with a validator's node id.
 
-Recently the Tendermint Team conducted a refactor of the p2p layer. This lead to multiple config paramters being deprecated and/or replaced. 
+Recently the Tendermint Team conducted a refactor of the p2p layer. This lead to multiple config paramters being deprecated and/or replaced.
 
 We will cover the new and deprecated parameters below.
 ### New Parameters
@@ -602,7 +598,7 @@ We will cover the new and deprecated parameters below.
 There are three new parameters, which are enabled if use-legacy is set to false.
 
 - `queue-type` = sets a type of queue to use in the p2p layer. There are three options available `fifo`, `priority` and `wdrr`. The default is priority
-- `bootstrap-peers` = is a list of comma seperated peers which will be used to bootstrap the address book. 
+- `bootstrap-peers` = is a list of comma seperated peers which will be used to bootstrap the address book.
 - `max-connections` = is the max amount of allowed inbound and outbound connections.
 ### Deprecated Parameters
 

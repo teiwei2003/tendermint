@@ -1,7 +1,3 @@
----
-order: 9
----
-
 # RPC
 
 The RPC documentation is hosted here:
@@ -14,7 +10,7 @@ If you are using Tendermint in-process, you will need to set the version to be d
 
 If you are using a makefile with your go project, this can be done by using sed and `ldflags`.
 
-Example: 
+Example:
 
 ```
 VERSION := $(shell go list -m github.com/tendermint/tendermint | sed 's:.* ::')

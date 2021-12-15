@@ -1,11 +1,3 @@
----
-order: 1
-parent:
-  title: Block Sync
-  order: 6
----
-
-
 # Block Sync
 *Formerly known as Fast Sync*
 

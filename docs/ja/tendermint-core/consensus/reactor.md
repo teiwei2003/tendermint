@@ -1,7 +1,3 @@
----
-order: 2
----
-
 # Reactor
 
 Consensus Reactor defines a reactor for the consensus service. It contains the ConsensusState service that

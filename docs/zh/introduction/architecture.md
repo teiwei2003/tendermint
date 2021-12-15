@@ -1,6 +1,3 @@
----
-order: false
----
 # Tendermint Architectural Overview
 
 
@@ -56,7 +53,7 @@ The second responsibility is handled by a combination of the PEX and the Address
 Here are some relevant facts about TCP:
 
 1. All TCP connections have a "frame window size" which represents the packet size to the "confidence;" i.e., if you are sending packets along a new connection, you must start out with small packets. As the packets are received successfully, you can start to send larger and larger packets. (This curve is illustrated below.) This means that TCP connections are slow to spin up.
-2. The syn/ack process also means that there's a high overhead for small, frequent messages 
+2. The syn/ack process also means that there's a high overhead for small, frequent messages
 3. Sockets are represented by file descriptors.
 
 ![tcp](../imgs/tcp-window.png)

@@ -1,7 +1,3 @@
----
-order: 2
----
-
 # Validators
 
 Validators are responsible for committing new blocks in the blockchain.

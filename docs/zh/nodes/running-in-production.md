@@ -1,7 +1,3 @@
----
-order: 4
----
-
 # Running in production
 
 If you are building Tendermint from source for use in production, make sure to check out an appropriate Git tag instead of a branch.
