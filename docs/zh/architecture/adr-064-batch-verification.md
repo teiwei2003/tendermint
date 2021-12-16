@@ -86,5 +86,5 @@ func Verify(keys []crypto.Pubkey, signatures, messages[][]byte) bool
 
 [Ed25519 库](https://github.com/hdevalence/ed25519consensus)
 [Ed25519 规格](https://ed25519.cr.yp.to/)
-【签名聚合投票】(https://github.com/tendermint/tendermint/issues/1319)
+[签名聚合投票](https://github.com/tendermint/tendermint/issues/1319)
 [基于 Proposer 的时间戳](https://github.com/tendermint/tendermint/issues/2840)

@@ -32,7 +32,7 @@ Tendermint Core 是采用状态的拜占庭容错 (BFT) 中间件
 
 ## 1.1 安装 Java 和 Gradle
 
-请参考【Oracle的JDK安装指南】(https://www.oracle.com/technetwork/java/javase/downloads/index.html)。
+请参考[Oracle的JDK安装指南](https://www.oracle.com/technetwork/java/javase/downloads/index.html)。
 
 验证您是否已成功安装 Java:
 

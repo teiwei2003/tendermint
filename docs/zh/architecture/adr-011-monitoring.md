@@ -14,7 +14,7 @@ https://github.com/tendermint/tendermint/issues/986。
 
 考虑了几种解决方案:
 
-1.【普罗米修斯】(https://prometheus.io)
+1.[普罗米修斯](https://prometheus.io)
    a) 普罗米修斯 API
    b) [go-kit metrics 包](https://github.com/go-kit/kit/tree/master/metrics) 作为接口加上 Prometheus
    c) [电报](https://github.com/influxdata/telegraf)
