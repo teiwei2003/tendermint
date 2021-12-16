@@ -1,17 +1,17 @@
-# Configure a Light Client
+# 配置轻客户端
 
-Tendermint comes with a built-in `tendermint light` command, which can be used
-to run a light client proxy server, verifying Tendermint RPC. All calls that
-can be tracked back to a block header by a proof will be verified before
-passing them back to the caller. Other than that, it will present the same
-interface as a full Tendermint node.
+Tendermint 自带了一个内置的 `tendermint light` 命令，可以使用
+运行轻客户端代理服务器，验证 Tendermint RPC。 都这么叫
+可以通过之前验证的证明追溯到区块头
+将它们传回给调用者。 除此之外，它将呈现相同的
+接口作为一个完整的 Tendermint 节点。
 
-You can start the light client proxy server by running `tendermint light <chainID>`,
-with a variety of flags to specify the primary node,  the witness nodes (which cross-check
-the information provided by the primary), the hash and height of the trusted header,
-and more.
+您可以通过运行 `tendermint light <chainID>` 来启动轻客户端代理服务器，
+用各种标志来指定主节点，见证节点(交叉检查
+主提供的信息)，可信头的散列和高度，
+和更多。
 
-For example:
+例如:
 
 ```bash
 $ tendermint light supernova -p tcp://233.123.0.140:26657 \
@@ -19,12 +19,12 @@ $ tendermint light supernova -p tcp://233.123.0.140:26657 \
   --height=10 --hash=37E9A6DD3FA25E83B22C18835401E8E56088D0D7ABC6FD99FCDC920DD76C1C57
 ```
 
-For additional options, run `tendermint light --help`.
+如需其他选项，请运行 `tendermint light --help`。
 
-## Where to obtain trusted height & hash
+## 在哪里获得可信的高度和哈希值
 
-One way to obtain a semi-trusted hash & height is to query multiple full nodes
-and compare their hashes:
+获得半可信散列和高度的一种方法是查询多个完整节点
+并比较它们的哈希值:
 
 ```bash
 $ curl -s https://233.123.0.140:26657:26657/commit | jq "{height: .result.signed_header.header.height, hash: .result.signed_header.commit.block_id.hash}"

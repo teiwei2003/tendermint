@@ -1,102 +1,102 @@
-# Debug Like A Pro
+# 像专业人士一样调试
 
-## Intro
+## 介绍
 
-Tendermint Core is a fairly robust BFT replication engine. Unfortunately, as with other software, failures sometimes do happen. The question is then “what do you do” when the system deviates from the expected behavior.
+Tendermint Core 是一个相当强大的 BFT 复制引擎。 不幸的是，与其他软件一样，有时确实会发生故障。 那么问题是当系统偏离预期行为时“你会怎么做”。
 
-The first response is usually to take a look at the logs. By default, Tendermint writes logs to standard output ¹.
+第一反应通常是查看日志。 默认情况下，Tendermint 将日志写入标准输出 ¹。
 
 ```sh
 I[2020-05-29|03:03:16.145] Committed state                              module=state height=2282 txs=0 appHash=0A27BC6B0477A8A50431704D2FB90DB99CBFCB67A2924B5FBF6D4E78538B67C1I[2020-05-29|03:03:21.690] Executed block                               module=state height=2283 validTxs=0 invalidTxs=0I[2020-05-29|03:03:21.698] Committed state                              module=state height=2283 txs=0 appHash=EB4E409D3AF4095A0757C806BF160B3DE4047AC0416F584BFF78FC0D44C44BF3I[2020-05-29|03:03:27.994] Executed block                               module=state height=2284 validTxs=0 invalidTxs=0I[2020-05-29|03:03:28.003] Committed state                              module=state height=2284 txs=0 appHash=3FC9237718243A2CAEE3A8B03AE05E1FC3CA28AEFE8DF0D3D3DCE00D87462866E[2020-05-29|03:03:32.975] enterPrevote: ProposalBlock is invalid       module=consensus height=2285 round=0 err="wrong signature (#35): C683341000384EA00A345F9DB9608292F65EE83B51752C0A375A9FCFC2BD895E0792A0727925845DC13BA0E208C38B7B12B2218B2FE29B6D9135C53D7F253D05"
 ```
 
-If you’re running a validator in production, it might be a good idea to forward the logs for analysis using filebeat or similar tools. Also, you can set up a notification in case of any errors.
+如果您在生产中运行验证器，最好使用 filebeat 或类似工具转发日志以进行分析。 此外，您可以设置出现任何错误时的通知。
 
-The logs should give you the basic idea of what has happened. In the worst-case scenario, the node has stalled and does not produce any logs (or simply panicked).
+日志应该让您对所发生的事情有一个基本的了解。 在最坏的情况下，节点已经停止并且不会产生任何日志(或者只是恐慌)。
 
-The next step is to call /status, /net_info, /consensus_state and /dump_consensus_state RPC endpoints.
+下一步是调用 /status、/net_info、/consensus_state 和 /dump_consensus_state RPC 端点。
 
 ```sh
 curl http://<server>:26657/status$ curl http://<server>:26657/net_info$ curl http://<server>:26657/consensus_state$ curl http://<server>:26657/dump_consensus_state
 ```
 
-Please note that /consensus_state and /dump_consensus_state may not return a result if the node has stalled (since they try to get a hold of the consensus mutex).
+请注意，如果节点已停止，/consensus_state 和 /dump_consensus_state 可能不会返回结果(因为它们试图获取共识互斥锁)。
 
-The output of these endpoints contains all the information needed for developers to understand the state of the node. It will give you an idea if the node is lagging behind the network, how many peers it’s connected to, and what the latest consensus state is.
+这些端点的输出包含开发人员了解节点状态所需的所有信息。 它会让你知道节点是否落后于网络，它连接了多少对等点，以及最新的共识状态是什么。
 
-At this point, if the node is stalled and you want to restart it, the best thing you can do is to kill it with -6 signal:
+此时，如果节点被停止并且您想重新启动它，您能做的最好的事情就是用 -6 信号杀死它:
 
 ```sh
 kill -6 <PID>
 ```
 
-which will dump the list of the currently running goroutines. The list is super useful when debugging a deadlock.
+这将转储当前正在运行的 goroutine 的列表。 该列表在调试死锁时非常有用。
 
-`PID` is the Tendermint’s process ID. You can find it out by running `ps -a | grep tendermint | awk ‘{print $1}’`
+`PID` 是 Tendermint 的进程 ID。 你可以通过运行`ps -a | 找到它。 grep 薄荷| awk '{print $1}'`
 
-## Tendermint debug kill
+## Tendermint 调试杀死
 
-To ease the burden of collecting different pieces of data Tendermint Core (since v0.33 version) provides the Tendermint debug kill tool, which will do all of the above steps for you, wrapping everything into a nice archive file.
+为了减轻收集不同数据片段的负担，Tendermint Core(自 v0.33 版本起)提供了 Tendermint 调试杀戮工具，它将为您完成上述所有步骤，将所有内容打包成一个不错的存档文件。
 
 ```sh
 tendermint debug kill <pid> </path/to/out.zip> — home=</path/to/app.d>
 ```
 
-Here’s the official documentation page — <https://docs.tendermint.com/master/tools/debugging>
+这是官方文档页面——<https://docs.tendermint.com/master/tools/debugging>
 
-If you’re using a process supervisor, like systemd, it will restart the Tendermint automatically. We strongly advise you to have one in production. If not, you will need to restart the node by hand.
+如果你使用进程管理器，比如 systemd，它会自动重启 Tendermint。 我们强烈建议您在生产中安装一个。 如果没有，您将需要手动重新启动节点。
 
-Another advantage of using Tendermint debug is that the same archive file can be given to Tendermint Core developers, in cases where you think there’s a software issue.
+使用 Tendermint 调试的另一个优势是，在您认为存在软件问题的情况下，可以将相同的存档文件提供给 Tendermint 核心开发人员。
 
-## Tendermint debug dump
+## Tendermint 调试转储
 
-Okay, but what if the node has not stalled, but its state is degrading over time? Tendermint debug dump to the rescue!
+好的，但是如果节点没有停止，但它的状态随着时间的推移而下降怎么办？ Tendermint 调试转储来救援！
 
 ```sh
 tendermint debug dump </path/to/out> — home=</path/to/app.d>
 ```
 
-It won’t kill the node, but it will gather all of the above data and package it into an archive file. Plus, it will also make a heap dump, which should help if Tendermint is leaking memory.
+它不会杀死节点，但会收集上述所有数据并将其打包到存档文件中。 此外，它还会进行堆转储，这在 Tendermint 内存泄漏时应该会有所帮助。
 
-At this point, depending on how severe the degradation is, you may want to restart the process.
+此时，根据降级的严重程度，您可能需要重新启动该过程。
 
-## Tendermint Inspect
+## Tendermint 检查
 
-What if the Tendermint node will not start up due to inconsistent consensus state?
+如果 Tendermint 节点由于不一致的共识状态而无法启动怎么办？
 
-When a node running the Tendermint consensus engine detects an inconsistent state
-it will crash the entire Tendermint process.
-The Tendermint consensus engine cannot be run in this inconsistent state and the so node
-will fail to start up as a result.
-The Tendermint RPC server can provide valuable information for debugging in this situation.
-The Tendermint `inspect` command will run a subset of the Tendermint RPC server
-that is useful for debugging inconsistent state.
+当运行 Tendermint 共识引擎的节点检测到不一致的状态时
+它会使整个 Tendermint 进程崩溃。
+Tendermint 共识引擎无法在这种不一致的状态下运行，所以节点
+结果将无法启动。
+在这种情况下，Tendermint RPC 服务器可以为调试提供有价值的信息。
+Tendermint `inspect` 命令将运行 Tendermint RPC 服务器的一个子集
+这对于调试不一致的状态很有用。
 
-### Running inspect
+### 运行检查
 
-Start up the `inspect` tool on the machine where Tendermint crashed using:
+使用以下命令在 Tendermint 崩溃的机器上启动 `inspect` 工具:
 ```bash
 tendermint inspect --home=</path/to/app.d>
 ```
 
-`inspect` will use the data directory specified in your Tendermint configuration file.
-`inspect` will also run the RPC server at the address specified in your Tendermint configuration file.
+`inspect` 将使用 Tendermint 配置文件中指定的数据目录。
+`inspect` 还将在 Tendermint 配置文件中指定的地址运行 RPC 服务器。
 
-### Using inspect
+### 使用检查
 
-With the `inspect` server running, you can access RPC endpoints that are critically important
-for debugging.
-Calling the `/status`, `/consensus_state` and `/dump_consensus_state` RPC endpoint
-will return useful information about the Tendermint consensus state.
+随着 `inspect` 服务器的运行，您可以访问非常重要的 RPC 端点
+用于调试。
+调用 `/status`、`/consensus_state` 和 `/dump_consensus_state` RPC 端点
+将返回有关 Tendermint 共识状态的有用信息。
 
-## Outro
+##结尾
 
-We’re hoping that these Tendermint tools will become de facto the first response for any accidents.
+我们希望这些 Tendermint 工具将成为对任何事故的第一反应。
 
-Let us know what your experience has been so far! Have you had a chance to try `tendermint debug` or `tendermint inspect` yet?
+让我们知道您到目前为止的体验！ 您是否有机会尝试“tendermint debug”或“tendermint inspect”？
 
-Join our [discord chat](https://discord.gg/cosmosnetwork), where we discuss the current issues and future improvements.
+加入我们的 [discord chat](https://discord.gg/cosmosnetwork)，在那里我们讨论当前的问题和未来的改进。
 
 —
 
-[1]: Of course, you’re free to redirect the Tendermint’s output to a file or forward it to another server.
+[1]:当然，您可以自由地将 Tendermint 的输出重定向到文件或转发到另一台服务器。

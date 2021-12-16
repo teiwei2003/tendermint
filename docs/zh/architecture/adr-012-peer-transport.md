@@ -1,41 +1,41 @@
-# ADR 012: PeerTransport
+# ADR 012:PeerTransport
 
-## Context
+## 语境
 
-One of the more apparent problems with the current architecture in the p2p
-package is that there is no clear separation of concerns between different
-components. Most notably the `Switch` is currently doing physical connection
-handling. An artifact is the dependency of the Switch on
-`[config.P2PConfig`](https://github.com/tendermint/tendermint/blob/05a76fb517f50da27b4bfcdc7b4cf185fc61eff6/config/config.go#L272-L339).
+p2p 中当前架构比较明显的问题之一
+包是不同的之间没有明确的关注点分离
+组件。最值得注意的是，“Switch”目前正在进行物理连接
+处理。一个工件是 Switch on 的依赖
+`[config.P2PConfig`](https://github.com/tendermint/tendermint/blob/05a76fb517f50da27b4bfcdc7b4cf185fc61eff6/config/config.go#L272-L339)。
 
-Addresses:
+地址:
 
 - [#2046](https://github.com/tendermint/tendermint/issues/2046)
 - [#2047](https://github.com/tendermint/tendermint/issues/2047)
 
-First iteraton in [#2067](https://github.com/tendermint/tendermint/issues/2067)
+[#2067](https://github.com/tendermint/tendermint/issues/2067) 中的第一次迭代
 
-## Decision
+## 决定
 
-Transport concerns will be handled by a new component (`PeerTransport`) which
-will provide Peers at its boundary to the caller. In turn `Switch` will use
-this new component accept new `Peer`s and dial them based on `NetAddress`.
+传输问题将由一个新组件(`PeerTransport`)处理，该组件
+将在其边界处向调用者提供 Peers。反过来`Switch`将使用
+这个新组件接受新的“Peer”并根据“NetAddress”拨号。
 
 ### PeerTransport
 
-Responsible for emitting and connecting to Peers. The implementation of `Peer`
-is left to the transport, which implies that the chosen transport dictates the
-characteristics of the implementation handed back to the `Switch`. Each
-transport implementation is responsible to filter establishing peers specific
-to its domain, for the default multiplexed implementation the following will
-apply:
+负责发射和连接到 Peers。 `Peer`的实现
+留给传输，这意味着选择的传输决定了
+实现的特性交还给“Switch”。每个
+传输实现负责过滤建立对等体特定的
+到它的域，对于默认的多路复用实现，以下将
+申请:
 
-- connections from our own node
-- handshake fails
-- upgrade to secret connection fails
-- prevent duplicate ip
-- prevent duplicate id
-- nodeinfo incompatibility
+- 来自我们自己节点的连接
+- 握手失败
+- 升级到秘密连接失败
+- 防止重复ip
+- 防止重复ID
+- nodeinfo 不兼容
 
 ```go
 // PeerTransport proxies incoming and outgoing peer connections.
@@ -78,36 +78,36 @@ func NewMTransport(
 ) *multiplexTransport
 ```
 
-### Switch
+### 转变
 
-From now the Switch will depend on a fully setup `PeerTransport` to
-retrieve/reach out to its peers. As the more low-level concerns are pushed to
-the transport, we can omit passing the `config.P2PConfig` to the Switch.
+从现在开始，Switch 将依赖于完全设置的“PeerTransport”
+检索/联系其同行。 随着更多的低级关注被推到
+在传输过程中，我们可以省略将 `config.P2PConfig` 传递给 Switch。
 
 ```go
 func NewSwitch(transport PeerTransport, opts ...SwitchOption) *Switch
 ```
 
-## Status
+## 状态
 
-In Review.
+在审查。
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- free Switch from transport concerns - simpler implementation
-- pluggable transport implementation - simpler test setup
-- remove Switch dependency on P2PConfig - easier to test
+- 从传输问题中免费切换 - 更简单的实现
+- 可插拔传输实现 - 更简单的测试设置
+- 移除 Switch 对 P2PConfig 的依赖 - 更容易测试
 
-### Negative
+### 消极的
 
-- more setup for tests which depend on Switches
+- 对依赖于 Switch 的测试的更多设置
 
-### Neutral
+### 中性的
 
-- multiplexed will be the default implementation
+- 多路复用将是默认实现
 
-[0] These guards could be potentially extended to be pluggable much like
-middlewares to express different concerns required by differentally configured
-environments.
+[0] 这些守卫可以潜在地扩展为可插拔，就像
+中间件来表达不同配置所需的不同关注点
+环境。

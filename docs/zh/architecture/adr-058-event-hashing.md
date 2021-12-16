@@ -1,55 +1,54 @@
-# ADR 058: Event hashing
+# ADR 058:事件散列
 
-## Changelog
+## 变更日志
 
-- 2020-07-17: initial version
-- 2020-07-27: fixes after Ismail and Ethan's comments
-- 2020-07-27: declined
+- 2020-07-17:初始版本
+- 2020-07-27:修复了 Ismail 和 Ethan 的评论
+- 2020-07-27:拒绝
 
-## Context
+## 语境
 
-Before [PR#4845](https://github.com/tendermint/tendermint/pull/4845),
-`Header#LastResultsHash` was a root of the Merkle tree built from `DeliverTx`
-results. Only `Code`, `Data` fields were included because `Info` and `Log`
-fields are non-deterministic.
+在 [PR#4845](https://github.com/tendermint/tendermint/pull/4845) 之前，
+`Header#LastResultsHash` 是从 `DeliverTx` 构建的 Merkle 树的根
+结果。仅包含“代码”、“数据”字段，因为“信息”和“日志”
+字段是不确定的。
 
-At some point, we've added events to `ResponseBeginBlock`, `ResponseEndBlock`,
-and `ResponseDeliverTx` to give applications a way to attach some additional
-information to blocks / transactions.
+在某些时候，我们向 `ResponseBeginBlock`、`ResponseEndBlock` 添加了事件，
+和 `ResponseDeliverTx` 为应用程序提供一种附加一些额外的方法
+块/交易的信息。
 
-Many applications seem to have started using them since.
+从那时起，许多应用程序似乎已经开始使用它们。
 
-However, before [PR#4845](https://github.com/tendermint/tendermint/pull/4845)
-there was no way to prove that certain events were a part of the result
-(_unless the application developer includes them into the state tree_).
+然而，在 [PR#4845](https://github.com/tendermint/tendermint/pull/4845) 之前
+没有办法证明某些事件是结果的一部分
+(_除非应用程序开发人员将它们包含在状态树中_)。
 
-Hence, [PR#4845](https://github.com/tendermint/tendermint/pull/4845) was
-opened. In it, `GasWanted` along with `GasUsed` are included when hashing
-`DeliverTx` results. Also, events from `BeginBlock`, `EndBlock` and `DeliverTx`
-results are hashed into the `LastResultsHash` as follows:
+因此，[PR#4845](https://github.com/tendermint/tendermint/pull/4845) 是
+打开。其中，散列时包含`GasWanted`和`GasUsed`
+`DeliverTx` 结果。此外，来自`BeginBlock`、`EndBlock` 和`DeliverTx` 的事件
+结果被散列到 `LastResultsHash` 中，如下所示:
 
-- Since we do not expect `BeginBlock` and `EndBlock` to contain many events,
-  these will be Protobuf encoded and included in the Merkle tree as leaves.
-- `LastResultsHash` therefore is the root hash of a Merkle tree w/ 3 leafs:
-  proto-encoded `ResponseBeginBlock#Events`, root hash of a Merkle tree build
-  from `ResponseDeliverTx` responses (Log, Info and Codespace fields are
-  ignored), and proto-encoded `ResponseEndBlock#Events`.
-- Order of events is unchanged - same as received from the ABCI application.
+- 由于我们不希望 `BeginBlock` 和 `EndBlock` 包含许多事件，
+  这些将被 Protobuf 编码并作为叶子包含在 Merkle 树中。
+- 因此，`LastResultsHash` 是具有 3 个叶子的 Merkle 树的根哈希:
+  原型编码的 `ResponseBeginBlock#Events`，默克尔树构建的根哈希
+  来自 `ResponseDeliverTx` 响应(日志、信息和代码空间字段是
+  忽略)，以及原型编码的 `ResponseEndBlock#Events`。
+- 事件顺序不变 - 与从 ABCI 应用程序收到的相同。
 
 [Spec PR](https://github.com/tendermint/spec/pull/97/files)
 
-While it's certainly good to be able to prove something, introducing new events
-or removing such becomes difficult because it breaks the `LastResultsHash`. It
-means that every time you add, remove or update an event, you'll need a
-hard-fork. And that is undoubtedly bad for applications, which are evolving and
-don't have a stable events set.
+虽然能够证明某些事情当然很好，但引入新事件
+或者删除此类变得困难，因为它破坏了“LastResultsHash”。它
+意味着每次添加、删除或更新事件时，您都需要一个
+硬分叉。这无疑对不断发展的应用程序不利
+没有一个稳定的事件集。
 
-## Decision
+## 决定
 
-As a middle ground approach, the proposal is to add the
-`Block#LastResultsEvents` consensus parameter that is a list of all events that
-are to be hashed in the header.
-
+作为一种折衷办法，该提议是增加
+`Block#LastResultsEvents` 共识参数是所有事件的列表
+将在标头中散列。
 ```
 @ proto/tendermint/abci/types.proto:295 @ message BlockParams {
   int64 max_bytes = 1;
@@ -60,10 +59,10 @@ are to be hashed in the header.
 }
 ```
 
-Initially the list is empty. The ABCI application can change it via `InitChain`
-or `EndBlock`.
+最初列表是空的。 ABCI 应用程序可以通过 `InitChain` 更改它
+或`EndBlock`。
 
-Example:
+例子:
 
 ```go
 func (app *MyApp) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
@@ -80,43 +79,43 @@ func (app *MyApp) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx 
 }
 ```
 
-For "transfer" event to be hashed, the `LastResultsEvents` must contain a
-string "transfer".
+对于要散列的“传输”事件，`LastResultsEvents` 必须包含一个
+字符串“传输”。
 
-## Status
+## 状态
 
-Declined
+拒绝
 
-**Until there's more stability/motivation/use-cases/demand, the decision is to
-push this entirely application side and just have apps which want events to be
-provable to insert them into their application-side merkle trees. Of course
-this puts more pressure on their application state and makes event proving
-application specific, but it might help built up a better sense of use-cases
-and how this ought to ultimately be done by Tendermint.**
+**直到有更多的稳定性/动机/用例/需求，决定是
+推动这个完全应用程序端，只有想要事件的应用程序
+可以证明将它们插入到他们的应用程序端默克尔树中。当然
+这给他们的应用程序状态带来了更大的压力，并使事件证明
+特定于应用程序，但它可能有助于建立更好的用例意识
+以及 Tendermint 最终应该如何做到这一点。**
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-1. networks can perform parameter change proposals to update this list as new events are added
-2. allows networks to avoid having to do hard-forks
-3. events can still be added at-will to the application w/o breaking anything
+1. 网络可以执行参数更改建议以在添加新事件时更新此列表
+2. 允许网络避免硬分叉
+3. 事件仍然可以随意添加到应用程序中，而不会破坏任何东西
 
-### Negative
+### 消极的
 
-1. yet another consensus parameter
-2. more things to track in the tendermint state
+1. 又一个共识参数
+2.在tendermint状态下跟踪更多的东西
 
-## References
+## 参考
 
 - [ADR 021](./adr-021-abci-events.md)
-- [Indexing transactions](../app-dev/indexing-transactions.md)
+- [索引交易](../app-dev/indexing-transactions.md)
 
-## Appendix A. Alternative proposals
+## 附录 A. 替代提案
 
-The other proposal was to add `Hash bool` flag to the `Event`, similarly to
-`Index bool` EventAttribute's field. When `true`, Tendermint would hash it into
-the `LastResultsEvents`. The downside is that the logic is implicit and depends
-largely on the node's operator, who decides what application code to run. The
-above proposal makes it (the logic) explicit and easy to upgrade via
-governance.
+另一个提议是在 `Event` 中添加 `Hash bool` 标志，类似于
+`Index bool` EventAttribute 的字段。当为 true 时，Tendermint 会将其散列为
+`LastResultsEvents`。缺点是逻辑是隐含的，取决于
+主要取决于节点的运营商，他们决定运行什么应用程序代码。这
+上述提议使其(逻辑)明确且易于升级
+治理。

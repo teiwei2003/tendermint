@@ -1,38 +1,38 @@
-# ADR 004: Historical Validators
+# ADR 004:历史验证器
 
-## Context
+## 语境
 
-Right now, we can query the present validator set, but there is no history.
-If you were offline for a long time, there is no way to reconstruct past validators. This is needed for the light client and we agreed needs enhancement of the API.
+现在，我们可以查询当前的验证器集，但没有历史记录。
+如果您长时间离线，则无法重建过去的验证器。这是轻客户端所需要的，我们同意需要增强 API。
 
-## Decision
+## 决定
 
-For every block, store a new structure that contains either the latest validator set,
-or the height of the last block for which the validator set changed. Note this is not
-the height of the block which returned the validator set change itself, but the next block,
-ie. the first block it comes into effect for.
+对于每个块，存储一个包含最新验证器集的新结构，
+或验证器集更改的最后一个块的高度。注意这不是
+返回验证器集的块的高度本身会改变，但下一个块，
+IE。它生效的第一个区块。
 
-Storing the validators will be handled by the `state` package.
+存储验证器将由 `state` 包处理。
 
-At some point in the future, we may consider more efficient storage in the case where the validators
-are updated frequently - for instance by only saving the diffs, rather than the whole set.
+在未来的某个时候，我们可能会考虑在验证器的情况下使用更高效的存储
+经常更新 - 例如只保存差异，而不是整个集合。
 
-An alternative approach suggested keeping the validator set, or diffs of it, in a merkle IAVL tree.
-While it might afford cheaper proofs that a validator set has not changed, it would be more complex,
-and likely less efficient.
+另一种方法建议将验证器集或其差异保存在默克尔 IAVL 树中。
+虽然它可以提供验证者集没有改变的更便宜的证明，但它会更复杂，
+并且可能效率较低。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Can query old validator sets, with proof.
+- 可以查询旧的验证器集，有证据。
 
-### Negative
+### 消极的
 
-- Writes an extra structure to disk with every block.
+- 为每个块写入一个额外的结构到磁盘。
 
-### Neutral
+### 中性的

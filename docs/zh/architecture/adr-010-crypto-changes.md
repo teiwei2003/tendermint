@@ -1,77 +1,77 @@
-# ADR 010: Crypto Changes
+# ADR 010:加密货币变化
 
-## Context
+## 语境
 
-Tendermint is a cryptographic protocol that uses and composes a variety of cryptographic primitives.
+Tendermint 是一种加密协议，它使用和组合了各种加密原语。
 
-After nearly 4 years of development, Tendermint has recently undergone multiple security reviews to search for vulnerabilities and to assess the the use and composition of cryptographic primitives.
+经过近 4 年的发展，Tendermint 最近经历了多次安全审查，以寻找漏洞并评估密码原语的使用和组成。
 
-### Hash Functions
+### 哈希函数
 
-Tendermint uses RIPEMD160 universally as a hash function, most notably in its Merkle tree implementation.
+Tendermint 普遍使用 RIPEMD160 作为哈希函数，尤其是在其 Merkle 树实现中。
 
-RIPEMD160 was chosen because it provides the shortest fingerprint that is long enough to be considered secure (ie. birthday bound of 80-bits).
-It was also developed in the open academic community, unlike NSA-designed algorithms like SHA256.
+选择 RIPEMD160 是因为它提供了最短的指纹，其长度足以被认为是安全的(即 80 位的生日界限)。
+与 SHA256 等 NSA 设计的算法不同，它也是在开放的学术社区中开发的。
 
-That said, the cryptographic community appears to unanimously agree on the security of SHA256. It has become a universal standard, especially now that SHA1 is broken, being required in TLS connections and having optimized support in hardware.
+也就是说，加密社区似乎一致同意 SHA256 的安全性。它已成为通用标准，尤其是现在 SHA1 已被破坏，在 TLS 连接中需要它并在硬件中得到优化支持。
 
-### Merkle Trees
+###默克尔树
 
-Tendermint uses a simple Merkle tree to compute digests of large structures like transaction batches
-and even blockchain headers. The Merkle tree length prefixes byte arrays before concatenating and hashing them.
-It uses RIPEMD160.
+Tendermint 使用简单的 Merkle 树来计算大型结构的摘要，例如交易批次
+甚至区块链标题。 Merkle 树长度在连接和散列它们之前为字节数组添加前缀。
+它使用 RIPEMD160。
 
-### Addresses
+### 地址
 
-ED25519 addresses are computed using the RIPEMD160 of the Amino encoding of the public key.
-RIPEMD160 is generally considered an outdated hash function, and is much slower
-than more modern functions like SHA256 or Blake2.
+ED25519 地址是使用公钥的氨基编码的 RIPEMD160 计算的。
+RIPEMD160 通常被认为是过时的哈希函数，而且速度要慢得多
+比更现代的函数，如 SHA256 或 Blake2。
 
-### Authenticated Encryption
+### 认证加密
 
-Tendermint P2P connections use authenticated encryption to provide privacy and authentication in the communications.
-This is done using the simple Station-to-Station protocol with the NaCL Ed25519 library.
+Tendermint P2P 连接使用经过身份验证的加密来提供通信中的隐私和身份验证。
+这是通过使用 NaCL Ed25519 库的简单站对站协议完成的。
 
-While there have been no vulnerabilities found in the implementation, there are some concerns:
+虽然在实施中没有发现漏洞，但存在一些问题:
 
-- NaCL uses Salsa20, a not-widely used and relatively out-dated stream cipher that has been obsoleted by ChaCha20
-- Connections use RIPEMD160 to compute a value that is used for the encryption nonce with subtle requirements on how it's used
+- NaCL 使用 Salsa20，这是一种使用不广泛且相对过时的流密码，已被 ChaCha20 淘汰
+- 连接使用 RIPEMD160 计算用于加密随机数的值，对其使用方式有细微的要求
 
-## Decision
+## 决定
 
-### Hash Functions
+### 哈希函数
 
-Use the first 20-bytes of the SHA256 hash instead of RIPEMD160 for everything
+对所有内容使用 SHA256 哈希值的前 20 个字节而不是 RIPEMD160
 
-### Merkle Trees
+###默克尔树
 
-TODO
+去做
 
-### Addresses
+### 地址
 
-Compute ED25519 addresses as the first 20-bytes of the SHA256 of the raw 32-byte public key
+将 ED25519 地址计算为原始 32 字节公钥的 SHA256 的前 20 字节
 
-### Authenticated Encryption
+### 认证加密
 
-Make the following changes:
+进行以下更改:
 
-- Use xChaCha20 instead of xSalsa20 - https://github.com/tendermint/tendermint/issues/1124
-- Use an HKDF instead of RIPEMD160 to compute nonces - https://github.com/tendermint/tendermint/issues/1165
+- 使用 xChaCha20 代替 xSalsa20 - https://github.com/tendermint/tendermint/issues/1124
+- 使用 HKDF 而不是 RIPEMD160 来计算随机数 - https://github.com/tendermint/tendermint/issues/1165
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- More modern and standard cryptographic functions with wider adoption and hardware acceleration
+- 具有更广泛采用和硬件加速的更现代和标准的加密功能
 
-### Negative
+### 消极的
 
-- Exact authenticated encryption construction isn't already provided in a well-used library
+- 使用良好的库中尚未提供精确的经过身份验证的加密构造
 
-### Neutral
+### 中性的
 
-## References
+## 参考

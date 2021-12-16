@@ -1,44 +1,44 @@
-# Reactor
+# 反应堆
 
-Consensus Reactor defines a reactor for the consensus service. It contains the ConsensusState service that
-manages the state of the Tendermint consensus internal state machine.
-When Consensus Reactor is started, it starts Broadcast Routine which starts ConsensusState service.
-Furthermore, for each peer that is added to the Consensus Reactor, it creates (and manages) the known peer state
-(that is used extensively in gossip routines) and starts the following three routines for the peer p:
-Gossip Data Routine, Gossip Votes Routine and QueryMaj23Routine. Finally, Consensus Reactor is responsible
-for decoding messages received from a peer and for adequate processing of the message depending on its type and content.
-The processing normally consists of updating the known peer state and for some messages
-(`ProposalMessage`, `BlockPartMessage` and `VoteMessage`) also forwarding message to ConsensusState module
-for further processing. In the following text we specify the core functionality of those separate unit of executions
-that are part of the Consensus Reactor.
+共识反应器为共识服务定义了一个反应器。它包含 ConsensusState 服务
+管理 Tendermint 共识内部状态机的状态。
+当 Consensus Reactor 启动时，它会启动 Broadcast Routine，启动 ConsensusState 服务。
+此外，对于添加到共识反应器的每个对等点，它创建(并管理)已知的对等点状态
+(在八卦例程中广泛使用)并为对等 p 启动以下三个例程:
+Gossip Data Routine、Gossip Votes Routine 和 QueryMaj23Routine。最后，Consensus Reactor 负责
+用于解码从对等方接收的消息，并根据消息的类型和内容对消息进行适当的处​​理。
+处理通常包括更新已知的对等状态和一些消息
+(`ProposalMessage`、`BlockPartMessage` 和 `VoteMessage`)也将消息转发到 ConsensusState 模块
+作进一步处理。在下面的文本中，我们指定了这些单独的执行单元的核心功能
+是共识反应堆的一部分。
 
-## ConsensusState service
+## 共识状态服务
 
-Consensus State handles execution of the Tendermint BFT consensus algorithm. It processes votes and proposals,
-and upon reaching agreement, commits blocks to the chain and executes them against the application.
-The internal state machine receives input from peers, the internal validator and from a timer.
+共识状态处理 Tendermint BFT 共识算法的执行。它处理投票和提案，
+并在达成一致后，将块提交到链中并针对应用程序执行它们。
+内部状态机接收来自对等方、内部验证器和定时器的输入。
 
-Inside Consensus State we have the following units of execution: Timeout Ticker and Receive Routine.
-Timeout Ticker is a timer that schedules timeouts conditional on the height/round/step that are processed
-by the Receive Routine.
+在 Consensus State 中，我们有以下执行单元:Timeout Ticker 和 Receive Routine。
+Timeout Ticker 是一个计时器，它根据处理的高度/轮次/步长安排超时
+通过接收例程。
 
-### Receive Routine of the ConsensusState service
+### 接收 ConsensusState 服务的例程
 
-Receive Routine of the ConsensusState handles messages which may cause internal consensus state transitions.
-It is the only routine that updates RoundState that contains internal consensus state.
-Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majorities.
-It receives messages from peers, internal validators and from Timeout Ticker
-and invokes the corresponding handlers, potentially updating the RoundState.
-The details of the protocol (together with formal proofs of correctness) implemented by the Receive Routine are
-discussed in separate document. For understanding of this document
-it is sufficient to understand that the Receive Routine manages and updates RoundState data structure that is
-then extensively used by the gossip routines to determine what information should be sent to peer processes.
+ConsensusState 的接收例程处理可能导致内部共识状态转换的消息。
+它是更新包含内部共识状态的 RoundState 的唯一例程。
+更新(状态转换)发生在超时、完整提案和 2/3 多数时。
+它接收来自对等方、内部验证器和 Timeout Ticker 的消息
+并调用相应的处理程序，可能会更新 RoundState。
+接收例程实现的协议细节(连同正确性的正式证明)是
+在单独的文件中讨论。为了理解本文档
+理解接收例程管理和更新 RoundState 数据结构就足够了
+然后被 gossip 程序广泛使用来确定应该将哪些信息发送到对等进程。
 
-## Round State
+##圆形状态
 
-RoundState defines the internal consensus state. It contains height, round, round step, a current validator set,
-a proposal and proposal block for the current round, locked round and block (if some block is being locked), set of
-received votes and last commit and last validators set.
+RoundState 定义了内部共识状态。它包含高度、圆形、圆形步长、当前验证器集、
+当前轮次的提议和提议区块，锁定轮次和区块(如果某个区块被锁定)，一组
+收到选票并设置最后一次提交和最后一次验证器。
 
 ```go
 type RoundState struct {
@@ -58,7 +58,7 @@ type RoundState struct {
 }
 ```
 
-Internally, consensus will run as a state machine with the following states:
+在内部，共识将作为具有以下状态的状态机运行:
 
 - RoundStepNewHeight
 - RoundStepNewRound
@@ -70,10 +70,10 @@ Internally, consensus will run as a state machine with the following states:
 - RoundStepPrecommitWait
 - RoundStepCommit
 
-## Peer Round State
+## 对等轮状态
 
-Peer round state contains the known state of a peer. It is being updated by the Receive routine of
-Consensus Reactor and by the gossip routines upon sending a message to the peer.
+对等轮状态包含对等方的已知状态。 它正在被 Receive 例程更新
+共识反应器和八卦例程在向对等方发送消息时。
 
 ```golang
 type PeerRoundState struct {
@@ -94,17 +94,17 @@ type PeerRoundState struct {
 }
 ```
 
-## Receive method of Consensus reactor
+## Consensus reactor的接收方法
 
-The entry point of the Consensus reactor is a receive method. When a message is
-received from a peer p, normally the peer round state is updated
-correspondingly, and some messages are passed for further processing, for
-example to ConsensusState service. We now specify the processing of messages in
-the receive method of Consensus reactor for each message type. In the following
-message handler, `rs` and `prs` denote `RoundState` and `PeerRoundState`,
-respectively.
+共识反应器的入口点是一个接收方法。 当一条消息
+从对等体 p 接收，通常更新对等体轮次状态
+相应地，一些消息被传递以供进一步处理，对于
+以 ConsensusState 服务为例。 我们现在指定消息的处理
+每种消息类型的共识反应器的接收方法。 在下面的
+消息处理程序，`rs` 和`prs` 表示`RoundState` 和`PeerRoundState`，
+分别。
 
-### NewRoundStepMessage handler
+### NewRoundStepMessage 处理程序
 
 ```go
 handleMessage(msg):
@@ -211,14 +211,14 @@ handleMessage(msg):
     Update prs for the bit-array of votes peer claims to have for the msg.BlockID
 ```
 
-The number of votes is limited to 10000 (`types.MaxVotesCount`) to protect the
-node against DOS attacks.
+投票数限制在 10000 (`types.MaxVotesCount`) 以保护
+节点抵御 DOS 攻击。
 
-## Gossip Data Routine
+##八卦数据例程
 
-It is used to send the following messages to the peer: `BlockPartMessage`, `ProposalMessage` and
-`ProposalPOLMessage` on the DataChannel. The gossip data routine is based on the local RoundState (`rs`)
-and the known PeerRoundState (`prs`). The routine repeats forever the logic shown below:
+它用于向对等方发送以下消息:`BlockPartMessage`、`ProposalMessage` 和
+DataChannel 上的`ProposalPOLMessage`。 gossip 数据例程基于本地 RoundState (`rs`)
+和已知的 PeerRoundState (`prs`)。 该例程永远重复如下所示的逻辑:
 
 ```go
 1a) if rs.ProposalBlockPartsHeader == prs.ProposalBlockPartsHeader and the peer does not have all the proposal parts then
@@ -248,10 +248,10 @@ and the known PeerRoundState (`prs`). The routine repeats forever the logic show
 2)  Sleep PeerGossipSleepDuration
 ```
 
-### Gossip Data For Catchup
+### 八卦数据追赶
 
-This function is responsible for helping peer catch up if it is at the smaller height (prs.Height < rs.Height).
-The function executes the following logic:
+如果它在较小的高度(prs.Height < rs.Height)，这个函数负责帮助peer 赶上它。
+该函数执行以下逻辑:
 
 ```go
     if peer does not have all block parts for prs.ProposalBlockPart then
@@ -266,11 +266,11 @@ The function executes the following logic:
     else Sleep PeerGossipSleepDuration
 ```
 
-## Gossip Votes Routine
+##八卦投票例程
 
-It is used to send the following message: `VoteMessage` on the VoteChannel.
-The gossip votes routine is based on the local RoundState (`rs`)
-and the known PeerRoundState (`prs`). The routine repeats forever the logic shown below:
+它用于在 VoteChannel 上发送以下消息:`VoteMessage`。
+八卦投票例程基于本地 RoundState (`rs`)
+和已知的 PeerRoundState (`prs`)。 该例程永远重复如下所示的逻辑:
 
 ```go
 1a) if rs.Height == prs.Height then
@@ -313,9 +313,9 @@ and the known PeerRoundState (`prs`). The routine repeats forever the logic show
 
 ## QueryMaj23Routine
 
-It is used to send the following message: `VoteSetMaj23Message`. `VoteSetMaj23Message` is sent to indicate that a given
-BlockID has seen +2/3 votes. This routine is based on the local RoundState (`rs`) and the known PeerRoundState
-(`prs`). The routine repeats forever the logic shown below.
+它用于发送以下消息:`VoteSetMaj23Message`。 `VoteSetMaj23Message` 被发送以指示给定的
+BlockID 已获得 +2/3 票。 此例程基于本地 RoundState (`rs`) 和已知的 PeerRoundState
+(`prs`)。 该例程永远重复如下所示的逻辑。
 
 ```go
 1a) if rs.Height == prs.Height then
@@ -349,18 +349,18 @@ BlockID has seen +2/3 votes. This routine is based on the local RoundState (`rs`
 2)  Sleep PeerQueryMaj23SleepDuration
 ```
 
-## Broadcast routine
+## 广播例程
 
-The Broadcast routine subscribes to an internal event bus to receive new round steps and votes messages, and broadcasts messages to peers upon receiving those
-events.
-It broadcasts `NewRoundStepMessage` or `CommitStepMessage` upon new round state event. Note that
-broadcasting these messages does not depend on the PeerRoundState; it is sent on the StateChannel.
-Upon receiving VoteMessage it broadcasts `HasVoteMessage` message to its peers on the StateChannel.
+广播例程订阅内部事件总线以接收新一轮的步骤和投票消息，并在收到这些消息后向对等方广播消息
+事件。
+它在新一轮状态事件时广播 `NewRoundStepMessage` 或 `CommitStepMessage`。 注意
+广播这些消息不依赖于 PeerRoundState； 它在 StateChannel 上发送。
+收到 VoteMessage 后，它会在 StateChannel 上向其对等方广播“HasVoteMessage”消息。
 
-## Channels
+## 频道
 
-Defines 4 channels: state, data, vote and vote_set_bits. Each channel
-has `SendQueueCapacity` and `RecvBufferCapacity` and
-`RecvMessageCapacity` set to `maxMsgSize`.
+定义了 4 个通道:状态、数据、投票和vote_set_bits。 每个通道
+有 `SendQueueCapacity` 和 `RecvBufferCapacity` 和
+`RecvMessageCapacity` 设置为 `maxMsgSize`。
 
-Sending incorrectly encoded data will result in stopping the peer.
+发送错误编码的数据将导致停止对等点。

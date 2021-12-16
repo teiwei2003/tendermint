@@ -1,43 +1,43 @@
-# Implementation
+# 执行
 
-## Blocksync Reactor
+## 块同步反应器
 
-- coordinates the pool for syncing
-- coordinates the store for persistence
-- coordinates the playing of blocks towards the app using a sm.BlockExecutor
-- handles switching between fastsync and consensus
-- it is a p2p.BaseReactor
-- starts the pool.Start() and its poolRoutine()
-- registers all the concrete types and interfaces for serialisation
+- 协调池以进行同步
+- 协调商店的持久性
+- 使用 sm.BlockExecutor 协调向应用程序播放块
+- 处理快速同步和共识之间的切换
+- 它是一个 p2p.BaseReactor
+- 启动 pool.Start() 和它的 poolRoutine()
+- 注册所有用于序列化的具体类型和接口
 
 ### poolRoutine
 
-- listens to these channels:
-    - pool requests blocks from a specific peer by posting to requestsCh, block reactor then sends
-    a &bcBlockRequestMessage for a specific height
-    - pool signals timeout of a specific peer by posting to timeoutsCh
-    - switchToConsensusTicker to periodically try and switch to consensus
-    - trySyncTicker to periodically check if we have fallen behind and then catch-up sync
-        - if there aren't any new blocks available on the pool it skips syncing
-- tries to sync the app by taking downloaded blocks from the pool, gives them to the app and stores
-  them on disk
-- implements Receive which is called by the switch/peer
-    - calls AddBlock on the pool when it receives a new block from a peer
+- 收听这些频道:
+    - 池通过发送到 requestsCh 来从特定对等方请求块，块反应器然后发送
+    特定高度的 &bcBlockRequestMessage
+    - 池通过发布到 timeoutsCh 来表示特定对等点的超时
+    - switchToConsensusTicker 定期尝试切换到共识
+    - trySyncTicker 定期检查我们是否落后，然后追赶同步
+        - 如果池中没有可用的新块，它会跳过同步
+- 尝试通过从池中获取下载的块来同步应用程序，将它们提供给应用程序和商店
+  它们在磁盘上
+- 实现由交换机/对等方调用的接收
+    - 当它从对等方接收到新块时调用池上的 AddBlock
 
-## Block Pool
+## 块池
 
-- responsible for downloading blocks from peers
+- 负责从节点下载区块
 - makeRequestersRoutine()
-    - removes timeout peers
-    - starts new requesters by calling makeNextRequester()
-- requestRoutine():
-    - picks a peer and sends the request, then blocks until:
-        - pool is stopped by listening to pool.Quit
-        - requester is stopped by listening to Quit
-        - request is redone
-        - we receive a block
-            - gotBlockCh is strange
+    - 删除超时对等点
+    - 通过调用 makeNextRequester() 启动新的请求者
+- 请求例程():
+    - 选择一个对等点并发送请求，然后阻塞直到:
+        - 通过听 pool.Quit 停止池
+        - 通过听 Quit 停止请求者
+        - 请求被重做
+        - 我们收到一个区块
+            - gotBlockCh 很奇怪
 
-## Go Routines in Blocksync Reactor
+## 在 Blocksync Reactor 中执行例程
 
-![Go Routines Diagram](img/bc-reactor-routines.png)
+![Go 例程图](img/bc-reactor-routines.png)

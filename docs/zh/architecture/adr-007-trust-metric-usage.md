@@ -1,106 +1,106 @@
-# ADR 007: Trust Metric Usage Guide
+# ADR 007:信任指标使用指南
 
-## Context
+## 语境
 
-Tendermint is required to monitor peer quality in order to inform its peer dialing and peer exchange strategies.
+Tendermint 需要监控对等质量，以便通知其对等拨号和对等交换策略。
 
-When a node first connects to the network, it is important that it can quickly find good peers.
-Thus, while a node has fewer connections, it should prioritize connecting to higher quality peers.
-As the node becomes well connected to the rest of the network, it can dial lesser known or lesser
-quality peers and help assess their quality. Similarly, when queried for peers, a node should make
-sure they dont return low quality peers.
+当节点第一次连接到网络时，重要的是它可以快速找到好的对等点。
+因此，虽然一个节点的连接较少，但它应该优先连接到更高质量的对等点。
+当节点与网络的其余部分连接良好时，它可以拨打鲜为人知或较少
+质量同行，并帮助评估他们的质量。类似地，当查询对等点时，节点应该使
+确保他们不会返回低质量的同行。
 
-Peer quality can be tracked using a trust metric that flags certain behaviours as good or bad. When enough
-bad behaviour accumulates, we can mark the peer as bad and disconnect.
-For example, when the PEXReactor makes a request for peers network addresses from an already known peer, and the returned network addresses are unreachable, this undesirable behavior should be tracked. Returning a few bad network addresses probably shouldn’t cause a peer to be dropped, while excessive amounts of this behavior does qualify the peer for removal. The originally proposed approach and design document for the trust metric can be found in the [ADR 006](adr-006-trust-metric.md) document.
+可以使用将某些行为标记为好或坏的信任度量来跟踪对等质量。当足够
+不良行为累积，我们可以将同伴标记为不良并断开连接。
+例如，当 PEXReactor 向已知对等方请求对等方网络地址，而返回的网络地址无法访问时，应跟踪这种不良行为。返回一些错误的网络地址可能不应该导致对等体被删除，而过多的这种行为确实使对等体有资格被删除。最初提出的信任度量方法和设计文档可以在 [ADR 006](adr-006-trust-metric.md) 文档中找到。
 
-The trust metric implementation allows a developer to obtain a peer's trust metric from a trust metric store, and track good and bad events relevant to a peer's behavior, and at any time, the peer's metric can be queried for a current trust value. The current trust value is calculated with a formula that utilizes current behavior, previous behavior, and change between the two. Current behavior is calculated as the percentage of good behavior within a time interval. The time interval is short; probably set between 30 seconds and 5 minutes. On the other hand, the historic data can estimate a peer's behavior over days worth of tracking. At the end of a time interval, the current behavior becomes part of the historic data, and a new time interval begins with the good and bad counters reset to zero.
+信任度量实现允许开发人员从信任度量存储中获取对等方的信任度量，并跟踪与对等方行为相关的好坏事件，并且可以随时查询对等方度量以获取当前信任值。当前信任值是使用一个公式计算的，该公式利用当前行为、先前行为以及两者之间的变化。当前行为计算为时间间隔内良好行为的百分比。时间间隔短；可能设置在 30 秒到 5 分钟之间。另一方面，历史数据可以估计同行在数天的跟踪中的行为。在时间间隔结束时，当前行为成为历史数据的一部分，新的时间间隔开始，好和坏计数器重置为零。
 
-These are some important things to keep in mind regarding how the trust metrics handle time intervals and scoring:
+关于信任指标如何处理时间间隔和评分，需要牢记以下重要事项:
 
-- Each new time interval begins with a perfect score
-- Bad events quickly bring the score down and good events cause the score to slowly rise
-- When the time interval is over, the percentage of good events becomes historic data.
+- 每个新的时间间隔都以满分开始
+- 糟糕的事件会迅速降低分数，而好的事件会导致分数缓慢上升
+- 当时间间隔结束时，良好事件的百分比成为历史数据。
 
-Some useful information about the inner workings of the trust metric:
+有关信任度量内部工作原理的一些有用信息:
 
-- When a trust metric is first instantiated, a timer (ticker) periodically fires in order to handle transitions between trust metric time intervals
-- If a peer is disconnected from a node, the timer should be paused, since the node is no longer connected to that peer
-- The ability to pause the metric is supported with the store **PeerDisconnected** method and the metric **Pause** method
-- After a pause, if a good or bad event method is called on a metric, it automatically becomes unpaused and begins a new time interval.
+- 当信任度量第一次实例化时，计时器(自动收报机)会定期触发以处理信任度量时间间隔之间的转换
+- 如果对等方与节点断开连接，则应暂停计时器，因为该节点不再与该对等方连接
+- store **PeerDisconnected** 方法和 metric **Pause** 方法支持暂停指标的能力
+- 暂停后，如果对指标调用好的或坏的事件方法，它会自动取消暂停并开始新的时间间隔。
 
-## Decision
+## 决定
 
-The trust metric capability is now available, yet, it still leaves the question of how should it be applied throughout Tendermint in order to properly track the quality of peers?
+信任度量功能现在可用，但是，它仍然留下了一个问题，即应该如何在整个 Tendermint 中应用它才能正确跟踪对等点的质量？
 
-### Proposed Process
+### 拟议流程
 
-Peers are managed using an address book and a trust metric:
+使用地址簿和信任度量来管理对等点:
 
-- The address book keeps a record of peers and provides selection methods
-- The trust metric tracks the quality of the peers
+- 通讯录记录同伴并提供选择方法
+- 信任度量跟踪同行的质量
 
-#### Presence in Address Book
+#### 地址簿中的存在
 
-Outbound peers are added to the address book before they are dialed,
-and inbound peers are added once the peer connection is set up.
-Peers are also added to the address book when they are received in response to
-a pexRequestMessage.
+出站对等点在拨号之前被添加到地址簿中，
+一旦建立对等连接，就会添加入站对等点。
+当收到对等方的响应时，也会将其添加到地址簿中
+一个 pexRequestMessage。
 
-While a node has less than `needAddressThreshold`, it will periodically request more,
-via pexRequestMessage, from randomly selected peers and from newly dialed outbound peers.
+当一个节点少于 `needAddressThreshold` 时，它会定期请求更多，
+通过 pexRequestMessage，来自随机选择的对等点和新拨出的出站对等点。
 
-When a new address is added to an address book that has more than `0.5*needAddressThreshold` addresses,
-then with some low probability, a randomly chosen low quality peer is removed.
+当一个新地址被添加到一个地址簿中的地址超过 `0.5*needAddressThreshold` 时，
+然后以低概率移除随机选择的低质量对等体。
 
-#### Outbound Peers
+#### 出站对等点
 
-Peers attempt to maintain a minimum number of outbound connections by
-repeatedly querying the address book for peers to connect to.
-While a node has few to no outbound connections, the address book is biased to return
-higher quality peers. As the node increases the number of outbound connections,
-the address book is biased to return less-vetted or lower-quality peers.
+对等方尝试通过以下方式维持最少数量的出站连接
+重复查询地址簿以供对等方连接。
+虽然节点几乎没有出站连接，但地址簿偏向于返回
+更高质量的同行。随着节点增加出站连接数，
+地址簿倾向于返回审查较少或质量较低的同行。
 
-#### Inbound Peers
+#### 入站对等点
 
-Peers also maintain a maximum number of total connections, MaxNumPeers.
-If a peer has MaxNumPeers, new incoming connections will be accepted with low probability.
-When such a new connection is accepted, the peer disconnects from a probabilistically chosen low ranking peer
-so it does not exceed MaxNumPeers.
+对等点还保持最大连接总数 MaxNumPeers。
+如果对等方具有 MaxNumPeers，则以低概率接受新的传入连接。
+当接受这样的新连接时，对等方与概率选择的低排名对等方断开连接
+所以它不超过 MaxNumPeers。
 
-#### Peer Exchange
+#### 同行交流
 
-When a peer receives a pexRequestMessage, it returns a random sample of high quality peers from the address book. Peers with no score or low score should not be inclided in a response to pexRequestMessage.
+当一个 peer 收到 pexRequestMessage 时，它​​会从地址簿中随机返回一个高质量 peer 的样本。对 pexRequestMessage 的响应中不应包含没有分数或低分数的对等点。
 
-#### Peer Quality
+#### 同行质量
 
-Peer quality is tracked in the connection and across the reactors by storing the TrustMetric in the peer's
-thread safe Data store.
+通过将 TrustMetric 存储在对等方的
+线程安全的数据存储。
 
-Peer behaviour is then defined as one of the following:
+对等行为然后被定义为以下之一:
 
-- Fatal - something outright malicious that causes us to disconnect the peer and ban it from the address book for some amount of time
-- Bad - Any kind of timeout, messages that don't unmarshal, fail other validity checks, or messages we didn't ask for or aren't expecting (usually worth one bad event)
-- Neutral - Unknown channels/message types/version upgrades (no good or bad events recorded)
-- Correct - Normal correct behavior (worth one good event)
-- Good - some random majority of peers per reactor sending us useful messages (worth more than one good event).
+- 致命 - 一些彻底的恶意导致我们断开对等点并将其从地址簿中禁止一段时间
+- 坏 - 任何类型的超时、未解组的消息、未通过其他有效性检查的消息，或者我们没有要求或不期望的消息(通常值得一个坏事件)
+- 中性 - 未知频道/消息类型/版本升级(没有记录好的或坏的事件)
+- 正确 - 正常的正确行为(值得一个好事件)
+- 好 - 每个反应堆的一些随机大多数对等点向我们发送有用的消息(值得不止一个好事件)。
 
-Note that Fatal behaviour causes us to remove the peer, and neutral behaviour does not affect the score.
+请注意，致命行为会导致我们移除对等点，而中性行为不会影响分数。
 
-## Status
+## 状态
 
-Proposed.
+建议的。
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Bringing the address book and trust metric store together will cause the network to be built in a way that encourages greater security and reliability.
+- 将地址簿和信任度量存储结合在一起将使网络以鼓励更高安全性和可靠性的方式构建。
 
-### Negative
+### 消极的
 
-- TBD
+- 待定
 
-### Neutral
+### 中性的
 
-- Keep in mind that, good events need to be recorded just as bad events do using this implementation.
+- 请记住，使用此实现需要记录好的事件，就像坏事件一样。

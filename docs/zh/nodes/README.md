@@ -1,41 +1,41 @@
-# Overview
+# 概述
 
-This section will focus on how to operate full nodes, validators and light clients.
+本节将重点介绍如何操作全节点、验证器和轻客户端。
 
-- [Node Types](#node-types)
-- [Configuration](./configuration.md)
-  - [Configure State sync](./state-sync.md)
-- [Validator Guides](./validators.md)
-  - [Running in Production](./running-in-production.md)
-  - [How to secure your keys](./validators.md#validator_keys)
-  - [Remote Signer](./remote-signer.md)
-- [Light Client guides](./light-client.md)
-  - [How to sync a light client](./light-client.md#)
-- [Metrics](./metrics.md)
-- [Logging](./logging.md)
+- [节点类型](#node-types)
+- [配置](./configuration.md)
+  - [配置状态同步](./state-sync.md)
+- [验证器指南](./validators.md)
+  - [生产中运行](./running-in-production.md)
+  - [如何保护您的密钥](./validators.md#validator_keys)
+  - [远程签名者](./remote-signer.md)
+- [轻客户端指南](./light-client.md)
+  - [如何同步轻客户端](./light-client.md#)
+- [指标](./metrics.md)
+- [日志](./logging.md)
 
-## Node Types
+## 节点类型
 
-We will cover the various types of node types within Tendermint.
+我们将介绍 Tendermint 中的各种节点类型。
 
-### Full Node
+### 全节点
 
- A full node is a node that participates in the network but will not help secure it. Full nodes can be used to store the entire state of a blockchain. For Tendermint there are two forms of state. First, blockchain state, this represents the blocks of a blockchain.  Secondly, there is Application state, this represents the state that transactions modify. The knowledge of how a transaction can modify state is not held by Tendermint but rather the application on the other side of the ABCI boundary.
+ 全节点是参与网络但无助于保护网络的节点。完整节点可用于存储区块链的整个状态。对于 Tendermint，有两种状态形式。首先是区块链状态，这代表区块链的区块。其次是Application状态，它代表事务修改的状态。交易如何修改状态的知识不是由 Tendermint 掌握的，而是由 ABCI 边界另一侧的应用程序掌握的。
 
- > Note: If you have not read about the seperation of consensus and application please take a few minutes to read up on it as it will provide a better understanding to many of the terms we use throughout the documentation. You can find more information on the ABCI [here](../app-dev/app-architecture.md).
+ > 注意:如果您还没有阅读有关共识和应用分离的内容，请花几分钟时间阅读它，因为它将更好地理解我们在整个文档中使用的许多术语。您可以在 [此处](../app-dev/app-architecture.md) 中找到有关 ABCI 的更多信息。
 
- As a full node operator you are providing services to the network that helps it come to consensus and others catch up to the current block. Even though a full node only helps the network come to consensus it is important to secure your node from adversarial actors. We recommend using a firewall and a proxy if possible. Running a full node can be easy, but it varies from network to network. Verify your applications documentation prior running a node.
+ 作为全节点运营商，您正在为网络提供服务，帮助其达成共识，并帮助其他人赶上当前区块。即使完整节点只能帮助网络达成共识，但保护您的节点免受对抗性参与者的侵害也很重要。如果可能，我们建议使用防火墙和代理。运行一个完整的节点可能很容易，但它因网络而异。在运行节点之前验证您的应用程序文档。
 
-### Seed Nodes
+### 种子节点
 
- A seed node provides a node with a list of peers which a node can connect to. When starting a node you must provide at least one type of node to be able to connect to the desired network. By providing a seed node you will be able to populate your address quickly. A seed node will not be kept as a peer but will disconnect from your node after it has provided a list of peers.
+ 种子节点为节点提供节点可以连接到的对等节点列表。启动节点时，您必须至少提供一种类型的节点才能连接到所需的网络。通过提供种子节点，您将能够快速填充您的地址。种子节点不会保留为对等节点，但会在提供对等节点列表后与您的节点断开连接。
 
-### Sentry Node
+### 哨兵节点
 
- A sentry node is similar to a full node in almost every way. The difference is a sentry node will have one or more private peers. These peers may be validators or other full nodes in the network. A sentry node is meant to provide a layer of security for your validator, similar to how a firewall works with a computer.
+ 哨兵节点几乎在所有方面都类似于完整节点。不同之处在于哨兵节点将拥有一个或多个私有节点。这些对等点可能是验证者或网络中的其他完整节点。哨兵节点旨在为您的验证器提供一层安全性，类似于防火墙与计算机的工作方式。
 
-### Validators
+### 验证器
 
-Validators are nodes that participate in the security of a network. Validators have an associated power in Tendermint, this power can represent stake in a [proof of stake](https://en.wikipedia.org/wiki/Proof_of_stake) system, reputation in [proof of authority](https://en.wikipedia.org/wiki/Proof_of_authority) or any sort of measurable unit. Running a secure and consistently online validator is crucial to a networks health. A validator must be secure and fault tolerant, it is recommended to run your validator with 2 or more sentry nodes.
+验证器是参与网络安全的节点。验证者在 Tendermint 中拥有相关的权力，这种权力可以代表 [proof of stock](https://en.wikipedia.org/wiki/Proof_of_stake) 系统中的权益，在 [proof of authority](https://en .wikipedia.org/wiki/Proof_of_authority) 或任何类型的可衡量单位。运行安全且一致的在线验证器对于网络健康至关重要。验证器必须安全且容错，建议使用 2 个或更多哨兵节点运行验证器。
 
-As a validator there is the potential to have your weight reduced, this is defined by the application. Tendermint is notified by the application if a validator should have there weight increased or reduced. Application have different types of malicious behavior which lead to slashing of the validators power. Please check the documentation of the application you will be running in order to find more information.
+作为验证者，您有可能减轻体重，这是由应用程序定义的。如果验证者应该增加或减少权重，应用程序会通知 Tendermint。应用程序具有不同类型的恶意行为，导致验证者权力的削减。请检查您将运行的应用程序的文档以找到更多信息。

@@ -1,141 +1,141 @@
-# ADR 044: Lite Client with Weak Subjectivity
+# ADR 044:具有弱主观性的轻客户端
 
-## Changelog
-* 13-07-2019: Initial draft
-* 14-08-2019: Address cwgoes comments
+## 变更日志
+* 13-07-2019:初稿
+* 14-08-2019:地址 cwgos 评论
 
-## Context
+## 语境
 
-The concept of light clients was introduced in the Bitcoin white paper. It
-describes a watcher of distributed consensus process that only validates the
-consensus algorithm and not the state machine transactions within.
+比特币白皮书中引入了轻客户端的概念。它
+描述了一个分布式共识过程的观察者，它只验证
+共识算法而不是其中的状态机交易。
 
-Tendermint light clients allow bandwidth & compute-constrained devices, such as smartphones, low-power embedded chips, or other blockchains to
-efficiently verify the consensus of a Tendermint blockchain. This forms the
-basis of safe and efficient state synchronization for new network nodes and
-inter-blockchain communication (where a light client of one Tendermint instance
-runs in another chain's state machine).
+Tendermint 轻客户端允许带宽和计算受限的设备，例如智能手机、低功耗嵌入式芯片或其他区块链
+有效验证 Tendermint 区块链的共识。这形成了
+新网络节点的安全高效状态同步的基础和
+区块链间通信(其中一个 Tendermint 实例的轻客户端
+在另一个链的状态机中运行)。
 
-In a network that is expected to reliably punish validators for misbehavior
-by slashing bonded stake and where the validator set changes
-infrequently, clients can take advantage of this assumption to safely
-synchronize a lite client without downloading the intervening headers.
+在一个预期会可靠地惩罚验证者的不当行为的网络中
+通过削减保税权益和验证人集更改的地方
+很少，客户可以利用这个假设来安全地
+无需下载中间标头即可同步 lite 客户端。
 
-Light clients (and full nodes) operating in the Proof Of Stake context need a
-trusted block height from a trusted source that is no older than 1 unbonding
-window plus a configurable evidence submission synchrony bound. This is called “weak subjectivity”.
+在权益证明环境中运行的轻客户端(和全节点)需要一个
+来自可信来源的可信块高度不超过 1 个解除绑定
+窗口加上可配置的证据提交同步绑定。这就是所谓的“弱主观性”。
 
-Weak subjectivity is required in Proof of Stake blockchains because it is
-costless for an attacker to buy up voting keys that are no longer bonded and
-fork the network at some point in its prior history. See Vitalik’s post at
-[Proof of Stake: How I Learned to Love Weak
-Subjectivity](https://blog.ethereum.org/2014/11/25/proof-stake-learned-love-weak-subjectivity/).
+股权证明区块链需要弱主观性，因为它是
+攻击者可以免费购买不再绑定的投票密钥
+在其先前历史的某个时刻分叉网络。见 Vitalik 的帖子:
+[股权证明:我如何学会爱弱者
+主观性](https://blog.ethereum.org/2014/11/25/proof-stake-learned-love-weak-subjectivity/)。
 
-Currently, Tendermint provides a lite client implementation in the
-[light](https://github.com/tendermint/tendermint/tree/master/light) package. This
-lite client implements a bisection algorithm that tries to use a binary search
-to find the minimum number of block headers where the validator set voting
-power changes are less than < 1/3rd. This interface does not support weak
-subjectivity at this time. The Cosmos SDK also does not support counterfactual
-slashing, nor does the lite client have any capacity to report evidence making
-these systems *theoretically unsafe*.
+目前，Tendermint 在
+[light](https://github.com/tendermint/tendermint/tree/master/light) 包。这
+lite 客户端实现了尝试使用二分搜索的二分算法
+找到验证者设置投票的最小区块头数
+功率变化小于 < 1/3。此接口不支持弱
+此时的主观性。 Cosmos SDK 也不支持反事实
+削减，lite 客户端也没有任何能力报告证据制作
+这些系统*理论上不安全*。
 
-NOTE: Tendermint provides a somewhat different (stronger) light client model
-than Bitcoin under eclipse, since the eclipsing node(s) can only fool the light
-client if they have two-thirds of the private keys from the last root-of-trust.
+注意:Tendermint 提供了一个稍微不同(更强)的轻客户端模型
+比日食下的比特币，因为日食节点只能愚弄光
+客户端，如果他们拥有来自最后一个信任根的三分之二的私钥。
 
-## Decision
+## 决定
 
-### The Weak Subjectivity Interface
+### 弱主观性接口
 
-Add the weak subjectivity interface for when a new light client connects to the
-network or when a light client that has been offline for longer than the
-unbonding period connects to the network. Specifically, the node needs to
-initialize the following structure before syncing from user input:
+添加新轻客户端连接时的弱主观性接口
+网络或当轻客户端离线时间超过
+解绑期连接到网络。具体来说，节点需要
+在从用户输入同步之前初始化以下结构:
 
-```
-type TrustOptions struct {
-    // Required: only trust commits up to this old.
-    // Should be equal to the unbonding period minus some delta for evidence reporting.
+``
+类型 TrustOptions 结构 {
+    // 必需:只有信任提交到这个旧的。
+    // 应该等于解绑期减去一些证据报告的增量。
     TrustPeriod time.Duration `json:"trust-period"`
 
-    // Option 1: TrustHeight and TrustHash can both be provided
-    // to force the trusting of a particular height and hash.
-    // If the latest trusted height/hash is more recent, then this option is
-    // ignored.
-    TrustHeight int64  `json:"trust-height"`
-    TrustHash   []byte `json:"trust-hash"`
+    // 选项 1:可以同时提供 TrustHeight 和 TrustHash
+    // 强制信任特定的高度和哈希值。
+    // 如果最新的可信高度/哈希值是最近的，那么这个选项是
+    // 忽略。
+    TrustHeight int64 `json:"trust-height"`
+    TrustHash []byte `json:"trust-hash"`
 
-    // Option 2: Callback can be set to implement a confirmation
-    // step if the trust store is uninitialized, or expired.
-    Callback func(height int64, hash []byte) error
+    // 选项2:可以设置回调来实现确认
+    // 如果信任存储未初始化或过期，则执行步骤。
+    回调函数(height int64, hash []byte) 错误
 }
-```
+``
 
-The expectation is the user will get this information from a trusted source
-like a validator, a friend, or a secure website. A more user friendly
-solution with trust tradeoffs is that we establish an https based protocol with
-a default end point that populates this information. Also an on-chain registry
-of roots-of-trust (e.g. on the Cosmos Hub) seems likely in the future.
+期望用户将从可信来源获得此信息
+例如验证者、朋友或安全网站。更人性化
+具有信任权衡的解决方案是我们建立一个基于 https 的协议
+填充此信息的默认端点。也是一个链上注册表
+信任根(例如在 Cosmos Hub 上)似乎在未来很可能出现。
 
-### Linear Verification
+### 线性验证
 
-The linear verification algorithm requires downloading all headers
-between the `TrustHeight` and the `LatestHeight`. The lite client downloads the
-full header for the provided `TrustHeight` and then proceeds to download `N+1`
-headers and applies the [Tendermint validation
-rules](https://docs.tendermint.com/master/spec/blockchain/blockchain.html#validation)
-to each block.
+线性验证算法需要下载所有标头
+在 `TrustHeight` 和 `LatestHeight` 之间。 lite客户端下载
+提供的“TrustHeight”的完整标头，然后继续下载“N+1”
+标头并应用 [Tendermint 验证
+规则](https://docs.tendermint.com/master/spec/blockchain/blockchain.html#validation)
+到每个块。
 
-### Bisecting Verification
+###二等分验证
 
-Bisecting Verification is a more bandwidth and compute intensive mechanism that
-in the most optimistic case requires a light client to only download two block
-headers to come into synchronization.
+二分验证是一种带宽和计算密集型机制，
+在最乐观的情况下需要一个轻客户端只下载两个块
+头进入同步。
 
-The bisection algorithm proceeds in the following fashion. The client downloads
-and verifies the full block header for `TrustHeight` and then  fetches
-`LatestHeight` blocker header. The client then verifies the `LatestHeight`
-header. Finally the client attempts to verify the `LatestHeight` header with
-voting powers taken from `NextValidatorSet` in the `TrustHeight` header. This
-verification will succeed if the validators from `TrustHeight` still have > 2/3
-+1 of voting power in the `LatestHeight`. If this succeeds, the client is fully
-synchronized. If this fails, then following Bisection Algorithm should be
-executed.
+二分算法以下列方式进行。客户端下载
+并验证“TrustHeight”的完整区块头，然后获取
+`LatestHeight` 拦截器标题。客户端然后验证“最新高度”
+标题。最后，客户端尝试使用以下方法验证“LatestHeight”标头
+从 `TrustHeight` 标头中的 `NextValidatorSet` 获得投票权。这
+如果来自 `TrustHeight` 的验证器仍然有 > 2/3，则验证将成功
+在“最新高度”中获得 +1 的投票权。如果成功，则客户端完全
+同步。如果失败，则应遵循二分算法
+执行。
 
-The Client tries to download the block at the mid-point block between
-`LatestHeight` and `TrustHeight` and attempts that same algorithm as above
-using `MidPointHeight` instead of `LatestHeight` and a different threshold -
-1/3 +1 of voting power for *non-adjacent headers*. In the case the of failure,
-recursively perform the `MidPoint` verification until success then start over
-with an updated `NextValidatorSet` and `TrustHeight`.
+客户端尝试在中间的块中下载块
+`LatestHeight` 和 `TrustHeight` 并尝试与上述相同的算法
+使用 `MidPointHeight` 而不是 `LatestHeight` 和不同的阈值 -
+*非相邻标题*的1/3 +1投票权。在失败的情况下，
+递归执行`MidPoint`验证直到成功然后重新开始
+具有更新的“NextValidatorSet”和“TrustHeight”。
 
-If the client encounters a forged header, it should submit the header along
-with some other intermediate headers as the evidence of misbehavior to other
-full nodes. After that, it can retry the bisection using another full node. An
-optimal client will cache trusted headers from the previous run to minimize
-network usage.
+如果客户端遇到伪造的标头，它应该一起提交标头
+与其他一些中间标题作为对其他人不当行为的证据
+全节点。之后，它可以使用另一个完整节点重试二分。一个
+最佳客户端将缓存来自上次运行的可信标头以最小化
+网络使用。
 
 ---
 
-Check out the formal specification
-[here](https://github.com/tendermint/spec/tree/master/spec/light-client).
+查看正式规范
+[这里](https://github.com/tendermint/spec/tree/master/spec/light-client)。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-* light client which is safe to use (it can go offline, but not for too long)
+* 安全使用的轻客户端(它可以离线，但不能太长时间)
 
-### Negative
+### 消极的
 
-* complexity of bisection
+* 对分的复杂性
 
-### Neutral
+### 中性的
 
-* social consensus can be prone to errors (for cases where a new light client
-  joins a network or it has been offline for too long)
+* 社会共识可能容易出错(对于新的轻客户端的情况
+  加入网络或离线时间过长)

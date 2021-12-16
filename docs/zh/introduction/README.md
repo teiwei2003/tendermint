@@ -1,13 +1,13 @@
-# Overview
+# 概述
 
-## Quick Start
+## 快速开始
 
-Get Tendermint up-and-running quickly with the [quick-start guide](./quick-start.md)!
+使用 [快速入门指南](./quick-start.md) 快速启动并运行 Tendermint！
 
-## Install
+## 安装
 
-Detailed [installation instructions](./install.md).
+详细【安装说明】(./install.md)。
 
-## What is Tendermint
+##什么是Tendermint
 
-Dive into [what Tendermint is and why](./what-is-tendermint.md)!
+深入了解 [什么是 Tendermint 以及为什么](./what-is-tendermint.md)！

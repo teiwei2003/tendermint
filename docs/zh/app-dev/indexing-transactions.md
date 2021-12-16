@@ -1,23 +1,23 @@
-# Indexing Transactions
+# 索引交易
 
-Tendermint allows you to index transactions and blocks and later query or
-subscribe to their results. Transactions are indexed by `TxResult.Events` and
-blocks are indexed by `Response(Begin|End)Block.Events`. However, transactions
-are also indexed by a primary key which includes the transaction hash and maps
-to and stores the corresponding `TxResult`. Blocks are indexed by a primary key
-which includes the block height and maps to and stores the block height, i.e.
-the block itself is never stored.
+Tendermint 允许您对交易和区块进行索引，然后进行查询或
+订阅他们的结果。 交易由“TxResult.Events”和
+块由“Response(Begin|End)Block.Events”索引。 然而，交易
+也由主键索引，其中包括交易哈希和映射
+到并存储相应的“TxResult”。 块由主键索引
+其中包括块高度并映射到并存储块高度，即
+块本身永远不会被存储。
 
-Each event contains a type and a list of attributes, which are key-value pairs
-denoting something about what happened during the method's execution. For more
-details on `Events`, see the
+每个事件都包含一个类型和一个属性列表，它们是键值对
+表示方法执行期间发生的事情。 更多
+有关“事件”的详细信息，请参阅
 [ABCI](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#events)
-documentation.
+文档。
 
-An `Event` has a composite key associated with it. A `compositeKey` is
-constructed by its type and key separated by a dot.
+`Event` 有一个与之关联的复合键。 “复合密钥”是
+由其类型和由点分隔的键构成。
 
-For example:
+例如:
 
 ```json
 "jack": [
@@ -25,16 +25,16 @@ For example:
 ]
 ```
 
-would be equal to the composite key of `jack.account.number`.
+将等于 `jack.account.number` 的组合键。
 
-By default, Tendermint will index all transactions by their respective hashes
-and height and blocks by their height.
+默认情况下，Tendermint 将通过各自的哈希索引所有交易
+和高度和块的高度。
 
-## Configuration
+## 配置
 
-Operators can configure indexing via the `[tx_index]` section. The `indexer`
-field takes a series of supported indexers. If `null` is included, indexing will
-be turned off regardless of other values provided.
+操作员可以通过 `[tx_index]` 部分配置索引。 `索引器`
+字段采用一系列受支持的索引器。 如果包含 `null`，索引将
+无论提供的其他值如何，都将被关闭。
 
 ```toml
 [tx-index]
@@ -53,63 +53,63 @@ be turned off regardless of other values provided.
 # indexer = []
 ```
 
-### Supported Indexers
+### 支持的索引器
 
 #### KV
 
-The `kv` indexer type is an embedded key-value store supported by the main
-underlying Tendermint database. Using the `kv` indexer type allows you to query
-for block and transaction events directly against Tendermint's RPC. However, the
-query syntax is limited and so this indexer type might be deprecated or removed
-entirely in the future.
+`kv` 索引器类型是主要支持的嵌入式键值存储
+底层 Tendermint 数据库。使用 `kv` 索引器类型允许您查询
+用于直接针对 Tendermint 的 RPC 的块和交易事件。但是，那
+查询语法有限，因此可能会弃用或删除此索引器类型
+完全在未来。
 
 #### PostgreSQL
 
-The `psql` indexer type allows an operator to enable block and transaction event
-indexing by proxying it to an external PostgreSQL instance allowing for the events
-to be stored in relational models. Since the events are stored in a RDBMS, operators
-can leverage SQL to perform a series of rich and complex queries that are not
-supported by the `kv` indexer type. Since operators can leverage SQL directly,
-searching is not enabled for the `psql` indexer type via Tendermint's RPC -- any
-such query will fail.
+`psql` 索引器类型允许操作员启用块和事务事件
+通过将其代理到允许事件的外部 PostgreSQL 实例进行索引
+存储在关系模型中。由于事件存储在 RDBMS 中，操作员
+可以利用 SQL 来执行一系列丰富而复杂的查询
+`kv` 索引器类型支持。由于运算符可以直接利用 SQL，
+未通过 Tendermint 的 RPC 为 `psql` 索引器类型启用搜索 - 任何
+这样的查询将失败。
 
-Note, the SQL schema is stored in `state/indexer/sink/psql/schema.sql` and operators
-must explicitly create the relations prior to starting Tendermint and enabling
-the `psql` indexer type.
+注意，SQL 模式存储在 `state/indexer/sink/psql/schema.sql` 和操作符中
+必须在启动 Tendermint 和启用之前明确创建关系
+`psql` 索引器类型。
 
-Example:
+例子:
 
 ```shell
 $ psql ... -f state/indexer/sink/psql/schema.sql
 ```
 
-## Default Indexes
+## 默认索引
 
-The Tendermint tx and block event indexer indexes a few select reserved events
-by default.
+Tendermint 交易和区块事件索引器索引一些选择的保留事件
+默认情况下。
 
-### Transactions
+### 交易
 
-The following indexes are indexed by default:
+默认情况下对以下索引进行索引:
 
 - `tx.height`
 - `tx.hash`
 
-### Blocks
+### 块
 
-The following indexes are indexed by default:
+默认情况下对以下索引进行索引:
 
 - `block.height`
 
-## Adding Events
+## 添加事件
 
-Applications are free to define which events to index. Tendermint does not
-expose functionality to define which events to index and which to ignore. In
-your application's `DeliverTx` method, add the `Events` field with pairs of
-UTF-8 encoded strings (e.g. "transfer.sender": "Bob", "transfer.recipient":
-"Alice", "transfer.balance": "100").
+应用程序可以自由定义要索引的事件。 Tendermint 没有
+公开功能以定义要索引哪些事件以及要忽略哪些事件。 在
+您的应用程序的 `DeliverTx` 方法，添加带有成对的 `Events` 字段
+UTF-8 编码的字符串(例如“transfer.sender”:“Bob”、“transfer.recipient”:
+"Alice", "transfer.balance": "100")。
 
-Example:
+例子:
 
 ```go
 func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Result {
@@ -129,26 +129,26 @@ func (app *KVStoreApplication) DeliverTx(req types.RequestDeliverTx) types.Resul
 }
 ```
 
-If the indexer is not `null`, the transaction will be indexed. Each event is
-indexed using a composite key in the form of `{eventType}.{eventAttribute}={eventValue}`,
-e.g. `transfer.sender=bob`.
+如果索引器不是 `null`，事务将被索引。 每个事件都是
+使用“{eventType}.{eventAttribute}={eventValue}”形式的复合键索引，
+例如 `transfer.sender=bob`。
 
-## Querying Transactions Events
+## 查询交易事件
 
-You can query for a paginated set of transaction by their events by calling the
-`/tx_search` RPC endpoint:
+您可以通过调用它们的事件来查询分页的一组事务
+`/tx_search` RPC 端点:
 
 ```bash
 curl "localhost:26657/tx_search?query=\"message.sender='cosmos1...'\"&prove=true"
 ```
 
-Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/tx_search)
-for more information on query syntax and other options.
+查看 [API 文档](https://docs.tendermint.com/master/rpc/#/Info/tx_search)
+有关查询语法和其他选项的更多信息。
 
-## Subscribing to Transactions
+## 订阅交易
 
-Clients can subscribe to transactions with the given tags via WebSocket by providing
-a query to `/subscribe` RPC endpoint.
+客户端可以通过 WebSocket 订阅具有给定标签的交易
+对`/subscribe` RPC 端点的查询。
 
 ```json
 {
@@ -161,17 +161,17 @@ a query to `/subscribe` RPC endpoint.
 }
 ```
 
-Check out [API docs](https://docs.tendermint.com/master/rpc/#subscribe) for more information
-on query syntax and other options.
+查看 [API 文档](https://docs.tendermint.com/master/rpc/#subscribe) 了解更多信息
+关于查询语法和其他选项。
 
-## Querying Blocks Events
+## 查询块事件
 
-You can query for a paginated set of blocks by their events by calling the
-`/block_search` RPC endpoint:
+您可以通过调用它们的事件来查询一组分页的块
+`/block_search` RPC 端点:
 
 ```bash
 curl "localhost:26657/block_search?query=\"block.height > 10 AND val_set.num_changed > 0\""
 ```
 
-Check out [API docs](https://docs.tendermint.com/master/rpc/#/Info/block_search)
-for more information on query syntax and other options.
+查看 [API 文档](https://docs.tendermint.com/master/rpc/#/Info/block_search)
+有关查询语法和其他选项的更多信息。

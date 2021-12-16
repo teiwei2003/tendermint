@@ -1,20 +1,20 @@
-# Subscribing to events via Websocket
+# 通过 Websocket 订阅事件
 
-Tendermint emits different events, which you can subscribe to via
-[Websocket](https://en.wikipedia.org/wiki/WebSocket). This can be useful
-for third-party applications (for analysis) or for inspecting state.
+Tendermint 发出不同的事件，您可以通过以下方式订阅
+[Websocket](https://en.wikipedia.org/wiki/WebSocket)。 这很有用
+用于第三方应用程序(用于分析)或用于检查状态。
 
-[List of events](https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants)
+[活动列表](https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants)
 
-To connect to a node via websocket from the CLI, you can use a tool such as
-[wscat](https://github.com/websockets/wscat) and run:
+要从 CLI 通过 websocket 连接到节点，您可以使用诸如
+[wscat](https://github.com/websockets/wscat) 并运行:
 
 ```sh
 wscat ws://127.0.0.1:26657/websocket
 ```
 
-You can subscribe to any of the events above by calling the `subscribe` RPC
-method via Websocket along with a valid query.
+您可以通过调用 `subscribe` RPC 来订阅上述任何事件
+方法通过 Websocket 以及有效的查询。
 
 ```json
 {
@@ -27,22 +27,22 @@ method via Websocket along with a valid query.
 }
 ```
 
-Check out [API docs](https://docs.tendermint.com/master/rpc/) for
-more information on query syntax and other options.
+查看 [API 文档](https://docs.tendermint.com/master/rpc/)
+有关查询语法和其他选项的更多信息。
 
-You can also use tags, given you had included them into DeliverTx
-response, to query transaction results. See [Indexing
-transactions](../app-dev/indexing-transactions.md) for details.
+您也可以使用标签，前提是您已将它们包含在 DeliverTx 中
+response，查询交易结果。 请参阅 [索引
+交易](../app-dev/indexing-transactions.md) 了解详情。
 
-## ValidatorSetUpdates
+## 验证器集更新
 
-When validator set changes, ValidatorSetUpdates event is published. The
-event carries a list of pubkey/power pairs. The list is the same
-Tendermint receives from ABCI application (see [EndBlock
-section](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#endblock) in
-the ABCI spec).
+当验证器集更改时，将发布 ValidatorSetUpdates 事件。 这
+事件携带公钥/权力对的列表。 名单是一样的
+Tendermint 从 ABCI 应用程序接收(参见 [EndBlock
+部分](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#endblock)在
+ABCI 规范)。
 
-Response:
+回复:
 
 ```json
 {

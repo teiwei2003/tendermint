@@ -1,159 +1,159 @@
-# ADR 067: Mempool Refactor
+# ADR 067:内存池重构
 
-- [ADR 067: Mempool Refactor](#adr-067-mempool-refactor)
-  - [Changelog](#changelog)
-  - [Status](#status)
-  - [Context](#context)
-    - [Current Design](#current-design)
-  - [Alternative Approaches](#alternative-approaches)
-  - [Prior Art](#prior-art)
-    - [Ethereum](#ethereum)
+- [ADR 067:内存池重构](#adr-067-mempool-refactor)
+  - [更新日志](#changelog)
+  - [状态](#状态)
+  - [上下文](#context)
+    - [当前设计](#current-design)
+  - [替代方法](#alternative-approaches)
+  - [现有技术](#prior-art)
+    - [以太坊](#ethereum)
     - [Diem](#diem)
-  - [Decision](#decision)
-  - [Detailed Design](#detailed-design)
+  - [决定](#decision)
+  - [详细设计](#detailed-design)
     - [CheckTx](#checktx)
-    - [Mempool](#mempool)
-    - [Eviction](#eviction)
-    - [Gossiping](#gossiping)
-    - [Performance](#performance)
-  - [Future Improvements](#future-improvements)
-  - [Consequences](#consequences)
-    - [Positive](#positive)
-    - [Negative](#negative)
-    - [Neutral](#neutral)
-  - [References](#references)
+    - [内存池](#mempool)
+    - [驱逐](#eviction)
+    - [八卦](#八卦)
+    - [表演](#表演)
+  - [未来改进](#future-improvements)
+  - [后果](#consequences)
+    - [正](#positive)
+    - [负](#负)
+    - [中性](#中性)
+  - [参考文献](#references)
 
-## Changelog
+## 变更日志
 
-- April 19, 2021: Initial Draft (@alexanderbez)
+- 2021 年 4 月 19 日:初稿 (@alexanderbez)
 
-## Status
+## 状态
 
-Accepted
+公认
 
-## Context
+## 语境
 
-Tendermint Core has a reactor and data structure, mempool, that facilitates the
-ephemeral storage of uncommitted transactions. Honest nodes participating in a
-Tendermint network gossip these uncommitted transactions to each other if they
-pass the application's `CheckTx`. In addition, block proposers select from the
-mempool a subset of uncommitted transactions to include in the next block.
+Tendermint Core 有一个反应器和数据结构 mempool，它有助于
+未提交交易的临时存储。参与的诚实节点
+Tendermint 网络会互相八卦这些未提交的交易，如果它们
+通过应用程序的`CheckTx`。此外，区块提议者从
+内存池要包含在下一个块中的未提交事务的子集。
 
-Currently, the mempool in Tendermint Core is designed as a FIFO queue. In other
-words, transactions are included in blocks as they are received by a node. There
-currently is no explicit and prioritized ordering of these uncommitted transactions.
-This presents a few technical and UX challenges for operators and applications.
+目前，Tendermint Core 中的 mempool 被设计为 FIFO 队列。其他
+换句话说，交易在被节点接收时包含在区块中。那里
+目前没有对这些未提交的事务进行明确和优先排序。
+这给操作员和应用程序带来了一些技术和用户体验方面的挑战。
 
-Namely, validators are not able to prioritize transactions by their fees or any
-incentive aligned mechanism. In addition, the lack of prioritization also leads
-to cascading effects in terms of DoS and various attack vectors on networks,
-e.g. [cosmos/cosmos-sdk#8224](https://github.com/cosmos/cosmos-sdk/discussions/8224).
+也就是说，验证者不能通过他们的费用或任何
+激励协调机制。此外，缺乏优先级也导致
+在 DoS 和网络上的各种攻击向量方面的级联效应，
+例如[cosmos/cosmos-sdk#8224](https://github.com/cosmos/cosmos-sdk/discussions/8224)。
 
-Thus, Tendermint Core needs the ability for an application and its users to
-prioritize transactions in a flexible and performant manner. Specifically, we're
-aiming to either improve, maintain or add the following properties in the
-Tendermint mempool:
+因此，Tendermint Core 需要应用程序及其用户能够
+以灵活和高效的方式优先处理事务。具体来说，我们是
+旨在改进、保持或添加以下属性
+Tendermint 内存池:
 
-- Allow application-determined transaction priority.
-- Allow efficient concurrent reads and writes.
-- Allow block proposers to reap transactions efficiently by priority.
-- Maintain a fixed mempool capacity by transaction size and evict lower priority
-  transactions to make room for higher priority transactions.
-- Allow transactions to be gossiped by priority efficiently.
-- Allow operators to specify a maximum TTL for transactions in the mempool before
-  they're automatically evicted if not selected for a block proposal in time.
-- Ensure the design allows for future extensions, such as replace-by-priority and
-  allowing multiple pending transactions per sender, to be incorporated easily.
+- 允许应用程序确定的事务优先级。
+- 允许高效的并发读取和写入。
+- 允许区块提议者通过优先级有效地获得交易。
+- 根据交易大小保持固定的内存池容量并驱逐较低优先级
+  为更高优先级的交易腾出空间。
+- 允许有效地按优先级八卦交易。
+- 允许运营商在之前为内存池中的交易指定最大 TTL
+  如果没有及时选择区块提案，他们将被自动驱逐。
+- 确保设计允许未来的扩展，例如按优先级替换和
+  允许每个发件人有多个待处理的交易，很容易合并。
 
-Note, not all of these properties will be addressed by the proposed changes in
-this ADR. However, this proposal will ensure that any unaddressed properties
-can be addressed in an easy and extensible manner in the future.
+请注意，并非所有这些属性都将通过建议的更改来解决
+这个 ADR。但是，该提案将确保任何未解决的财产
+可以在未来以简单和可扩展的方式解决。
 
-### Current Design
+### 当前设计
 
 ![mempool](./img/mempool-v0.jpeg)
 
-At the core of the `v0` mempool reactor is a concurrent linked-list. This is the
-primary data structure that contains `Tx` objects that have passed `CheckTx`.
-When a node receives a transaction from another peer, it executes `CheckTx`, which
-obtains a read-lock on the `*CListMempool`. If the transaction passes `CheckTx`
-locally on the node, it is added to the `*CList` by obtaining a write-lock. It
-is also added to the `cache` and `txsMap`, both of which obtain their own respective
-write-locks and map a reference from the transaction hash to the `Tx` itself.
+`v0` 内存池反应器的核心是一个并发链表。这是
+包含已通过“CheckTx”的“Tx”对象的主要数据结构。
+当一个节点从另一个节点接收到一个交易时，它会执行“CheckTx”，它
+获得对 `*CListMempool` 的读锁。如果交易通过`CheckTx`
+在节点本地，通过获取写锁将其添加到 `*CList`。它
+也被添加到`cache`和`txsMap`中，两者都获得了各自的
+写锁并将交易哈希的引用映射到“Tx”本身。
 
-Transactions are continuously gossiped to peers whenever a new transaction is added
-to a local node's `*CList`, where the node at the front of the `*CList` is selected.
-Another transaction will not be gossiped until the `*CList` notifies the reader
-that there are more transactions to gossip.
+每当添加新交易时，交易都会不断地传给对等点
+到本地节点的“*CList”，其中“*CList”前面的节点被选中。
+在 `*CList` 通知读者之前，另一个交易不会被八卦
+有更多的交易可以八卦。
 
-When a proposer attempts to propose a block, they will execute `ReapMaxBytesMaxGas`
-on the reactor's `*CListMempool`. This call obtains a read-lock on the `*CListMempool`
-and selects as many transactions as possible starting from the front of the `*CList`
-moving to the back of the list.
+当提议者尝试提议一个区块时，他们将执行 `ReapMaxBytesMaxGas`
+在反应器的 `*CListMempool` 上。此调用获取对 `*CListMempool` 的读锁
+并从 `*CList` 的前面开始选择尽可能多的事务
+移动到列表的后面。
 
-When a block is finally committed, a caller invokes `Update` on the reactor's
-`*CListMempool` with all the selected transactions. Note, the caller must also
-explicitly obtain a write-lock on the reactor's `*CListMempool`. This call
-will remove all the supplied transactions from the `txsMap` and the `*CList`, both
-of which obtain their own respective write-locks. In addition, the transaction
-may also be removed from the `cache` which obtains it's own write-lock.
+当一个块最终被提交时，调用者调用反应器上的“更新”
+`*CListMempool` 包含所有选定的交易。注意，调用者还必须
+显式地获得对反应器的 `*CListMempool` 的写锁。这个电话
+将从 `txsMap` 和 `*CList` 中删除所有提供的交易，两者都是
+其中获得各自的写锁。此外，交易
+也可以从获取它自己的写锁的“缓存”中删除。
 
-## Alternative Approaches
+## 替代方法
 
-When considering which approach to take for a priority-based flexible and
-performant mempool, there are two core candidates. The first candidate is less
-invasive in the required  set of protocol and implementation changes, which
-simply extends the existing `CheckTx` ABCI method. The second candidate essentially
-involves the introduction of new ABCI method(s) and would require a higher degree
-of complexity in protocol and implementation changes, some of which may either
-overlap or conflict with the upcoming introduction of [ABCI++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md).
+在考虑采用哪种方法来实现基于优先级的灵活和
+高性能内存池，有两个核心候选。第一个候选人较少
+在所需的一组协议和实现更改中具有侵入性，其中
+简单地扩展现有的`CheckTx` ABCI 方法。第二个候选人本质上
+涉及引入新的 ABCI 方法，并且需要更高的学位
+协议和实现更改的复杂性，其中一些可能
+与即将推出的 [ABCI++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md)重叠或冲突。
 
-For more information on the various approaches and proposals, please see the
-[mempool discussion](https://github.com/tendermint/tendermint/discussions/6295).
+有关各种方法和建议的更多信息，请参阅
+[内存池讨论](https://github.com/tendermint/tendermint/discussions/6295)。
 
-## Prior Art
+## 现有技术
 
-### Ethereum
+### 以太坊
 
-The Ethereum mempool, specifically [Geth](https://github.com/ethereum/go-ethereum),
-contains a mempool, `*TxPool`, that contains various mappings indexed by account,
-such as a `pending` which contains all processable transactions for accounts
-prioritized by nonce. It also contains a `queue` which is the exact same mapping
-except it contains not currently processable transactions. The mempool also
-contains a `priced` index of type `*txPricedList` that is a priority queue based
-on transaction price.
+以太坊内存池，特别是 [Geth](https://github.com/ethereum/go-ethereum)，
+包含一个内存池，`*TxPool`，其中包含按帐户索引的各种映射，
+例如“待处理”，其中包含帐户的所有可处理交易
+由 nonce 优先。它还包含一个“队列”，它是完全相同的映射
+除非它包含当前不可处理的交易。内存池也
+包含类型为“*txPricedList”的“定价”索引，它是基于优先级队列的
+在交易价格上。
 
-### Diem
+### 迪姆
 
-The [Diem mempool](https://github.com/diem/diem/blob/master/mempool/README.md#implementation-details)
-contains a similar approach to the one we propose. Specifically, the Diem mempool
-contains a mapping from `Account:[]Tx`. On top of this primary mapping from account
-to a list of transactions, are various indexes used to perform certain actions.
+[Diem 内存池](https://github.com/diem/diem/blob/master/mempool/README.md#implementation-details)
+包含与我们建议的方法类似的方法。具体来说，Diem 内存池
+包含来自 `Account:[]Tx` 的映射。在这个来自帐户的主要映射之上
+对于交易列表，是用于执行某些操作的各种索引。
 
-The main index, `PriorityIndex`. is an ordered queue of transactions that are
-“consensus-ready” (i.e., they have a sequence number which is sequential to the
-current sequence number for the account). This queue is ordered by gas price so
-that if a client is willing to pay more (than other clients) per unit of
-execution, then they can enter consensus earlier.
+主要索引，`PriorityIndex`。是一个有序的事务队列
+“共识就绪”(即，他们有一个序列号，该序列号与
+帐户的当前序列号)。这个队列是按gas价格排序的
+如果客户愿意为每单位支付更多(比其他客户)
+执行，然后他们可以更早地达成共识。
 
-## Decision
+## 决定
 
-To incorporate a priority-based flexible and performant mempool in Tendermint Core,
-we will introduce new fields, `priority` and `sender`, into the `ResponseCheckTx`
-type.
+为了在 Tendermint Core 中加入基于优先级的灵活且高性能的内存池，
+我们将在 `ResponseCheckTx` 中引入新字段 `priority` 和 `sender`
+类型。
 
-We will introduce a new versioned mempool reactor, `v1` and assume an implicit
-version of the current mempool reactor as `v0`. In the new `v1` mempool reactor,
-we largely keep the functionality the same as `v0` except we augment the underlying
-data structures. Specifically, we keep a mapping of senders to transaction objects.
-On top of this mapping, we index transactions to provide the ability to efficiently
-gossip and reap transactions by priority.
+我们将引入一个新版本的内存池反应器，`v1` 并假设一个隐式
+当前内存池反应器的版本为“v0”。在新的“v1”内存池反应器中，
+我们在很大程度上保持与 `v0` 相同的功能，除了我们增加了底层
+数据结构。具体来说，我们保持发送者到交易对象的映射。
+在此映射之上，我们对交易进行索引以提供有效地
+八卦和优先获得交易。
 
-## Detailed Design
+## 详细设计
 
 ### CheckTx
 
-We introduce the following new fields into the `ResponseCheckTx` type:
+我们在 `ResponseCheckTx` 类型中引入了以下新字段:
 
 ```diff
 message ResponseCheckTx {
@@ -170,27 +170,28 @@ message ResponseCheckTx {
 }
 ```
 
-It is entirely up the application in determining how these fields are populated
-and with what values, e.g. the `sender` could be the signer and fee payer 
-of the transaction, the `priority` could be the cumulative sum of the fee(s).
 
-Only `sender` is required, while `priority` can be omitted which would result in
-using the default value of zero.
+完全取决于应用程序来确定如何填充这些字段
+以及什么值，例如`sender` 可以是签名者和费用支付者
+在交易中，“优先级”可以是费用的累计金额。
 
-### Mempool
+只有`sender`是必需的，而`priority`可以省略，这会导致
+使用默认值零。
 
-The existing concurrent-safe linked-list will be replaced by a thread-safe map
-of `<sender:*Tx>`, i.e a mapping from `sender` to a single `*Tx` object, where
-each `*Tx` is the next valid and processable transaction from the given `sender`.
+### 内存池
 
-On top of this mapping, we index all transactions by priority using a thread-safe
-priority queue, i.e. a [max heap](https://en.wikipedia.org/wiki/Min-max_heap).
-When a proposer is ready to select transactions for the next block proposal,
-transactions are selected from this priority index by highest priority order.
-When a transaction is selected and reaped, it is removed from this index and
-from the `<sender:*Tx>` mapping.
+现有的并发安全链表将被线程安全映射替换
+`<sender:*Tx>`，即从 `sender` 到单个 `*Tx` 对象的映射，其中
+每个 `*Tx` 是来自给定 `sender` 的下一个有效且可处理的交易。
 
-We define `Tx` as the following data structure:
+在此映射之上，我们使用线程安全的方式按优先级索引所有事务
+优先级队列，即 [最大堆](https://en.wikipedia.org/wiki/Min-max_heap)。
+当提议者准备好为下一个区块提议选择交易时，
+按照最高优先级顺序从该优先级索引中选择事务。
+当一个事务被选中并被收割时，它就会从这个索引中移除，并且
+来自 `<sender:*Tx>` 映射。
+
+我们将 `Tx` 定义为以下数据结构:
 
 ```go
 type Tx struct {
@@ -212,92 +213,92 @@ type Tx struct {
 }
 ```
 
-### Eviction
+### 驱逐
 
-Upon successfully executing `CheckTx` for a new `Tx` and the mempool is currently
-full, we must check if there exists a `Tx` of lower priority that can be evicted
-to make room for the new `Tx` with higher priority and with sufficient size
-capacity left.
+在为新的“Tx”成功执行“CheckTx”并且内存池当前处于
+已满，我们必须检查是否存在可以驱逐的较低优先级的“Tx”
+为具有更高优先级和足够大小的新“Tx”腾出空间
+剩余容量。
 
-If such a `Tx` exists, we find it by obtaining a read lock and sorting the
-priority queue index. Once sorted, we find the first `Tx` with lower priority and
-size such that the new `Tx` would fit within the mempool's size limit. We then
-remove this `Tx` from the priority queue index as well as the `<sender:*Tx>`
-mapping.
+如果存在这样的`Tx`，我们通过获取读锁和排序来找到它
+优先队列索引。排序后，我们会找到优先级较低的第一个“Tx”，然后
+大小以使新的“Tx”适合内存池的大小限制。然后我们
+从优先级队列索引中移除这个 `Tx` 以及 `<sender:*Tx>`
+映射。
 
-This will require additional `O(n)` space and `O(n*log(n))` runtime complexity. Note that the space complexity does not depend on the size of the tx.
+这将需要额外的“O(n)”空间和“O(n*log(n))”运行时复杂度。请注意，空间复杂度不取决于 tx 的大小。
 
-### Gossiping
+### 八卦
 
-We keep the existing thread-safe linked list as an additional index. Using this
-index, we can efficiently gossip transactions in the same manner as they are
-gossiped now (FIFO).
+我们保留现有的线程安全链表作为附加索引。使用这个
+索引，我们可以以与它们相同的方式有效地八卦交易
+现在八卦(FIFO)。
 
-Gossiping transactions will not require locking any other indexes.
+八卦交易不需要锁定任何其他索引。
 
-### Performance
+### 表现
 
-Performance should largely remain unaffected apart from the space overhead of
-keeping an additional priority queue index and the case where we need to evict
-transactions from the priority queue index. There should be no reads which
-block writes on any index
+除了空间开销外，性能应该在很大程度上不受影响
+保留一个额外的优先级队列索引以及我们需要驱逐的情况
+来自优先队列索引的事务。不应该有读取
+块写入任何索引
 
-## Future Improvements
+## 未来的改进
 
-There are a few considerable ways in which the proposed design can be improved or
-expanded upon. Namely, transaction gossiping and for the ability to support
-multiple transactions from the same `sender`.
+有一些重要的方法可以改进或改进提议的设计
+扩展了。即，交易八卦和支持的能力
+来自同一个“发件人”的多笔交易。
 
-With regards to transaction gossiping, we need empirically validate whether we
-need to gossip by priority. In addition, the current method of gossiping may not
-be the most efficient. Specifically, broadcasting all the transactions a node
-has in it's mempool to it's peers. Rather, we should explore for the ability to
-gossip transactions on a request/response basis similar to Ethereum and other
-protocols. Not only does this reduce bandwidth and complexity, but also allows
-for us to explore gossiping by priority or other dimensions more efficiently.
+关于交易八卦，我们需要凭经验验证我们是否
+需要优先八卦。另外，目前的八卦方法可能不
+成为最有效率的。具体来说，广播一个节点的所有交易
+它的内存池中有它的同行。相反，我们应该探索能力
+基于请求/响应的八卦交易类似于以太坊和其他
+协议。这不仅降低了带宽和复杂性，而且还允许
+以便我们更有效地按优先级或其他维度探索八卦。
 
-Allowing for multiple transactions from the same `sender` is important and will
-most likely be a needed feature in the future development of the mempool, but for
-now it suffices to have the preliminary design agreed upon. Having the ability
-to support multiple transactions per `sender` will require careful thought with
-regards to the interplay of the corresponding ABCI application. Regardless, the
-proposed design should allow for adaptations to support this feature in a
-non-contentious and backwards compatible manner.
+允许来自同一个“发件人”的多个交易很重要并且将
+很可能是未来内存池开发中需要的功能，但对于
+现在只要同意初步设计就足够了。有能力
+支持每个“发件人”的多个交易需要仔细考虑
+关于相应 ABCI 应用程序的相互作用。无论如何，该
+提议的设计应允许进行调整以支持此功能
+无争议和向后兼容的方式。
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Transactions are allowed to be prioritized by the application.
+- 允许应用程序优先处理事务。
 
-### Negative
+### 消极的
 
-- Increased size of the `ResponseCheckTx` Protocol Buffer type.
-- Causal ordering is NOT maintained.
-  - It is possible that certain transactions broadcasted in a particular order may
-  pass `CheckTx` but not end up being committed in a block because they fail
-  `CheckTx` later. e.g. Consider Tx<sub>1</sub> that sends funds from existing
-  account Alice to a _new_ account Bob with priority P<sub>1</sub> and then later
-  Bob's _new_ account sends funds back to Alice in Tx<sub>2</sub> with P<sub>2</sub>,
-  such that P<sub>2</sub> > P<sub>1</sub>. If executed in this order, both
-  transactions will pass `CheckTx`. However, when a proposer is ready to select
-  transactions for the next block proposal, they will select Tx<sub>2</sub> before
-  Tx<sub>1</sub> and thus Tx<sub>2</sub> will _fail_ because Tx<sub>1</sub> must
-  be executed first. This is because there is a _causal ordering_,
-  Tx<sub>1</sub> ➝ Tx<sub>2</sub>. These types of situations should be rare as
-  most transactions are not causally ordered and can be circumvented by simply
-  trying again at a later point in time or by ensuring the "child" priority is
-  lower than the "parent" priority. In other words, if parents always have
-  priories that are higher than their children, then the new mempool design will
-  maintain causal ordering.  
+- 增加了 `ResponseCheckTx` 协议缓冲区类型的大小。
+- 不维护因果顺序。
+  - 以特定顺序广播的某些交易可能会
+  通过`CheckTx`但最终没有在块中提交，因为它们失败了
+  稍后`CheckTx`。例如考虑从现有的发送资金的 Tx<sub>1</sub>
+  帐户 Alice 到一个优先级为 P<sub>1</sub> 的 _new_ 帐户 Bob，然后稍后
+  Bob 的 _new_ 帐户在 Tx<sub>2</sub> 和 P<sub>2</sub> 中将资金发送回 Alice，
+  使得 P<sub>2</sub> > P<sub>1</sub>。如果按此顺序执行，则两者
+  交易将通过`CheckTx`。但是，当提议者准备好选择时
+  下一个区块提案的交易，他们将在之前选择 Tx<sub>2</sub>
+  Tx<sub>1</sub> 和 Tx<sub>2</sub> 将 _fail_ 因为 Tx<sub>1</sub> 必须
+  首先被执行。这是因为有一个_因果顺序_，
+  Tx<sub>1</sub> ➝ Tx<sub>2</sub>。这些类型的情况应该很少见，因为
+  大多数交易都没有因果关系，可以简单地规避
+  在稍后的时间点重试或确保“子”优先级为
+  低于“父”优先级。换句话说，如果父母总是有
+  比他们的孩子更高的优先权，那么新的内存池设计将
+  保持因果顺序。
 
-### Neutral
+### 中性的
 
-- A transaction that passed `CheckTx` and entered the mempool can later be evicted
-  at a future point in time if a higher priority transaction entered while the
-  mempool was full.
+- 通过`CheckTx`并进入内存池的交易稍后可以被驱逐
+  在未来的某个时间点，如果在
+  内存池已满。
 
-## References
+## 参考
 
 - [ABCI++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md)
-- [Mempool Discussion](https://github.com/tendermint/tendermint/discussions/6295)
+- [内存池讨论](https://github.com/tendermint/tendermint/discussions/6295)

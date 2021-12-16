@@ -1,24 +1,24 @@
-# ADR 068: Reverse Sync
+# ADR 068:反向同步
 
-## Changelog
+## 变更日志
 
-- 20 April 2021: Initial Draft (@cmwaters)
+- 2021 年 4 月 20 日:初稿 (@cmwaters)
 
-## Status
+## 状态
 
-Accepted
+公认
 
-## Context
+## 语境
 
-The advent of state sync and block pruning gave rise to the opportunity for full nodes to participate in consensus without needing complete block history. This also introduced a problem with respect to evidence handling. Nodes that didn't have all the blocks within the evidence age were incapable of validating evidence, thus halting if that evidence was committed on chain. 
+状态同步和区块剪枝的出现为全节点参与共识提供了机会，而无需完整的区块历史。这也带来了证据处理方面的问题。没有在证据时代拥有所有区块的节点无法验证证据，因此如果该证据在链上提交就会停止。
 
-[RFC005](https://github.com/tendermint/spec/blob/master/rfc/005-reverse-sync.md) was published in response to this problem and modified the spec to add a minimum block history invariant. This predominantly sought to extend state sync so that it was capable of fetching and storing the `Header`, `Commit` and `ValidatorSet` (essentially a `LightBlock`) of the last `n` heights, where `n` was calculated based from the evidence age.
+[RFC005](https://github.com/tendermint/spec/blob/master/rfc/005-reverse-sync.md) 是针对此问题发布的，并修改了规范以添加最小区块历史不变量。这主要是为了扩展状态同步，以便它能够获取和存储最后一个“n”高度的“Header”、“Commit”和“ValidatorSet”(本质上是一个“LightBlock”)，其中“n”是基于计算的从证据时代。
 
-This ADR sets out to describe the design of this state sync extension as well as modifications to the light client provider and the merging of tm store.
+此 ADR 着手描述此状态同步扩展的设计以及对轻客户端提供程序的修改和 tm 存储的合并。
 
-## Decision
+## 决定
 
-The state sync reactor will be extended by introducing 2 new P2P messages (and a new channel). 
+状态同步反应器将通过引入 2 个新的 P2P 消息(和一个新通道)进行扩展。
 
 ```protobuf
 message LightBlockRequest {
@@ -26,17 +26,17 @@ message LightBlockRequest {
 }
 
 message LightBlockResponse {
-  tendermint.types.LightBlock light_block = 1; 
+  tendermint.types.LightBlock light_block = 1;
 }
 ```
 
-This will be used by the "reverse sync" protocol that will fetch, verify and store prior light blocks such that the node can safely participate in consensus.
+这将由“反向同步”协议使用，该协议将获取、验证和存储先前的轻块，以便节点可以安全地参与共识。
 
-Furthermore this allows for a new light client provider which offers the ability for the `StateProvider` to use the underlying P2P stack instead of RPC.
+此外，这允许新的轻客户端提供程序为 `StateProvider` 提供使用底层 P2P 堆栈而不是 RPC 的能力。
 
-## Detailed Design
+## 详细设计
 
-This section will focus first on the reverse sync (here we call it `backfill`) mechanism as a standalone protocol and then look to decribe how it integrates within the state sync reactor and how we define the new p2p light client provider.
+本节将首先关注作为独立协议的反向同步(这里我们称之为“回填”)机制，然后描述它如何集成到状态同步反应器中以及我们如何定义新的 p2p 轻客户端提供程序。
 
 ```go
 // Backfill fetches, verifies, and stores necessary history
@@ -44,54 +44,54 @@ This section will focus first on the reverse sync (here we call it `backfill`) m
 func (r *Reactor) backfill(state State) error {}
 ```
 
-`State` is used to work out how far to go back, namely we need all light blocks that have:
-- a height: `h >= state.LastBlockHeight - state.ConsensusParams.Evidence.MaxAgeNumBlocks`
-- a time: `t >= state.LastBlockTime - state.ConsensusParams.Evidence.MaxAgeDuration`
+`State` 用于计算返回多远，即我们需要所有具有以下特性的灯块:
+- 高度:`h >= state.LastBlockHeight - state.ConsensusParams.Evidence.MaxAgeNumBlocks`
+- 时间:`t >= state.LastBlockTime - state.ConsensusParams.Evidence.MaxAgeDuration`
 
-Reverse Sync relies on two components: A `Dispatcher` and a `BlockQueue`. The `Dispatcher` is a pattern taken from a similar [PR](https://github.com/tendermint/tendermint/pull/4508). It is wired to the `LightBlockChannel` and allows for concurrent light block requests by shifting through a linked list of peers. This abstraction has the nice quality that it can also be used as an array of light providers for a P2P based light client.
+反向同步依赖于两个组件:“Dispatcher”和“BlockQueue”。 `Dispatcher` 是一种取自类似 [PR](https://github.com/tendermint/tendermint/pull/4508) 的模式。它连接到“LightBlockChannel”，并通过在对等点的链接列表中移动来允许并发光块请求。这种抽象具有很好的品质，它也可以用作基于 P2P 的轻客户端的光提供者数组。
 
-The `BlockQueue` is a data structure that allows for multiple workers to fetch light blocks, serializing them for the main thread which picks them off the end of the queue, verifies the hashes and persists them.
+“BlockQueue”是一种数据结构，允许多个工作人员获取轻量块，为主线程序列化它们，主线程将它们从队列的末尾挑选出来，验证散列并将它们持久化。
 
-### Integration with State Sync
+### 与状态同步的集成
 
-Reverse sync is a blocking process that runs directly after syncing state and before transitioning into either fast sync or consensus.
+反向同步是一个阻塞过程，它在同步状态之后和转换到快速同步或共识之前直接运行。
 
-Prior, the state sync service was not connected to any db, instead it passed the state and commit back to the node. For reverse sync, state sync will be given access to both the `StateStore` and `BlockStore` to be able to write `Header`'s, `Commit`'s and `ValidatorSet`'s and read them so as to serve other state syncing peers.
+之前，状态同步服务没有连接到任何数据库，而是将状态传递回节点。对于反向同步，状态同步将被授予访问 `StateStore` 和 `BlockStore` 的权限，以便能够写入 `Header`、`Commit` 和 `ValidatorSet` 并读取它们以服务于其他状态同步对等体。
 
-This also means adding new methods to these respective stores in order to persist them
+这也意味着向这些各自的商店添加新方法以保持它们
 
-### P2P Light Client Provider
+### P2P 轻客户端提供商
 
-As mentioned previously, the `Dispatcher` is capable of handling requests to multiple peers. We can therefore simply peel off a `blockProvider` instance which is assigned to each peer. By giving it the chain ID, the `blockProvider` is capable of doing a basic validation of the light block before returning it to the client.
+如前所述，“Dispatcher”能够处理对多个对等点的请求。因此，我们可以简单地剥离分配给每个对等方的 `blockProvider` 实例。通过给它链 ID，`blockProvider` 能够在将它返回给客户端之前对光块进行基本的验证。
 
-It's important to note that because state sync doesn't have access to the evidence channel it is incapable of allowing the light client to report evidence thus `ReportEvidence` is a no op. This is not too much of a concern for reverse sync but will need to be addressed for pure p2p light clients.
+需要注意的是，由于状态同步无法访问证据通道，因此它无法允许轻客户端报告证据，因此“ReportEvidence”是无效的。这对于反向同步来说不是什么问题，但需要为纯 p2p 轻客户端解决。
 
-### Pruning
+### 修剪
 
-A final small note is with pruning. This ADR will introduce changes that will not allow an application to prune blocks that are within the evidence age.
+最后一个小注意事项是修剪。此 ADR 将引入更改，不允许应用程序修剪证据时代内的块。
 
-## Future Work
+## 未来的工作
 
-This ADR tries to remain within the scope of extending state sync, however the changes made opens the door for several areas to be followed up:
-- Properly integrate p2p messaging in the light client package. This will require adding the evidence channel so the light client is capable of reporting evidence. We may also need to rethink the providers model (i.e. currently providers are only added on start up)
-- Merge and clean up the tendermint stores (state, block and evidence). This ADR adds new methods to both the state and block store for saving headers, commits and validator sets. This doesn't quite fit with the current struct (i.e. only `BlockMeta`s instead of `Header`s are saved). We should explore consolidating this for the sake of atomicity and the opportunity for batching. There are also other areas for changes such as the way we store block parts. See [here](https://github.com/tendermint/tendermint/issues/5383) and [here](https://github.com/tendermint/tendermint/issues/4630) for more context.
-- Explore opportunistic reverse sync. Technically we don't need to reverse sync if no evidence is observed. I've tried to design the protocol such that it could be possible to move it across to the evidence package if we see fit. Thus only when evidence is seen where we don't have the necessary data, do we perform a reverse sync. The problem with this is that imagine we are in consensus and some evidence pops up requiring us to first fetch and verify the last 10,000 blocks. There's no way a node could do this (sequentially) and vote before the round finishes. Also as we don't punish invalid evidence, a malicious node could easily spam the chain just to get a bunch of "stateless" nodes to perform a bunch of useless work.
-- Explore full reverse sync. Currently we only fetch light blocks. There might be benefits in the future to fetch and persist entire blocks especially if we give control to the application to do this.
+这个 ADR 试图保持在扩展状态同步的范围内，但是所做的更改为几个需要跟进的领域打开了大门:
+- 在轻客户端包中正确集成 p2p 消息传递。这将需要添加证据通道，以便轻客户端能够报告证据。我们可能还需要重新考虑提供者模型(即当前提供者仅在启动时添加)
+- 合并和清理薄荷存储(状态、块和证据)。此 ADR 向状态和块存储添加了新方法，用于保存标头、提交和验证器集。这不太适合当前的结构(即只保存了 `BlockMeta`s 而不是 `Header`s)。为了原子性和批处理的机会，我们应该探索合并这一点。还有其他方面的变化，例如我们存储块部件的方式。有关更多上下文，请参阅 [此处](https://github.com/tendermint/tendermint/issues/5383) 和 [此处](https://github.com/tendermint/tendermint/issues/4630)。
+- 探索机会反向同步。从技术上讲，如果没有观察到证据，我们不需要反向同步。我已尝试设计协议，以便在我们认为合适的情况下可以将其转移到证据包中。因此，只有在我们没有必要数据的地方看到证据时，我们才执行反向同步。问题在于，假设我们达成共识，并且会弹出一些证据，要求我们首先获取并验证最后 10,000 个区块。节点无法(按顺序)执行此操作并在该轮结束之前进行投票。此外，由于我们不惩罚无效证据，恶意节点可以轻松地向链发送垃圾邮件，只是为了让一堆“无状态”节点执行一堆无用的工作。
+- 探索完全反向同步。目前我们只获取光块。将来获取和持久化整个块可能会有好处，尤其是如果我们将控制权交给应用程序来执行此操作。
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- All nodes should have sufficient history to validate all types of evidence
-- State syncing nodes can use the p2p layer for light client verification of state. This has better UX and could be faster but I haven't benchmarked.
+- 所有节点都应该有足够的历史来验证所有类型的证据
+- 状态同步节点可以使用 p2p 层进行状态的轻客户端验证。这具有更好的用户体验并且可能更快，但我没有进行基准测试。
 
-### Negative
+### 消极的
 
-- Introduces more code = more maintenance
+- 引入更多代码 = 更多维护
 
-### Neutral
+### 中性的
 
-## References
+## 参考
 
-- [Reverse Sync RFC](https://github.com/tendermint/spec/blob/master/rfc/005-reverse-sync.md)
-- [Original Issue](https://github.com/tendermint/tendermint/issues/5617)
+- [反向同步 RFC](https://github.com/tendermint/spec/blob/master/rfc/005-reverse-sync.md)
+- [原始问题](https://github.com/tendermint/tendermint/issues/5617)

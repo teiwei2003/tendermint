@@ -1,33 +1,33 @@
-# ADR 039: Peer Behaviour Interface
+# ADR 039:对等行为接口
 
-## Changelog
-* 07-03-2019: Initial draft
-* 14-03-2019: Updates from feedback
+## 变更日志
+* 07-03-2019:初稿
+* 14-03-2019:反馈更新
 
-## Context
+## 语境
 
-The responsibility for signaling and acting upon peer behaviour lacks a single 
-owning component and is heavily coupled with the network stack[<sup>1</sup>](#references). Reactors
-maintain a reference to the `p2p.Switch` which they use to call 
-`switch.StopPeerForError(...)` when a peer misbehaves and 
-`switch.MarkAsGood(...)` when a peer contributes in some meaningful way. 
-While the switch handles `StopPeerForError` internally, the `MarkAsGood` 
-method delegates to another component, `p2p.AddrBook`. This scheme of delegation 
-across Switch obscures the responsibility for handling peer behaviour
-and ties up the reactors in a larger dependency graph when testing.
+对同伴行为发出信号并采取行动的责任缺乏单一的
+拥有组件并与网络堆栈[<sup>1</sup>](#references) 紧密耦合。反应堆
+维护对他们用来调用的“p2p.Switch”的引用
+`switch.StopPeerForError(...)` 当对等端行为不端时
+`switch.MarkAsGood(...)` 当对等方以某种有意义的方式做出贡献时。
+虽然开关在内部处理 `StopPeerForError`，`MarkAsGood`
+方法委托给另一个组件，`p2p.AddrBook`。这个委托方案
+跨 Switch 掩盖了处理对等行为的责任
+并在测试时将反应器捆绑在更大的依赖图中。
 
-## Decision
+## 决定
 
-Introduce a `PeerBehaviour` interface and concrete implementations which
-provide methods for reactors to signal peer behaviour without direct
-coupling `p2p.Switch`.  Introduce a ErrorBehaviourPeer to provide
-concrete reasons for stopping peers. Introduce GoodBehaviourPeer to provide
-concrete ways in which a peer contributes.
+引入“PeerBehaviour”接口和具体实现
+为反应器提供方法来在没有直接的情况下向对等行为发出信号
+耦合`p2p.Switch`。引入一个 ErrorBehaviourPeer 来提供
+阻止同行的具体原因。引入 GoodBehaviourPeer 提供
+同行做出贡献的具体方式。
 
-### Implementation Changes
+### 实施变更
 
-PeerBehaviour then becomes an interface for signaling peer errors as well
-as for marking peers as `good`.
+PeerBehaviour 然后也成为用于发送对等错误信号的接口
+至于将同行标记为“好”。
 
 ```go
 type PeerBehaviour interface {
@@ -36,10 +36,10 @@ type PeerBehaviour interface {
 }
 ```
 
-Instead of signaling peers to stop with arbitrary reasons:
-`reason interface{}` 
+而不是以任意原因通知对等点停止:
+`原因接口{}`
 
-We introduce a concrete error type ErrorBehaviourPeer:
+我们引入一个具体的错误类型 ErrorBehaviourPeer:
 ```go
 type ErrorBehaviourPeer int
 
@@ -51,8 +51,8 @@ const (
 )
 ```
 
-To provide additional information on the ways a peer contributed, we introduce
-the GoodBehaviourPeer type.
+为了提供有关对等方贡献方式的更多信息，我们引入
+GoodBehaviourPeer 类型。
 
 ```go
 type GoodBehaviourPeer int
@@ -64,8 +64,8 @@ const (
 )
 ```
 
-As a first iteration we provide a concrete implementation which wraps
-the switch:
+作为第一次迭代，我们提供了一个具体的实现，它包装了
+开关:
 ```go
 type SwitchedPeerBehaviour struct {
     sw *Switch
@@ -86,8 +86,8 @@ func NewSwitchedPeerBehaviour(sw *Switch) *SwitchedPeerBehaviour {
 }
 ```
 
-Reactors, which are often difficult to unit test[<sup>2</sup>](#references) could use an implementation which exposes the signals produced by the reactor in
-manufactured scenarios:
+Reactor 通常难以进行单元测试[<sup>2</sup>](#references) 可以使用一种实现，该实现将反应器产生的信号暴露在
+制造场景:
 
 ```go
 type ErrorBehaviours map[Peer][]ErrorBehaviourPeer
@@ -131,29 +131,29 @@ func (spb *StorePeerBehaviour) GetBehaved() GoodBehaviours {
 }
 ```
 
-## Status
+## 状态
 
-Accepted
+公认
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-    * De-couple signaling from acting upon peer behaviour.
-    * Reduce the coupling of reactors and the Switch and the network
-      stack
-    * The responsibility of managing peer behaviour can be migrated to
-      a single component instead of split between the switch and the
-      address book.
+     * 将信号与对等行为的行为分离开来。
+     * 减少电抗器与交换机与网络的耦合
+       堆
+     * 管理同伴行为的责任可以迁移到
+       单个组件，而不是在开关和开关之间拆分
+       地址簿。
 
-### Negative
+### 消极的
 
-    * The first iteration will simply wrap the Switch and introduce a
-      level of indirection.
+     * 第一次迭代将简单地包装 Switch 并引入一个
+       间接级别。
 
-### Neutral
+### 中性的
 
-## References
+## 参考
 
-1. Issue [#2067](https://github.com/tendermint/tendermint/issues/2067): P2P Refactor
-2. PR: [#3506](https://github.com/tendermint/tendermint/pull/3506): ADR 036: Blockchain Reactor Refactor
+1.问题[#2067](https://github.com/tendermint/tendermint/issues/2067):P2P重构
+2. PR:[#3506](https://github.com/tendermint/tendermint/pull/3506):ADR 036:区块链反应器重构

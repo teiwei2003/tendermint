@@ -1,38 +1,38 @@
-# ADR 038: Non-zero start height
+# ADR 038:非零起始高度
 
-## Changelog
+## 变更日志
 
-- {date}: {changelog}
+- {日期}:{变更日志}
 
-## Context
+## 语境
 
-> This section contains all the context one needs to understand the current state, and why there is a problem. It should be as succinct as possible and introduce the high level idea behind the solution.
+> 本节包含了解当前状态所需的所有上下文，以及出现问题的原因。它应该尽可能简洁，并介绍解决方案背后的高级思想。
 
-## Decision
+## 决定
 
-> This section explains all of the details of the proposed solution, including implementation details.
-> It should also describe affects / corollary items that may need to be changed as a part of this.
-> If the proposed change will be large, please also indicate a way to do the change to maximize ease of review.
-> (e.g. the optimal split of things to do between separate PR's)
+> 本节解释了所提议解决方案的所有细节，包括实施细节。
+> 它还应该描述作为其中一部分可能需要更改的影响/必然项。
+> 如果提议的更改很大，请同时说明进行更改的方式，以最大限度地方便审查。
+>(例如，在单独的 PR 之间做的事情的最佳分割)
 
-## Status
+## 状态
 
-> A decision may be "proposed" if it hasn't been agreed upon yet, or "accepted" once it is agreed upon. If a later ADR changes or reverses a decision, it may be marked as "deprecated" or "superseded" with a reference to its replacement.
+> 如果尚未达成一致，可以“提出”决定，或者一旦达成一致就“接受”。如果以后的 ADR 更改或撤消了决定，则可以将其标记为“已弃用”或“已取代”，并提及其替代品。
 
-{Deprecated|Proposed|Accepted|Declined}
+{已弃用|建议|接受|拒绝}
 
-## Consequences
+## 结果
 
-> This section describes the consequences, after applying the decision. All consequences should be summarized here, not just the "positive" ones.
+> 本节描述了应用决定后的后果。所有的后果都应该在这里总结，而不仅仅是“积极的”后果。
 
-### Positive
+### 积极的
 
-### Negative
+### 消极的
 
-### Neutral
+### 中性的
 
-## References
+## 参考
 
-> Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here!
+> 是否有任何相关的 PR 评论、导致此问题的问题，或关于我们为何做出给定设计选择的参考文章？如果是这样，请在此处链接它们！
 
-- {reference link}
+- {参考链接}

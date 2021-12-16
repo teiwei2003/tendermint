@@ -1,35 +1,35 @@
-# Consensus
+# 共识
 
-Tendermint Consensus is a distributed protocol executed by validator processes to agree on
-the next block to be added to the Tendermint blockchain. The protocol proceeds in rounds, where
-each round is a try to reach agreement on the next block. A round starts by having a dedicated
-process (called proposer) suggesting to other processes what should be the next block with
-the `ProposalMessage`.
-The processes respond by voting for a block with `VoteMessage` (there are two kinds of vote
-messages, prevote and precommit votes). Note that a proposal message is just a suggestion what the
-next block should be; a validator might vote with a `VoteMessage` for a different block. If in some
-round, enough number of processes vote for the same block, then this block is committed and later
-added to the blockchain. `ProposalMessage` and `VoteMessage` are signed by the private key of the
-validator. The internals of the protocol and how it ensures safety and liveness properties are
-explained in a forthcoming document.
+Tendermint 共识是一种分布式协议，由验证器进程执行以达成一致
+要添加到 Tendermint 区块链的下一个区块。该协议按轮次进行，其中
+每一轮都是试图就下一个区块达成协议。一轮开始时有一个专门的
+进程(称为提议者)向其他进程建议下一个块应该是什么
+`ProposalMessage`。
+进程通过投票给一个带有 `VoteMessage` 的块来响应(有两种投票方式
+消息、预先投票和预先提交投票)。请注意，提案消息只是一个建议
+下一个块应该是；验证者可能会使用“VoteMessage”为不同的区块投票。如果在某些
+轮，足够数量的进程投票给同一个块，然后提交这个块，然后
+添加到区块链中。 `ProposalMessage` 和 `VoteMessage` 由用户的私钥签名
+验证器。协议的内部结构以及它如何确保安全性和活性属性是
+在即将发布的文件中进行了解释。
 
-For efficiency reasons, validators in Tendermint consensus protocol do not agree directly on the
-block as the block size is big, i.e., they don't embed the block inside `Proposal` and
-`VoteMessage`. Instead, they reach agreement on the `BlockID` (see `BlockID` definition in
-[Blockchain](https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md#blockid) section)
-that uniquely identifies each block. The block itself is
-disseminated to validator processes using peer-to-peer gossiping protocol. It starts by having a
-proposer first splitting a block into a number of block parts, that are then gossiped between
-processes using `BlockPartMessage`.
+出于效率原因，Tendermint 共识协议中的验证者不直接就
+块因为块大小很大，即，他们不将块嵌入到 `Proposal` 中，并且
+`投票消息`。相反，他们就“BlockID”达成了一致(参见中的“BlockID”定义)
+[区块链](https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md#blockid)部分)
+唯一标识每个块。块本身是
+使用点对点八卦协议传播给验证器进程。它首先有一个
+提议者首先将一个块拆分为多个块部分，然后在它们之间进行八卦
+使用`BlockPartMessage` 处理。
 
-Validators in Tendermint communicate by peer-to-peer gossiping protocol. Each validator is connected
-only to a subset of processes called peers. By the gossiping protocol, a validator send to its peers
-all needed information (`ProposalMessage`, `VoteMessage` and `BlockPartMessage`) so they can
-reach agreement on some block, and also obtain the content of the chosen block (block parts). As
-part of the gossiping protocol, processes also send auxiliary messages that inform peers about the
-executed steps of the core consensus algorithm (`NewRoundStepMessage` and `NewValidBlockMessage`), and
-also messages that inform peers what votes the process has seen (`HasVoteMessage`,
-`VoteSetMaj23Message` and `VoteSetBitsMessage`). These messages are then used in the gossiping
-protocol to determine what messages a process should send to its peers.
+Tendermint 中的验证器通过点对点八卦协议进行通信。每个验证器都是连接的
+仅适用于称为对等点的进程子集。通过八卦协议，验证器向其对等方发送
+所有需要的信息(`ProposalMessage`、`VoteMessage` 和 `BlockPartMessage`)，这样他们就可以
+就某个区块达成一致，同时也获得了被选中区块(区块部分)的内容。作为
+作为八卦协议的一部分，进程还发送辅助消息，通知对等方
+执行核心共识算法的步骤(`NewRoundStepMessage` 和 `NewValidBlockMessage`)，以及
+还有消息通知对等进程已经看到了什么投票(`HasVoteMessage`，
+`VoteSetMaj23Message` 和 `VoteSetBitsMessage`)。这些消息然后用于八卦
+协议来确定进程应该向其对等方发送什么消息。
 
-We now describe the content of each message exchanged during Tendermint consensus protocol.
+我们现在描述在 Tendermint 共识协议期间交换的每条消息的内容。

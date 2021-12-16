@@ -1,71 +1,71 @@
-# ADR 060: Go API Stability
+# ADR 060:Go API 稳定性
 
-## Changelog
+## 变更日志
 
-- 2020-09-08: Initial version. (@erikgrinaker)
+- 2020-09-08:初始版本。 (@erikgrinaker)
 
-- 2020-09-09: Tweak accepted changes, add initial public API packages, add consequences. (@erikgrinaker)
+- 2020-09-09:调整接受的更改，添加初始公共 API 包，添加结果。 (@erikgrinaker)
 
-- 2020-09-17: Clarify initial public API. (@erikgrinaker)
+- 2020 年 9 月 17 日:澄清初始公共 API。 (@erikgrinaker)
 
-## Context
+## 语境
 
-With the release of Tendermint 1.0 we will adopt [semantic versioning](https://semver.org). One major implication is a guarantee that we will not make backwards-incompatible changes until Tendermint 2.0 (except in pre-release versions). In order to provide this guarantee for our Go API, we must clearly define which of our APIs are public, and what changes are considered backwards-compatible.
+随着 Tendermint 1.0 的发布，我们将采用 [语义版本控制](https://semver.org)。一个主要含义是保证在 Tendermint 2.0 之前我们不会进行向后不兼容的更改(预发布版本除外)。为了为我们的 Go API 提供这种保证，我们必须明确定义哪些 API 是公开的，哪些更改被认为是向后兼容的。
 
-Currently, we list packages that we consider public in our [README](https://github.com/tendermint/tendermint#versioning), but since we are still at version 0.x we do not provide any backwards compatiblity guarantees at all.
+目前，我们在 [README](https://github.com/tendermint/tendermint#versioning) 中列出了我们认为公开的软件包，但由于我们仍处于 0.x 版本，因此我们根本不提供任何向后兼容性保证.
 
-### Glossary
+### 词汇表
 
-* **External project:** a different Git/VCS repository or code base.
+* **外部项目:** 不同的 Git/VCS 存储库或代码库。
 
-* **External package:** a different Go package, can be a child or sibling package in the same project.
+* **外部包:** 不同的 Go 包，可以是同一个项目中的子包或兄弟包。
 
-* **Internal code:** code not intended for use in external projects.
+* **内部代码:** 不适用于外部项目的代码。
 
-* **Internal directory:** code under `internal/` which cannot be imported in external projects.
+* **内部目录:**`internal/`下的代码，不能导入到外部项目中。
 
-* **Exported:** a Go identifier starting with an uppercase letter, which can therefore be accessed by an external package.
+* **Exported:** 以大写字母开头的 Go 标识符，因此可以被外部包访问。
 
-* **Private:** a Go identifier starting with a lowercase letter, which therefore cannot be accessed by an external package unless via an exported field, variable, or function/method return value.
+* **Private:** 一个以小写字母开头的 Go 标识符，因此不能被外部包访问，除非通过导出的字段、变量或函数/方法返回值。
 
-* **Public API:** any Go identifier that can be imported or accessed by an external project, except test code in `_test.go` files.
+* **公共 API:** 任何可以由外部项目导入或访问的 Go 标识符，`_test.go` 文件中的测试代码除外。
 
-* **Private API:** any Go identifier that is not accessible via a public API, including all code in the internal directory.
+* **私有 API:** 任何无法通过公共 API 访问的 Go 标识符，包括内部目录中的所有代码。
 
-## Alternative Approaches
+## 替代方法
 
-- Split all public APIs out to separate Go modules in separate Git repositories, and consider all Tendermint code internal and not subject to API backwards compatibility at all. This was rejected, since it has been attempted by the Tendermint project earlier, resulting in too much dependency management overhead.
+- 将所有公共 API 拆分为单独的 Git 存储库中的单独 Go 模块，并将所有 Tendermint 代码考虑在内，完全不受 API 向后兼容性的限制。这被拒绝了，因为 Tendermint 项目之前已经尝试过，导致依赖管理开销过多。
 
-- Simply document which APIs are public and which are private. This is the current approach, but users should not be expected to self-enforce this, the documentation is not always up-to-date, and external projects will often end up depending on internal code anyway.
+- 简单地记录哪些 API 是公共的，哪些是私有的。这是当前的方法，但不应期望用户自行执行此方法，文档并不总是最新的，无论如何，外部项目通常最终取决于内部代码。
 
-## Decision
+## 决定
 
-From Tendermint 1.0, all internal code (except private APIs) will be placed in a root-level [`internal` directory](https://golang.org/cmd/go/#hdr-Internal_Directories), which the Go compiler will block for use by external projects. All exported items outside of the `internal` directory are considered a public API and subject to backwards compatibility guarantees, except files ending in `_test.go`.
+从 Tendermint 1.0 开始，所有内部代码(私有 API 除外)都将放置在根级 [`internal` 目录](https://golang.org/cmd/go/#hdr-Internal_Directories) 中，Go 编译器将供外部项目使用的块。 `internal` 目录之外的所有导出项目都被视为公共 API，并受向后兼容性保证的约束，但以 `_test.go` 结尾的文件除外。
 
-The `crypto` package may be split out to a separate module in a separate repo. This is the main general-purpose package used by external projects, and is the only Tendermint dependency in e.g. IAVL which can cause some problems for projects depending on both IAVL and Tendermint. This will be decided after further discussion.
+`crypto` 包可以在单独的 repo 中拆分为单独的模块。这是外部项目使用的主要通用包，并且是唯一的 Tendermint 依赖项，例如IAVL 可能会导致项目出现一些问题，具体取决于 IAVL 和 Tendermint。这将在进一步讨论后决定。
 
-The `tm-db` package will remain a separate module in a separate repo. The `crypto` package may possibly be split out, pending further discussion, as this is the main general-purpose package used by other projects.
+`tm-db` 包将在一个单独的 repo 中保持一个单独的模块。 `crypto` 包可能会被拆分，等待进一步讨论，因为这是其他项目使用的主要通用包。
 
-## Detailed Design
+## 详细设计
 
-### Public API
+###公共API
 
-When preparing our public API for 1.0, we should keep these principles in mind:
+在为 1.0 准备公共 API 时，我们应该牢记以下原则:
 
-- Limit the number of public APIs that we start out with - we can always add new APIs later, but we can't change or remove APIs once they're made public.
+- 限制我们开始使用的公共 API 的数量 - 我们可以随时添加新的 API，但一旦公开 API，我们就无法更改或删除它们。
 
-- Before an API is made public, do a thorough review of the API to make sure it covers any future needs, can accomodate expected changes, and follows good API design practices.
+- 在 API 公开之前，对 API 进行彻底审查，以确保它满足未来的任何需求，可以适应预期的变化，并遵循良好的 API 设计实践。
 
-The following is the minimum set of public APIs that will be included in 1.0, in some form:
+以下是以某种形式包含在 1.0 中的最小公共 API 集:
 
 - `abci`
-- packages used for constructing nodes `config`, `libs/log`, and `version`
-- Client APIs, i.e. `rpc/client`, `light`, and `privval`.
-- `crypto` (possibly as a separate repo)
+- 用于构建节点`config`、`libs/log`和`version`的包
+- 客户端 API，即`rpc/client`、`light` 和`privval`。
+- `crypto`(可能作为一个单独的仓库)
 
-We may offer additional APIs as well, following further discussions internally and with other stakeholders. However, public APIs for providing custom components (e.g. reactors and mempools) are not planned for 1.0, but may be added in a later 1.x version if this is something we want to offer.
+在内部和与其他利益相关者进一步讨论之后，我们也可能提供额外的 API。然而，用于提供自定义组件(例如反应器和内存池)的公共 API 并未计划在 1.0 中使用，但如果我们想要提供的话，可能会在以后的 1.x 版本中添加。
 
-For comparison, the following are the number of Tendermint imports in the Cosmos SDK (excluding tests), which should be mostly satisfied by the planned APIs.
+为了比较，以下是 Cosmos SDK 中 Tendermint 导入的数量(不包括测试)，应该是计划中的 API 主要满足的。
 
 ```
       1 github.com/tendermint/tendermint/abci/server
@@ -110,84 +110,84 @@ For comparison, the following are the number of Tendermint imports in the Cosmos
       1 github.com/tendermint/tendermint/version
 ```
 
-### Backwards-Compatible Changes
+### 向后兼容的变化
 
-In Go, [almost all API changes are backwards-incompatible](https://blog.golang.org/module-compatibility) and thus exported items in public APIs generally cannot be changed until Tendermint 2.0. The only backwards-compatible changes we can make to public APIs are:
+在 Go 中，[几乎所有 API 更改都是向后不兼容的](https://blog.golang.org/module-compatibility)，因此公共 API 中的导出项通常在 Tendermint 2.0 之前无法更改。我们可以对公共 API 进行的唯一向后兼容更改是:
 
-- Adding a package.
+- 添加一个包。
 
-- Adding a new identifier to the package scope (e.g. const, var, func, struct, interface, etc.).
+- 向包范围添加新标识符(例如 const、var、func、struct、interface 等)。
 
-- Adding a new method to a struct.
+- 向结构添加新方法。
 
-- Adding a new field to a struct, if the zero-value preserves any old behavior.
+- 如果零值保留任何旧行为，则向结构添加新字段。
 
-- Changing the order of fields in a struct.
+- 更改结构中字段的顺序。
 
-- Adding a variadic parameter to a named function or struct method, if the function type itself is not assignable in any public APIs (e.g. a callback).
+- 如果函数类型本身在任何公共 API(例如回调)中不可分配，则向命名函数或结构方法添加可变参数。
 
-- Adding a new method to an interface, or a variadic parameter to an interface method, _if the interface already has a private method_ (which prevents external packages from implementing it).
+- 向接口添加新方法，或向接口方法添加可变参数，_如果接口已经有私有方法_(防止外部包实现它)。
 
-- Widening a numeric type as long as it is a named type (e.g. `type Number int32` can change to `int64`, but not `int8` or `uint32`).
+- 扩展数字类型，只要它是命名类型(例如，`type Number int32` 可以更改为 `int64`，但不能更改为 `int8` 或 `uint32`)。
 
-Note that public APIs can expose private types (e.g. via an exported variable, field, or function/method return value), in which case the exported fields and methods on these private types are also part of the public API and covered by its backwards compatiblity guarantees. In general, private types should never be accessible via public APIs unless wrapped in an exported interface.
+请注意，公共 API 可以公开私有类型(例如，通过导出的变量、字段或函数/方法返回值)，在这种情况下，这些私有类型上的导出字段和方法也是公共 API 的一部分，并由其向后兼容性覆盖保证。通常，除非包装在导出的接口中，否则不应通过公共 API 访问私有类型。
 
-Also note that if we accept, return, export, or embed types from a dependency, we assume the backwards compatibility responsibility for that dependency, and must make sure any dependency upgrades comply with the above constraints.
+另请注意，如果我们从依赖项接受、返回、导出或嵌入类型，我们将承担该依赖项的向后兼容性责任，并且必须确保任何依赖项升级都符合上述约束。
 
-We should run CI linters for minor version branches to enforce this, e.g. [apidiff](https://go.googlesource.com/exp/+/refs/heads/master/apidiff/README.md), [breakcheck](https://github.com/gbbr/breakcheck), and [apicombat](https://github.com/bradleyfalzon/apicompat).
+我们应该为次要版本分支运行 CI linters 以强制执行此操作，例如[apidiff](https://go.googlesource.com/exp/+/refs/heads/master/apidiff/README.md)、[breakcheck](https://github.com/gbbr/breakcheck) 和 [ apicombat](https://github.com/bradleyfalzon/apicompat)。
 
-#### Accepted Breakage
+#### 接受破损
 
-The above changes can still break programs in a few ways - these are _not_ considered backwards-incompatible changes, and users are advised to avoid this usage:
+上述更改仍然可以通过几种方式破坏程序 - 这些_not_被认为是向后不兼容的更改，建议用户避免这种用法:
 
-- If a program uses unkeyed struct literals (e.g. `Foo{"bar", "baz"}`) and we add fields or change the field order, the program will no longer compile or may have logic errors.
+- 如果程序使用无键结构文字(例如`Foo{"bar", "baz"}`)并且我们添加字段或更改字段顺序，程序将不再编译或可能出现逻辑错误。
 
-- If a program embeds two structs in a struct, and we add a new field or method to an embedded Tendermint struct which also exists in the other embedded struct, the program will no longer compile.
+- 如果一个程序在一个结构体中嵌入了两个结构体，并且我们向一个嵌入的 Tendermint 结构体添加了一个新的字段或方法，该结构体也存在于另一个嵌入的结构体中，该程序将不再编译。
 
-- If a program compares two structs (e.g. with `==`), and we add a new field of an incomparable type (slice, map, func, or struct that contains these) to a Tendermint struct which is compared, the program will no longer compile.
+- 如果一个程序比较两个结构体(例如用`==`)，并且我们将一个不可比较类型(slice、map、func 或包含这些的结构体)的新字段添加到要比较的 Tendermint 结构体，程序将不再编译。
 
-- If a program assigns a Tendermint function to an identifier, and we add a variadic parameter to the function signature, the program will no longer compile.
+- 如果程序将 Tendermint 函数分配给标识符，并且我们向函数签名添加可变参数，则程序将不再编译。
 
-### Strategies for API Evolution
+### API 演进策略
 
-The API guarantees above can be fairly constraining, but are unavoidable given the Go language design. The following tricks can be employed where appropriate to allow us to make changes to the API:
+上面的 API 保证可能相当严格，但鉴于 Go 语言设计，这是不可避免的。可以在适当的情况下使用以下技巧来允许我们对 API 进行更改:
 
-- We can add a new function or method with a different name that takes additional parameters, and have the old function call the new one.
+- 我们可以添加一个具有不同名称的新函数或方法，该函数或方法带有额外的参数，并让旧函数调用新函数。
 
-- Functions and methods can take an options struct instead of separate parameters, to allow adding new options - this is particularly suitable for functions that take many parameters and are expected to be extended, and especially for interfaces where we cannot add new methods with different parameters at all.
+- 函数和方法可以采用选项结构而不是单独的参数，以允许添加新选项 - 这特别适用于采用许多参数并希望扩展的函数，尤其是对于我们无法添加具有不同参数的新方法的接口根本。
 
-- Interfaces can include a private method, e.g. `interface { private() }`, to make them unimplementable by external packages and thus allow us to add new methods to the interface without breaking other programs. Of course, this can't be used for interfaces that should be implementable externally.
+- 接口可以包括私有方法，例如`interface { private() }`，使它们无法被外部包实现，从而允许我们在不破坏其他程序的情况下向接口添加新方法。当然，这不能用于应该可以在外部实现的接口。
 
-- We can use [interface upgrades](https://avtok.com/2014/11/05/interface-upgrades.html) to allow implementers of an existing interface to also implement a new interface, as long as the old interface can still be used - e.g. the new interface `BetterReader` may have a method `ReadBetter()`, and a function that takes a `Reader` interface as an input can check if the implementer also implements `BetterReader` and in that case call `ReadBetter()` instead of `Read()`.
+- 我们可以使用[接口升级](https://avtok.com/2014/11/05/interface-upgrades.html) 允许现有接口的实现者也实现新接口，只要旧接口可以仍然被使用 - 例如新接口`BetterReader` 可能有一个方法`ReadBetter()`，一个将`Reader` 接口作为输入的函数可以检查实现者是否也实现了`BetterReader`，在这种情况下调用`ReadBetter()` `读()`。
 
-## Status
+## 状态
 
-Accepted
+公认
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Users can safely upgrade with less fear of applications breaking, and know whether an upgrade only includes bug fixes or also functional enhancements
+- 用户可以安全地升级而不必担心应用程序损坏，并且知道升级是否仅包括错误修复或功能增强
 
-- External developers have a predictable and well-defined API to build on that will be supported for some time
+- 外部开发人员有一个可预测且定义明确的 API 来构建，该 API 将在一段时间内得到支持
 
-- Less synchronization between teams, since there is a clearer contract and timeline for changes and they happen less frequently
+- 团队之间的同步性降低，因为变更的合同和时间表更清晰，而且发生的频率更低
 
-- More documentation will remain accurate, since it's not chasing a moving target
+- 更多文档将保持准确，因为它不会追逐移动目标
 
-- Less time will be spent on code churn and more time spent on functional improvements, both for the community and for our teams
+- 为社区和我们的团队，将花在代码改动上的时间更少，而将更多的时间花在功能改进上
 
-### Negative
+### 消极的
 
-- Many improvements, changes, and bug fixes will have to be postponed until the next major version, possibly for a year or more
+- 许多改进、更改和错误修复将不得不推迟到下一个主要版本，可能会推迟一年或更长时间
 
-- The pace of development will slow down, since we must work within the existing API constraints, and spend more time planning public APIs
+- 开发速度会变慢，因为我们必须在现有的 API 约束内工作，并花更多时间规划公共 API
 
-- External developers may lose access to some currently exported APIs and functionality
+- 外部开发人员可能无法访问某些当前导出的 API 和功能
 
-## References
+## 参考
 
-- [#4451: Place internal APIs under internal package](https://github.com/tendermint/tendermint/issues/4451)
+- [#4451: 将内部 API 放在内部包下](https://github.com/tendermint/tendermint/issues/4451)
 
-- [On Pluggability](https://docs.google.com/document/d/1G08LnwSyb6BAuCVSMF3EKn47CGdhZ5wPZYJQr4-bw58/edit?ts=5f609f11)
+- [关于可插拔性](https://docs.google.com/document/d/1G08LnwSyb6BAuCVSMF3EKn47CGdhZ5wPZYJQr4-bw58/edit?ts=5f609f11)

@@ -1,25 +1,25 @@
-# ADR 1: Logging
+# ADR 1:记录
 
-## Context
+## 语境
 
-Current logging system in Tendermint is very static and not flexible enough.
+Tendermint 中当前的日志系统非常静态且不够灵活。
 
-Issues: [358](https://github.com/tendermint/tendermint/issues/358), [375](https://github.com/tendermint/tendermint/issues/375).
+问题:[358](https://github.com/tendermint/tendermint/issues/358)、[375](https://github.com/tendermint/tendermint/issues/375)。
 
-What we want from the new system:
+我们希望从新系统中得到什么:
 
-- per package dynamic log levels
-- dynamic logger setting (logger tied to the processing struct)
-- conventions
-- be more visually appealing
+- 每个包动态日志级别
+- 动态记录器设置(记录器绑定到处理结构)
+- 公约
+- 更具视觉吸引力
 
-"dynamic" here means the ability to set smth in runtime.
+“动态”在这里是指在运行时设置 smth 的能力。
 
-## Decision
+## 决定
 
-### 1) An interface
+### 1) 一个接口
 
-First, we will need an interface for all of our libraries (`tmlibs`, Tendermint, etc.). My personal preference is go-kit `Logger` interface (see Appendix A.), but that is too much a bigger change. Plus we will still need levels.
+首先，我们需要一个用于所有库(`tmlibs`、Tendermint 等)的接口。 我个人的偏好是 go-kit `Logger` 界面(见附录 A)，但这是一个太大的变化。 另外，我们仍然需要水平。
 
 ```go
 # log.go
@@ -32,47 +32,47 @@ type Logger interface {
 }
 ```
 
-On a side note: difference between `Info` and `Notice` is subtle. We probably
-could do without `Notice`. Don't think we need `Panic` or `Fatal` as a part of
-the interface. These funcs could be implemented as helpers. In fact, we already
-have some in `tmlibs/common`.
+附带说明:“Info”和“Notice”之间的区别很微妙。 我们大概
+可以没有“通知”。 不要认为我们需要“恐慌”或“致命”作为其中的一部分
+界面。 这些函数可以作为助手来实现。 其实我们已经
+在`tmlibs/common`中有一些。
 
-- `Debug` - extended output for devs
-- `Info` - all that is useful for a user
-- `Error` - errors
+- `Debug` - 开发人员的扩展输出
+- `Info` - 所有对用户有用的信息
+- `错误` - 错误
 
-`Notice` should become `Info`, `Warn` either `Error` or `Debug` depending on the message, `Crit` -> `Error`.
+`Notice` 应该变成 `Info`、`Warn` 或者 `Error` 或 `Debug`，具体取决于消息，`Crit` -> `Error`。
 
-This interface should go into `tmlibs/log`. All libraries which are part of the core (tendermint/tendermint) should obey it.
+这个接口应该进入`tmlibs/log`。 作为核心(tendermint/tendermint)一部分的所有库都应该遵守它。
 
-### 2) Logger with our current formatting
+### 2) 使用我们当前格式的记录器
 
-On top of this interface, we will need to implement a stdout logger, which will be used when Tendermint is configured to output logs to STDOUT.
+在这个接口之上，我们需要实现一个标准输出记录器，当 Tendermint 被配置为将日志输出到标准输出时将使用它。
 
-Many people say that they like the current output, so let's stick with it.
+很多人说他们喜欢当前的输出，所以让我们坚持下去。
 
 ```
 NOTE[2017-04-25|14:45:08] ABCI Replay Blocks                       module=consensus appHeight=0 storeHeight=0 stateHeight=0
 ```
 
-Couple of minor changes:
+几个小改动:
 
 ```
 I[2017-04-25|14:45:08.322] ABCI Replay Blocks            module=consensus appHeight=0 storeHeight=0 stateHeight=0
 ```
 
-Notice the level is encoded using only one char plus milliseconds.
+请注意，级别仅使用一个字符加毫秒进行编码。
 
-Note: there are many other formats out there like [logfmt](https://brandur.org/logfmt).
+注意:还有许多其他格式，如 [logfmt](https://brandur.org/logfmt)。
 
-This logger could be implemented using any logger - [logrus](https://github.com/sirupsen/logrus), [go-kit/log](https://github.com/go-kit/kit/tree/master/log), [zap](https://github.com/uber-go/zap), log15 so far as it
+这个记录器可以使用任何记录器来实现 - [logrus](https://github.com/sirupsen/logrus), [go-kit/log](https://github.com/go-kit/kit/tree/ master/log), [zap](https://github.com/uber-go/zap), log15 到此为止
 
-a) supports coloring output<br>
-b) is moderately fast (buffering) <br>
-c) conforms to the new interface or adapter could be written for it <br>
-d) is somewhat configurable<br>
+a) 支持着色输出<br>
+b) 速度适中(缓冲)<br>
+c) 符合新的接口或可以为其编写适配器 <br>
+d) 有点可配置<br>
 
-go-kit is my favorite so far. Check out how easy it is to color errors in red https://github.com/go-kit/kit/blob/master/log/term/example_test.go#L12. Although, coloring could only be applied to the whole string :(
+到目前为止，go-kit 是我最喜欢的。 看看将错误涂成红色是多么容易 https://github.com/go-kit/kit/blob/master/log/term/example_test.go#L12。 虽然，着色只能应用于整个字符串:(
 
 ```
 go-kit +: flexible, modular
@@ -115,19 +115,19 @@ logger.SetLevel(config.GetString("log_level"))
 node.SetLogger(log.With(logger, "node", Name))
 ```
 
-**Other log formatters**
+**其他日志格式化程序**
 
-In the future, we may want other formatters like JSONFormatter.
+将来，我们可能需要其他格式化程序，例如 JSONFormatter。
 
 ```
 { "level": "notice", "time": "2017-04-25 14:45:08.562471297 -0400 EDT", "module": "consensus", "msg": "ABCI Replay Blocks", "appHeight": 0, "storeHeight": 0, "stateHeight": 0 }
 ```
 
-### 3) Dynamic logger setting
+### 3) 动态记录器设置
 
 https://dave.cheney.net/2017/01/23/the-package-level-logger-anti-pattern
 
-This is the hardest part and where the most work will be done. logger should be tied to the processing struct, or the context if it adds some fields to the logger.
+这是最困难的部分，也是最多工作要做的地方。 如果将某些字段添加到记录器，记录器应与处理结构或上下文相关联。
 
 ```go
 type BaseService struct {
@@ -139,9 +139,9 @@ type BaseService struct {
 }
 ```
 
-BaseService already contains `log` field, so most of the structs embedding it should be fine. We should rename it to `logger`.
+BaseService 已经包含 `log` 字段，所以大多数嵌入它的结构应该没问题。 我们应该将它重命名为`logger`。
 
-The only thing missing is the ability to set logger:
+唯一缺少的是设置记录器的能力:
 
 ```
 func (bs *BaseService) SetLogger(l log.Logger) {
@@ -149,9 +149,9 @@ func (bs *BaseService) SetLogger(l log.Logger) {
 }
 ```
 
-### 4) Conventions
+### 4) 约定
 
-Important keyvals should go first. Example:
+重要的 keyvals 应该先行。 例子:
 
 ```
 correct
@@ -165,7 +165,7 @@ wrong
 I[2017-04-25|14:45:08.322] ABCI Replay Blocks                       module=consensus appHeight=0 storeHeight=0 stateHeight=0 instance=1
 ```
 
-for that in most cases you'll need to add `instance` field to a logger upon creating, not when u log a particular message:
+为此，在大多数情况下，您需要在创建时将 `instance` 字段添加到记录器，而不是在您记录特定消息时:
 
 ```go
 colorFn := func(keyvals ...interface{}) term.FgBgColor {
@@ -187,25 +187,25 @@ c2 := NewConsensusReactor(...)
 c2.SetLogger(log.With(logger, "instance", 2))
 ```
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-Dynamic logger, which could be turned off for some modules at runtime. Public interface for other projects using Tendermint libraries.
+动态记录器，可以在运行时为某些模块关闭。 使用 Tendermint 库的其他项目的公共接口。
 
-### Negative
+### 消极的
 
-We may loose the ability to color keys in keyvalue pairs. go-kit allow you to easily change foreground / background colors of the whole string, but not its parts.
+我们可能会失去为键值对中的键着色的能力。 go-kit 允许您轻松更改整个字符串的前景色/背景色，但不能更改其部分。
 
-### Neutral
+### 中性的
 
-## Appendix A.
+## 附录 A。
 
-I really like a minimalistic approach go-kit took with his logger https://github.com/go-kit/kit/tree/master/log:
+我真的很喜欢 go-kit 使用他的记录器 https://github.com/go-kit/kit/tree/master/log 的简约方法:
 
 ```
 type Logger interface {
@@ -213,4 +213,4 @@ type Logger interface {
 }
 ```
 
-See [The Hunt for a Logger Interface](https://go-talks.appspot.com/github.com/ChrisHines/talks/structured-logging/structured-logging.slide). The advantage is greater composability (check out how go-kit defines colored logging or log-leveled logging on top of this interface https://github.com/go-kit/kit/tree/master/log).
+请参阅[寻找记录器接口](https://go-talks.appspot.com/github.com/ChrisHines/talks/structured-logging/structured-logging.slide)。 优点是更大的可组合性(查看 go-kit 如何在此界面上定义彩色日志或日志级别的日志 https://github.com/go-kit/kit/tree/master/log)。

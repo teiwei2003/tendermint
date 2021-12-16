@@ -1,50 +1,50 @@
-# Light Client
+# 轻客户端
 
-Light clients are an important part of the complete blockchain system for most
-applications. Tendermint provides unique speed and security properties for
-light client applications.
+对于大多数人来说，轻客户端是完整区块链系统的重要组成部分
+应用程序。 Tendermint 提供独特的速度和安全属性
+轻客户端应用程序。
 
-See our [light
-package](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc).
+看到我们的[光
+包](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc)。
 
-## Overview
+## 概述
 
-The light client protocol verifies headers by retrieving a chain of headers,
-commits and validator sets from a trusted height to the target height, verifying
-the signatures of each of these intermediary signed headers till it reaches the
-target height. From there, all the application state is verifiable with
-[merkle proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/encoding.md#iavl-tree).
+轻客户端协议通过检索标头链来验证标头，
+提交和验证器从可信高度设置到目标高度，验证
+这些中间签名头中的每一个的签名，直到它到达
+目标高度。从那里，所有应用程序状态都可以通过
+[merkle 证明](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/encoding.md#iavl-tree)。
 
-## Properties
+## 特性
 
-- You get the full collateralized security benefits of Tendermint; no
-  need to wait for confirmations.
-- You get the full speed benefits of Tendermint; transactions
-  commit instantly.
-- You can get the most recent version of the application state
-  non-interactively (without committing anything to the blockchain). For
-  example, this means that you can get the most recent value of a name from the
-  name-registry without worrying about fork censorship attacks, without posting
-  a commit and waiting for confirmations. It's fast, secure, and free!
+- 您可以获得 Tendermint 的全部抵押安全权益；不
+  需要等待确认。
+- 您可以获得 Tendermint 的全速优势；交易
+  立即提交。
+- 您可以获得应用程序状态的最新版本
+  非交互式(不向区块链提交任何内容)。为了
+  例如，这意味着您可以从
+  无需担心分叉审查攻击的名称注册，无需发布
+  提交并等待确认。它快速、安全且免费！
 
-## Security
+## 安全
 
-A light client is initialized from a point of trust using [Trust Options](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions),
-a provider and a set of witnesses. This sets the trust period: the period that
-full nodes should be accountable for faulty behavior and a trust level: the
-fraction of validators in a validator set with which we trust that at least one
-is correct. As Tendermint consensus can withstand 1/3 byzantine faults, this is
-the default trust level, however, for greater security you can increase it (max:
-1).
+轻客户端使用[信任选项](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions)从信任点初始化，
+一个提供者和一组证人。这设置了信任期:
+完整节点应该对错误行为和信任级别负责:
+验证者集中的一小部分验证者，我们相信至少有一个
+是正确的。由于 Tendermint 共识可以承受 1/3 的拜占庭故障，这是
+但是，为了提高安全性，您可以增加默认信任级别(最大:
+1)。
 
-Similar to a full node, light clients can also be subject to byzantine attacks.
-A light client also runs a detector process which cross verifies headers from a
-primary with witnesses. Therefore light clients should be set with enough witnesses.
+与全节点类似，轻客户端也可能受到拜占庭式攻击。
+轻客户端还运行一个检测器进程，该进程交叉验证来自
+主要有证人。因此，轻客户端应该设置足够的见证人。
 
-If the light client observes a faulty provider it will report it to another provider
-and return an error.
+如果轻客户端观察到一个有问题的提供者，它将报告给另一个提供者
+并返回错误。
 
-In summary, the light client is not safe when a) more than the trust level of
-validators are malicious and b) all witnesses are malicious.
+总而言之，当 a) 超过信任级别时，轻客户端是不安全的
+验证者是恶意的，并且 b) 所有见证人都是恶意的。
 
-Information on how to run a light client is located in the [nodes section](../nodes/light-client.md).
+有关如何运行轻客户端的信息位于 [节点部分](../nodes/light-client.md)。

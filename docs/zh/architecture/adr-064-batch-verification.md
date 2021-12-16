@@ -1,28 +1,28 @@
-# ADR 064: Batch Verification
+# ADR 064:批量验证
 
-## Changelog
+## 变更日志
 
-- January 28, 2021: Created (@marbar3778)
+- 2021 年 1 月 28 日:创建 (@marbar3778)
 
-## Context
+## 语境
 
-Tendermint uses public private key cryptography for validator signing. When a block is proposed and voted on validators sign a message representing acceptance of a block, rejection is signaled via a nil vote. These signatures are also used to verify previous blocks are correct if a node is syncing. Currently, Tendermint requires each signature to be verified individually, this leads to a slow down of block times.
+Tendermint 使用公钥私钥加密进行验证器签名。当一个区块被提议并投票给验证者签署一条表示接受一个区块的消息时，通过零投票表示拒绝。如果节点正在同步，这些签名还用于验证先前的块是否正确。目前，Tendermint 要求单独验证每个签名，这会导致出块时间变慢。
 
-Batch Verification is the process of taking many messages, keys, and signatures adding them together and verifying them all at once. The public key can be the same in which case it would mean a single user is signing many messages. In our case each public key is unique, each validator has their own and contribute a unique message. The algorithm can vary from curve to curve but the performance benefit, over single verifying messages, public keys and signatures is shared.  
+批量验证是将许多消息、密钥和签名添加到一起并同时验证它们的过程。公钥可以相同，在这种情况下，这意味着单个用户正在签署多条消息。在我们的例子中，每个公钥都是唯一的，每个验证者都有自己的并提供唯一的消息。该算法可能因曲线而异，但性能优势与单一验证消息、公钥和签名是共享的。
 
-## Alternative Approaches
+## 替代方法
 
-- Signature aggregation
-  - Signature aggregation is an alternative to batch verification. Signature aggregation leads to fast verification and smaller block sizes. At the time of writing this ADR there is on going work to enable signature aggregation in Tendermint. The reason why we have opted to not introduce it at this time is because every validator signs a unique message.
-  Signing a unique message prevents aggregation before verification. For example if we were to implement signature aggregation with BLS, there could be a potential slow down of 10x-100x in verification speeds.
+- 签名聚合
+  - 签名聚合是批量验证的替代方法。签名聚合导致快速验证和更小的块大小。在撰写此 ADR 时，正在开展在 Tendermint 中启用签名聚合的工作。我们选择在此时不引入它的原因是因为每个验证者都签署了一个独特的消息。
+  对唯一消息进行签名可防止在验证之前进行聚合。例如，如果我们要使用 BLS 实施签名聚合，则验证速度可能会降低 10 到 100 倍。
 
-## Decision
+## 决定
 
-Adopt Batch Verification.
+采用批量验证。
 
-## Detailed Design
+## 详细设计
 
-A new interface will be introduced. This interface will have three methods `NewBatchVerifier`, `Add` and `VerifyBatch`.
+将引入一个新界面。这个接口将有三个方法`NewBatchVerifier`、`Add`和`VerifyBatch`。
 
 ```go
 type BatchVerifier interface {
@@ -31,11 +31,11 @@ type BatchVerifier interface {
 }
 ```
 
-- `NewBatchVerifier` creates a new verifier. This verifier will be populated with entries to be verified. 
-- `Add` adds an entry to the Verifier. Add accepts a public key and two slice of bytes (signature and message). 
-- `Verify` verifies all the entires. At the end of Verify if the underlying API does not reset the Verifier to its initial state (empty), it should be done here. This prevents accidentally reusing the verifier with entries from a previous verification.
+- `NewBatchVerifier` 创建一个新的验证器。 此验证器将填充要验证的条目。
+- `Add` 向验证器添加一个条目。 Add 接受一个公钥和两个字节片(签名和消息)。
+- `Verify` 验证所有内容。 在验证结束时，如果底层 API 没有将验证器重置为其初始状态(空)，则应在此处完成。 这可以防止意外地将验证器与先前验证的条目重用。
 
-Above there is mention of an entry. An entry can be constructed in many ways depending on the needs of the underlying curve. A simple approach would be:
+上面提到了一个条目。 根据底层曲线的需要，可以通过多种方式构建条目。 一个简单的方法是:
 
 ```go
 type entry struct {
@@ -45,46 +45,46 @@ type entry struct {
 }
 ```
 
-The main reason this approach is being taken is to prevent simple mistakes. Some APIs allow the user to create three slices and pass them to the `VerifyBatch` function but this relies on the user to safely generate all the slices (see example below). We would like to minimize the possibility of making a mistake.
+采取这种方法的主要原因是为了防止简单的错误。 一些 API 允许用户创建三个切片并将它们传递给“VerifyBatch”函数，但这依赖于用户安全地生成所有切片(参见下面的示例)。 我们希望尽量减少出错的可能性。
 
 ```go
 func Verify(keys []crypto.Pubkey, signatures, messages[][]byte) bool
 ```
 
-This change will not affect any users in anyway other than faster verification times.
+除了更快的验证时间之外，此更改不会以任何方式影响任何用户。
 
-This new api will be used for verification in both consensus and block syncing. Within the current Verify functions there will be a check to see if the key types supports the BatchVerification API. If it does it will execute batch verification, if not single signature verification will be used. 
+这个新的 api 将用于共识和块同步的验证。 在当前的验证函数中，将检查密钥类型是否支持 BatchVerification API。 如果是，则执行批量验证，否则将使用单签名验证。
 
-#### Consensus
+#### 共识
 
-  The process within consensus will be to wait for 2/3+ of the votes to be received, once they are received `Verify()` will be called to batch verify all the messages. The messages that come in after 2/3+ has been verified will be individually verified. 
+  共识中的过程将等待收到 2/3+ 的选票，一旦收到，将调用“Verify()”来批量验证所有消息。 2/3+ 之后收到的消息将被单独验证。
 
-#### Block Sync & Light Client
+#### 块同步和轻客户端
 
-  The process for block sync & light client verification will be to verify only 2/3+ in a batch style. Since these processes are not participating in consensus there is no need to wait for more messages.
+  块同步和轻客户端验证的过程将以批处理方式仅验证 2/3+。由于这些进程不参与共识，因此无需等待更多消息。
 
-If batch verifications fails for any reason, it will not be known which entry caused the failure. Verification will need to revert to single signature verification.
+如果批量验证因任何原因失败，将不知道是哪个条目导致了失败。验证将需要恢复到单一签名验证。
 
-Starting out, only ed25519 will support batch verification. 
+刚开始，只有 ed25519 将支持批量验证。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-### Positive
+### 积极的
 
-- Faster verification times, if the curve supports it
+- 更快的验证时间，如果曲线支持它
 
-### Negative
+### 消极的
 
-- No way to see which key failed verification
-  - A failure means reverting back to single signature verification.
+- 无法查看哪个密钥验证失败
+  - 失败意味着恢复到单一签名验证。
 
-### Neutral
+### 中性的
 
-## References
+## 参考
 
-[Ed25519 Library](https://github.com/hdevalence/ed25519consensus)
-[Ed25519 spec](https://ed25519.cr.yp.to/)
-[Signature Aggregation for votes](https://github.com/tendermint/tendermint/issues/1319)
-[Proposer-based timestamps](https://github.com/tendermint/tendermint/issues/2840)
+[Ed25519 库](https://github.com/hdevalence/ed25519consensus)
+[Ed25519 规格](https://ed25519.cr.yp.to/)
+【签名聚合投票】(https://github.com/tendermint/tendermint/issues/1319)
+[基于 Proposer 的时间戳](https://github.com/tendermint/tendermint/issues/2840)

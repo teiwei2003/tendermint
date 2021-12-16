@@ -1,3 +1,3 @@
-# Configuration
+# 配置
 
-This file has moved to the [nodes section](../nodes/configuration.md).
+此文件已移至 [节点部分](../nodes/configuration.md)。

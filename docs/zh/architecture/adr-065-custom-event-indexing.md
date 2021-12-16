@@ -1,119 +1,118 @@
-# ADR 065: Custom Event Indexing
+# ADR 065:自定义事件索引
 
-- [ADR 065: Custom Event Indexing](#adr-065-custom-event-indexing)
-  - [Changelog](#changelog)
-  - [Status](#status)
-  - [Context](#context)
-  - [Alternative Approaches](#alternative-approaches)
-  - [Decision](#decision)
-  - [Detailed Design](#detailed-design)
+- [ADR 065:自定义事件索引](#adr-065-custom-event-indexing)
+  - [更新日志](#changelog)
+  - [状态](#状态)
+  - [上下文](#context)
+  - [替代方法](#alternative-approaches)
+  - [决定](#decision)
+  - [详细设计](#detailed-design)
     - [EventSink](#eventsink)
-    - [Supported Sinks](#supported-sinks)
+    - [支持的接收器](#supported-sinks)
       - [`KVEventSink`](#kveventsink)
       - [`PSQLEventSink`](#psqleventsink)
-    - [Configuration](#configuration)
-  - [Future Improvements](#future-improvements)
-  - [Consequences](#consequences)
-    - [Positive](#positive)
-    - [Negative](#negative)
-    - [Neutral](#neutral)
-  - [References](#references)
+    - [配置](#configuration)
+  - [未来改进](#future-improvements)
+  - [后果](#consequences)
+    - [正](#positive)
+    - [负](#负)
+    - [中性](#中性)
+  - [参考文献](#references)
 
-## Changelog
+## 变更日志
 
-- April 1, 2021: Initial Draft (@alexanderbez)
-- April 28, 2021: Specify search capabilities are only supported through the KV indexer (@marbar3778)
-- May 19, 2021: Update the SQL schema and the eventsink interface (@jayt106)
-- Aug 30, 2021: Update the SQL schema and the psql implementation (@creachadair)
-- Oct 5, 2021: Clarify goals and implementation changes (@creachadair)
+- 2021 年 4 月 1 日:初稿 (@alexanderbez)
+- 2021 年 4 月 28 日:仅通过 KV 索引器支持指定搜索功能 (@marbar3778)
+- 2021 年 5 月 19 日:更新 SQL 架构和 eventsink 接口 (@jayt106)
+- 2021 年 8 月 30 日:更新 SQL 架构和 psql 实现 (@creachadair)
+- 2021 年 10 月 5 日:阐明目标和实施变更 (@creachadair)
 
-## Status
+## 状态
 
-Accepted
+公认
 
-## Context
+## 语境
 
-Currently, Tendermint Core supports block and transaction event indexing through
-the `tx_index.indexer` configuration. Events are captured in transactions and
-are indexed via a `TxIndexer` type. Events are captured in blocks, specifically
-from `BeginBlock` and `EndBlock` application responses, and are indexed via a
-`BlockIndexer` type. Both of these types are managed by a single `IndexerService`
-which is responsible for consuming events and sending those events off to be
-indexed by the respective type.
+目前，Tendermint Core 支持通过区块和交易事件索引
+`tx_index.indexer` 配置。事件在事务中被捕获，并且
+通过“TxIndexer”类型进行索引。事件是在块中捕获的，特别是
+来自“BeginBlock”和“EndBlock”应用程序响应，并通过
+`BlockIndexer` 类型。这两种类型都由单个“IndexerService”管理
+它负责消费事件并将这些事件发送出去
+按相应类型索引。
 
-In addition to indexing, Tendermint Core also supports the ability to query for
-both indexed transaction and block events via Tendermint's RPC layer. The ability
-to query for these indexed events facilitates a great multitude of upstream client
-and application capabilities, e.g. block explorers, IBC relayers, and auxiliary
-data availability and indexing services.
+除了索引之外，Tendermint Core 还支持查询
+通过 Tendermint 的 RPC 层索引交易和区块事件。能力，技能
+查询这些索引事件有助于大量上游客户端
+和应用能力，例如区块浏览器、IBC 中继器和辅助
+数据可用性和索引服务。
 
-Currently, Tendermint only supports indexing via a `kv` indexer, which is supported
-by an underlying embedded key/value store database. The `kv` indexer implements
-its own indexing and query mechanisms. While the former is somewhat trivial,
-providing a rich and flexible query layer is not as trivial and has caused many
-issues and UX concerns for upstream clients and applications.
+目前，Tendermint 仅支持通过 `kv` 索引器进行索引，该索引器受支持
+通过底层嵌入式键/值存储数据库。 `kv` 索引器实现
+它自己的索引和查询机制。虽然前者有些微不足道，
+提供丰富而灵活的查询层并非易事，并且已经引起了许多
+上游客户端和应用程序的问题和用户体验问题。
 
-The fragile nature of the proprietary `kv` query engine and the potential
-performance and scaling issues that arise when a large number of consumers are
-introduced, motivate the need for a more robust and flexible indexing and query
-solution.
+专有的“kv”查询引擎的脆弱性和潜力
+当大量消费者使用时出现的性能和扩展问题
+引入，激发对更健壮和灵活的索引和查询的需求
+解决方案。
+## 替代方法
 
-## Alternative Approaches
+关于更强大的解决方案的替代方法，唯一严重的
+被考虑的竞争者是过渡到使用 [SQLite](https://www.sqlite.org/index.html)。
 
-With regards to alternative approaches to a more robust solution, the only serious
-contender that was considered was to transition to using [SQLite](https://www.sqlite.org/index.html).
+虽然该方法可行，但它会将我们锁定在特定的查询语言中
+存储层，所以在某些方面它只比我们目前的方法好一点。
+此外，实施将需要将 CGO 引入
+Tendermint 核心堆栈，而现在 CGO 仅根据
+使用的数据库。
 
-While the approach would work, it locks us into a specific query language and
-storage layer, so in some ways it's only a bit better than our current approach.
-In addition, the implementation would require the introduction of CGO into the
-Tendermint Core stack, whereas right now CGO is only introduced depending on
-the database used.
+## 决定
 
-## Decision
+我们将采用与 Cosmos SDK 的 `KVStore` 状态类似的方法
+[ADR-038](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-038-state-listening.md) 中描述的聆听。
 
-We will adopt a similar approach to that of the Cosmos SDK's `KVStore` state
-listening described in [ADR-038](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-038-state-listening.md).
+我们将实施以下更改:
 
-We will implement the following changes:
+- 引入一个新接口`EventSink`，所有数据接收器都必须实现该接口。
+- 增加现有的`tx_index.indexer` 配置，现在接受一个系列
+  一种或多种索引器类型，即接收器。
+- 将当前的`TxIndexer` 和`BlockIndexer` 组合成一个`KVEventSink`
+  实现了`EventSink`接口。
+- 引入一个额外的`EventSink` 实现，该实现由
+  [PostgreSQL](https://www.postgresql.org/)。
+  - 实施必要的模式以支持块和交易事件索引。
+- 更新 `IndexerService` 以使用一系列 `EventSinks`。
 
-- Introduce a new interface, `EventSink`, that all data sinks must implement.
-- Augment the existing `tx_index.indexer` configuration to now accept a series
-  of one or more indexer types, i.e., sinks.
-- Combine the current `TxIndexer` and `BlockIndexer` into a single `KVEventSink`
-  that implements the `EventSink` interface.
-- Introduce an additional `EventSink` implementation that is backed by
-  [PostgreSQL](https://www.postgresql.org/).
-  - Implement the necessary schemas to support both block and transaction event indexing.
-- Update `IndexerService` to use a series of `EventSinks`.
+此外:
 
-In addition:
+- Postgres 索引器实现将_不_实现专有的`kv`
+  查询语言。希望针对 Postgres 索引器编写查询的用户
+  将直接连接到底层 DBMS 并使用基于
+  索引模式。
 
-- The Postgres indexer implementation will _not_ implement the proprietary `kv`
-  query language. Users wishing to write queries against the Postgres indexer
-  will connect to the underlying DBMS directly and use SQL queries based on the
-  indexing schema.
+  未来的自定义索引器实现将不需要支持
+  专有查询语言。
 
-  Future custom indexer implementations will not be required to support the
-  proprietary query language either.
+- 目前，现有的 `kv` 索引器将保留在其当前位置
+  查询支持，但将在后续版本中标记为已弃用，并且
+  文档将更新以鼓励需要查询的用户
+  要迁移到 Postgres 索引器的事件索引。
 
-- For now, the existing `kv` indexer will be left in place with its current
-  query support, but will be marked as deprecated in a subsequent release, and
-  the documentation will be updated to encourage users who need to query the
-  event index to migrate to the Postgres indexer.
+- 将来我们可能会完全移除 `kv` 索引器，或者将其替换为
+  不同的实现；该决定被推迟为今后的工作。
 
-- In the future we may remove the `kv` indexer entirely, or replace it with a
-  different implementation; that decision is deferred as future work.
-
-- In the future, we may remove the index query endpoints from the RPC service
-  entirely; that decision is deferred as future work, but recommended.
+- 将来，我们可能会从 RPC 服务中删除索引查询端点
+  完全;该决定被推迟为未来的工作，但建议。
 
 
-## Detailed Design
+## 详细设计
 
-### EventSink
+### 事件接收器
 
-We introduce the `EventSink` interface type that all supported sinks must implement.
-The interface is defined as follows:
+我们介绍了所有支持的接收器必须实现的 `EventSink` 接口类型。
+接口定义如下:
 
 ```go
 type EventSink interface {
@@ -131,37 +130,37 @@ type EventSink interface {
 }
 ```
 
-The `IndexerService`  will accept a list of one or more `EventSink` types. During
-the `OnStart` method it will call the appropriate APIs on each `EventSink` to
-index both block and transaction events.
+`IndexerService` 将接受一个或多个 `EventSink` 类型的列表。中
+`OnStart` 方法它将在每个 `EventSink` 上调用适当的 API 以
+索引块和交易事件。
 
-### Supported Sinks
+### 支持的接收器
 
-We will initially support two `EventSink` types out of the box.
+我们最初将支持两种开箱即用的“EventSink”类型。
 
-#### `KVEventSink`
+####`KVEventSink`
 
-This type of `EventSink` is a combination of the  `TxIndexer` and `BlockIndexer`
-indexers, both of which are backed by a single embedded key/value database.
+这种类型的`EventSink`是`TxIndexer`和`BlockIndexer`的组合
+索引器，两者都由单个嵌入式键/值数据库支持。
 
-A bulk of the existing business logic will remain the same, but the existing APIs
-mapped to the new `EventSink` API. Both types will be removed in favor of a single
-`KVEventSink` type.
+大部分现有业务逻辑将保持不变，但现有 API
+映射到新的`EventSink` API。两种类型都将被删除以支持单一
+`KVEventSink` 类型。
 
-The `KVEventSink` will be the only `EventSink` enabled by default, so from a UX
-perspective, operators should not notice a difference apart from a configuration
-change.
+`KVEventSink` 将是唯一默认启用的 `EventSink`，因此从 UX
+从角度来看，操作员不应注意到配置之外的差异
+改变。
 
-We omit `EventSink` implementation details as it should be fairly straightforward
-to map the existing business logic to the new APIs.
+我们省略了 EventSink 实现细节，因为它应该相当简单
+将现有业务逻辑映射到新 API。
 
-#### `PSQLEventSink`
+####`PSQLEventSink`
 
-This type of `EventSink` indexes block and transaction events into a [PostgreSQL](https://www.postgresql.org/).
-database. We define and automatically migrate the following schema when the
-`IndexerService` starts.
+这种类型的 `EventSink` 将区块和交易事件索引到 [PostgreSQL](https://www.postgresql.org/) 中。
+数据库。我们定义并自动迁移以下架构时
+`IndexerService` 启动。
 
-The postgres eventsink will not support `tx_search`, `block_search`, `GetTxByHash` and `HasBlock`.
+postgres 事件接收器将不支持 `tx_search`、`block_search`、`GetTxByHash` 和 `HasBlock`。
 
 ```sql
 -- Table Definition ----------------------------------------------
@@ -247,8 +246,8 @@ CREATE VIEW tx_events AS
   WHERE event_attributes.tx_id IS NOT NULL;
 ```
 
-The `PSQLEventSink` will implement the `EventSink` interface as follows
-(some details omitted for brevity):
+`PSQLEventSink` 将实现 `EventSink` 接口如下
+(为简洁起见省略了一些细节):
 
 ```go
 func NewEventSink(connStr, chainID string) (*EventSink, error) {
@@ -352,12 +351,12 @@ func (es *EventSink) GetTxByHash(hash []byte) (*abci.TxResult, error)
 func (es *EventSink) HasBlock(h int64) (bool, error)
 ```
 
-### Configuration
+### 配置
 
-The current `tx_index.indexer` configuration would be changed to accept a list
-of supported `EventSink` types instead of a single value.
+当前的 `tx_index.indexer` 配置将更改为接受列表
+支持的`EventSink` 类型而不是单个值。
 
-Example:
+例子:
 
 ```toml
 [tx_index]
@@ -368,12 +367,12 @@ indexer = [
 ]
 ```
 
-If the `indexer` list contains the `null` indexer, then no indexers will be used
-regardless of what other values may exist.
+如果 `indexer` 列表包含 `null` 索引器，则不会使用任何索引器
+不管可能存在什么其他值。
 
-Additional configuration parameters might be required depending on what event
-sinks are supplied to `tx_index.indexer`. The `psql` will require an additional
-connection configuration.
+根据事件的不同，可能需要其他配置参数
+sinks 被提供给 `tx_index.indexer`。 `psql` 将需要一个额外的
+连接配置。
 
 ```toml
 [tx_index]
@@ -386,39 +385,39 @@ indexer = [
 pqsql_conn = "postgresql://<user>:<password>@<host>:<port>/<db>?<opts>"
 ```
 
-Any invalid or misconfigured `tx_index` configuration should yield an error as
-early as possible.
+任何无效或错误配置的 `tx_index` 配置都应该产生一个错误
+尽早。
 
-## Future Improvements
+## 未来的改进
 
-Although not technically required to maintain feature parity with the current
-existing Tendermint indexer, it would be beneficial for operators to have a method
-of performing a "re-index". Specifically, Tendermint operators could invoke an
-RPC method that allows the Tendermint node to perform a re-indexing of all block
-and transaction events between two given heights, H<sub>1</sub> and H<sub>2</sub>,
-so long as the block store contains the blocks and transaction results for all
-the heights specified in a given range.
+虽然在技术上不需要保持与当前的功能相同
+现有的 Tendermint 索引器，对于运营商来说有一个方法是有益的
+执行“重新索引”。具体来说，Tendermint 运营商可以调用
+RPC 方法，允许 Tendermint 节点执行所有块的重新索引
+以及两个给定高度 H<sub>1</sub> 和 H<sub>2</sub> 之间的交易事件，
+只要块存储包含所有的块和交易结果
+在给定范围内指定的高度。
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- A more robust and flexible indexing and query engine for indexing and search
-  block and transaction events.
-- The ability to not have to support a custom indexing and query engine beyond
-  the legacy `kv` type.
-- The ability to offload/proxy indexing and querying to the underling sink.
-- Scalability and reliability that essentially comes "for free" from the underlying
-  sink, if it supports it.
+- 用于索引和搜索的更强大和灵活的索引和查询引擎
+  块和交易事件。
+- 不必支持自定义索引和查询引擎的能力
+  传统的 `kv` 类型。
+- 卸载/代理索引和查询到底层接收器的能力。
+- 可扩展性和可靠性基本上从底层“免费”而来
+  下沉，如果它支持它。
 
-### Negative
+### 消极的
 
-- The need to support multiple and potentially a growing set of custom `EventSink`
-  types.
+- 需要支持多个且可能不断增长的自定义`EventSink`
+  类型。
 
-### Neutral
+### 中性的
 
-## References
+## 参考
 
 - [Cosmos SDK ADR-038](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-038-state-listening.md)
 - [PostgreSQL](https://www.postgresql.org/)

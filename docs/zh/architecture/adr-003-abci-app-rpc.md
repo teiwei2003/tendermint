@@ -1,34 +1,34 @@
-# ADR 3: Must an ABCI-app have an RPC server?
+# ADR 3:ABCI 应用程序必须具有 RPC 服务器吗？
 
-## Context
+## 语境
 
-ABCI-server could expose its own RPC-server and act as a proxy to Tendermint.
+ABCI-server 可以暴露自己的 RPC-server 并充当 Tendermint 的代理。
 
-The idea was for the Tendermint RPC to just be a transparent proxy to the app.
-Clients need to talk to Tendermint for proofs, unless we burden all app devs
-with exposing Tendermint proof stuff. Also seems less complex to lock down one
-server than two, but granted it makes querying a bit more kludgy since it needs
-to be passed as a `Query`. Also, **having a very standard rpc interface means
-the light-client can work with all apps and handle proofs**. The only
-app-specific logic is decoding the binary data to a more readable form (eg.
-json). This is a huge advantage for code-reuse and standardization.
+这个想法是让 Tendermint RPC 只是应用程序的透明代理。
+客户需要与 Tendermint 交谈以获得证明，除非我们对所有应用程序开发人员造成负担
+暴露 Tendermint 证明的东西。 锁定一个似乎也不那么复杂
+服务器比两个，但授予它使查询更加混乱，因为它需要
+作为“查询”传递。 此外，**具有非常标准的 rpc 接口意味着
+轻客户端可以与所有应用程序一起使用并处理证明**。 唯一的
+特定于应用程序的逻辑将二进制数据解码为更易读的形式(例如。
+json)。 这是代码重用和标准化的巨大优势。
 
-## Decision
+## 决定
 
-We dont expose an RPC server on any of our ABCI-apps.
+我们不会在我们的任何 ABCI 应用程序上公开 RPC 服务器。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Unified interface for all apps
+- 所有应用程序的统一界面
 
-### Negative
+### 消极的
 
-- `Query` interface
+-`查询`界面
 
-### Neutral
+### 中性的

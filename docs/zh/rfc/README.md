@@ -1,42 +1,42 @@
-# Requests for Comments
+# 征求意见
 
-A Request for Comments (RFC) is a record of discussion on an open-ended topic
-related to the design and implementation of Tendermint Core, for which no
-immediate decision is required.
+评论请求 (RFC) 是关于开放式主题的讨论记录
+与 Tendermint Core 的设计和实现有关，对此没有
+需要立即做出决定。
 
-The purpose of an RFC is to serve as a historical record of a high-level
-discussion that might otherwise only be recorded in an ad hoc way (for example,
-via gists or Google docs) that are difficult to discover for someone after the
-fact. An RFC _may_ give rise to more specific architectural _decisions_ for
-Tendermint, but those decisions must be recorded separately in [Architecture
-Decision Records (ADR)](./../architecture).
+RFC 的目的是作为高层的历史记录。
+否则只能以临时方式记录的讨论(例如，
+通过 gists 或 Google 文档)，在之后很难被某人发现
+事实。 RFC _可能_产生更具体的架构_决策_
+Tendermint，但这些决定必须单独记录在 [Architecture
+决策记录 (ADR)](./../architecture)。
 
-As a rule of thumb, if you can articulate a specific question that needs to be
-answered, write an ADR. If you need to explore the topic and get input from
-others to know what questions need to be answered, an RFC may be appropriate.
+根据经验，如果您可以阐明需要解决的特定问题
+回答，写一个 ADR。如果您需要探索该主题并从
+其他人要知道需要回答哪些问题，RFC 可能是合适的。
 
-## RFC Content
+## RFC 内容
 
-An RFC should provide:
+RFC 应提供:
 
-- A **changelog**, documenting when and how the RFC has changed.
-- An **abstract**, briefly summarizing the topic so the reader can quickly tell
-  whether it is relevant to their interest.
-- Any **background** a reader will need to understand and participate in the
-  substance of the discussion (links to other documents are fine here).
-- The **discussion**, the primary content of the document.
+- **更改日志**，记录 RFC 更改的时间和方式。
+- **摘要**，简要总结主题，以便读者可以快速了解
+  是否与他们的利益相关。
+- 读者需要了解和参与的任何**背景**
+  讨论的实质内容(此处可以提供指向其他文件的链接)。
+- **讨论**，文档的主要内容。
 
-The [rfc-template.md](./rfc-template.md) file includes placeholders for these
-sections.
+[rfc-template.md](./rfc-template.md) 文件包含这些的占位符
+部分。
 
-## Table of Contents
+## 目录
 
-- [RFC-000: P2P Roadmap](./rfc-000-p2p-roadmap.rst)
-- [RFC-001: Storage Engines](./rfc-001-storage-engine.rst)
-- [RFC-002: Interprocess Communication](./rfc-002-ipc-ecosystem.md)
-- [RFC-003: Performance Taxonomy](./rfc-003-performance-questions.md)
-- [RFC-004: E2E Test Framework Enhancements](./rfc-004-e2e-framework.md)
-- [RFC-005: Event System](./rfc-005-event-system.rst)
-- [RFC-006: Event Subscription](./rfc-006-event-subscription.md)
+- [RFC-000: P2P 路线图](./rfc-000-p2p-roadmap.rst)
+- [RFC-001:存储引擎](./rfc-001-storage-engine.rst)
+- [RFC-002:进程间通信](./rfc-002-ipc-ecosystem.md)
+- [RFC-003:性能分类](./rfc-003-performance-questions.md)
+- [RFC-004:E2E 测试框架增强](./rfc-004-e2e-framework.md)
+- [RFC-005: 事件系统](./rfc-005-event-system.rst)
+- [RFC-006: 事件订阅](./rfc-006-event-subscription.md)
 
 <!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->

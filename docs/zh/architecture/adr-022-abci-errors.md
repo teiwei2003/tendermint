@@ -1,63 +1,63 @@
-# ADR 022: ABCI Errors
+# ADR 022:ABCI 错误
 
-## Changelog
+## 变更日志
 
-- *2018-09-01* Initial version
+- *2018-09-01* 初始版本
 
-## Context
+## 语境
 
-ABCI errors should provide an abstraction between application details
-and the client interface responsible for formatting & displaying errors to the user.
+ABCI 错误应该提供应用程序细节之间的抽象
+以及负责格式化和向用户显示错误的客户端界面。
 
-Currently, this abstraction consists of a single integer (the `code`), where any
-`code > 0` is considered an error (ie. invalid transaction) and all type
-information about the error is contained in the code. This integer is
-expected to be decoded by the client into a known error string, where any
-more specific data is contained in the `data`.
+目前，这个抽象由一个整数(`code`)组成，其中任何
+`code > 0` 被认为是一个错误(即无效交易)和所有类型
+有关错误的信息包含在代码中。这个整数是
+预期被客户端解码成一个已知的错误字符串，其中任何
+更具体的数据包含在“数据”中。
 
-In a [previous conversation](https://github.com/tendermint/abci/issues/165#issuecomment-353704015),
-it was suggested that not all non-zero codes need to be errors, hence why it's called `code` and not `error code`.
-It is unclear exactly how the semantics of the `code` field will evolve, though
-better lite-client proofs (like discussed for tags
-[here](https://github.com/tendermint/tendermint/issues/1007#issuecomment-413917763))
-may play a role.
+在[之前的对话](https://github.com/tendermint/abci/issues/165#issuecomment-353704015)中，
+有人建议并非所有非零代码都需要是错误，因此它被称为“代码”而不是“错误代码”。
+目前尚不清楚 `code` 字段的语义将如何演变，尽管
+更好的精简客户端证明(如讨论的标签
+[这里](https://github.com/tendermint/tendermint/issues/1007#issuecomment-413917763))
+可能发挥作用。
 
-Note that having all type information in a single integer
-precludes an easy coordination method between "module implementers" and "client
-implementers", especially for apps with many "modules". With an unbounded error domain (such as a string), module
-implementers can pick a globally unique prefix & error code set, so client
-implementers could easily implement support for "module A" regardless of which
-particular blockchain network it was running in and which other modules were running with it. With
-only error codes, globally unique codes are difficult/impossible, as the space
-is finite and collisions are likely without an easy way to coordinate.
+请注意，在单个整数中包含所有类型信息
+排除了“模块实现者”和“客户端”之间的简单协调方法
+实现者”，特别是对于具有许多“模块”的应用程序。具有无限错误域(例如字符串)，模块
+实现者可以选择一个全局唯一的前缀和错误代码集，因此客户端
+实现者可以轻松实现对“模块 A”的支持，而不管哪个
+它正在运行的特定区块链网络以及正在运行的其他模块。和
+只有错误代码，全局唯一代码是困难/不可能的，因为空间
+是有限的，如果没有简单的协调方法，很可能会发生碰撞。
 
-For instance, while trying to build an ecosystem of modules that can be composed into a single
-ABCI application, the Cosmos-SDK had to hack a higher level "codespace" into the
-single integer so that each module could have its own space to express its
-errors.
+例如，在尝试构建可以组合成单个模块的生态系统时
+在 ABCI 应用程序中，Cosmos-SDK 必须将更高级别的“代码空间”破解到
+单个整数，以便每个模块可以有自己的空间来表达它的
+错误。
 
-## Decision
+## 决定
 
-Include a `string code_space` in all ABCI messages that have a `code`.
-This allows applications to namespace the codes so they can experiment with
-their own code schemes.
+在所有具有 `code` 的 ABCI 消息中包含一个 `string code_space`。
+这允许应用程序命名代码以便他们可以试验
+他们自己的代码方案。
 
-It is the responsibility of applications to limit the size of the `code_space`
-string.
+应用程序有责任限制 `code_space` 的大小
+细绳。
 
-How the codespace is hashed into block headers (ie. so it can be queried
-efficiently by lite clients) is left for a separate ADR.
+代码空间如何散列到块头中(即，它可以被查询
+lite 客户端有效)留给单独的 ADR。
 
-## Consequences
+## 结果
 
-## Positive
+## 积极的
 
-- No need for complex codespacing on a single integer
-- More expressive type system for errors
+- 不需要对单个整数进行复杂的代码间距
+- 更具表现力的错误类型系统
 
-## Negative
+## 消极的
 
-- Another field in the response needs to be accounted for
-- Some redundancy with `code` field
-- May encourage more error/code type info to move to the `codespace` string, which
-  could impact lite clients.
+- 需要考虑响应中的另一个字段
+- `code` 字段的一些冗余
+- 可能会鼓励更多的错误/代码类型信息移动到 `codespace` 字符串，其中
+  可能会影响精简版客户端。

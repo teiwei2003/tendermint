@@ -1,40 +1,40 @@
-# Creating an application in Java
+# 在Java中创建一个应用程序
 
-## Guide Assumptions
+## 指南假设
 
-This guide is designed for beginners who want to get started with a Tendermint
-Core application from scratch. It does not assume that you have any prior
-experience with Tendermint Core.
+本指南专为想要开始使用 Tendermint 的初学者而设计
+从头开始的核心应用程序。它并不假设您有任何先前
+使用 Tendermint Core 的经验。
 
-Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state
-transition machine (your application) - written in any programming language - and securely
-replicates it on many machines.
+Tendermint Core 是采用状态的拜占庭容错 (BFT) 中间件
+转换机(您的应用程序) - 用任何编程语言编写 - 并且安全
+在许多机器上复制它。
 
-By following along with this guide, you'll create a Tendermint Core project
-called kvstore, a (very) simple distributed BFT key-value store. The application (which should
-implementing the blockchain interface (ABCI)) will be written in Java.
+通过遵循本指南，您将创建一个 Tendermint 核心项目
+称为 kvstore，一个(非常)简单的分布式 BFT 键值存储。应用程序(应该
+实现区块链接口(ABCI))将用Java编写。
 
-This guide assumes that you are not new to JVM world. If you are new please see [JVM Minimal Survival Guide](https://hadihariri.com/2013/12/29/jvm-minimal-survival-guide-for-the-dotnet-developer/#java-the-language-java-the-ecosystem-java-the-jvm) and [Gradle Docs](https://docs.gradle.org/current/userguide/userguide.html).
+本指南假设您对 JVM 世界并不陌生。如果您是新手，请参阅 [JVM 最小生存指南](https://hadihariri.com/2013/12/29/jvm-minimal-survival-guide-for-the-dotnet-developer/#java-the-language- java-the-ecosystem-java-the-jvm) 和 [Gradle Docs](https://docs.gradle.org/current/userguide/userguide.html)。
 
-## Built-in app vs external app
+## 内置应用与外部应用
 
-If you use Golang, you can run your app and Tendermint Core in the same process to get maximum performance.
-[Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written this way.
-Please refer to [Writing a built-in Tendermint Core application in Go](./go-built-in.md) guide for details.
+如果您使用 Golang，您可以在同一进程中运行您的应用程序和 Tendermint Core 以获得最大性能。
+[Cosmos SDK](https://github.com/cosmos/cosmos-sdk) 就是这样写的。
+详情请参考[Writing a built-in Tendermint Core application in Go](./go-built-in.md) 指南。
 
-If you choose another language, like we did in this guide, you have to write a separate app,
-which will communicate with Tendermint Core via a socket (UNIX or TCP) or gRPC.
-This guide will show you how to build external application using RPC server.
+如果您选择另一种语言，就像我们在本指南中所做的那样，您必须编写一个单独的应用程序，
+它将通过套接字(UNIX 或 TCP)或 gRPC 与 Tendermint Core 通信。
+本指南将向您展示如何使用 RPC 服务器构建外部应用程序。
 
-Having a separate application might give you better security guarantees as two
-processes would be communicating via established binary protocol. Tendermint
-Core will not have access to application's state.
+拥有一个单独的应用程序可能会给你更好的安全保证
+进程将通过已建立的二进制协议进行通信。嫩肤
+核心将无法访问应用程序的状态。
 
-## 1.1 Installing Java and Gradle
+## 1.1 安装 Java 和 Gradle
 
-Please refer to [the Oracle's guide for installing JDK](https://www.oracle.com/technetwork/java/javase/downloads/index.html).
+请参考【Oracle的JDK安装指南】(https://www.oracle.com/technetwork/java/javase/downloads/index.html)。
 
-Verify that you have installed Java successfully:
+验证您是否已成功安装 Java:
 
 ```bash
 $ java -version
@@ -43,21 +43,21 @@ Java(TM) SE Runtime Environment (build 12.0.2+10)
 Java HotSpot(TM) 64-Bit Server VM (build 12.0.2+10, mixed mode, sharing)
 ```
 
-You can choose any version of Java higher or equal to 8.
-This guide is written using Java SE Development Kit 12.
+您可以选择任何高于或等于 8 的 Java 版本。
+本指南使用 Java SE Development Kit 12 编写。
 
-Make sure you have `$JAVA_HOME` environment variable set:
+确保您设置了 `$JAVA_HOME` 环境变量:
 
 ```bash
 $ echo $JAVA_HOME
 /Library/Java/JavaVirtualMachines/jdk-12.0.2.jdk/Contents/Home
 ```
 
-For Gradle installation, please refer to [their official guide](https://gradle.org/install/).
+Gradle 安装请参考[他们的官方指南](https://gradle.org/install/)。
 
-## 1.2 Creating a new Java project
+## 1.2 创建一个新的 Java 项目
 
-We'll start by creating a new Gradle project.
+我们将首先创建一个新的 Gradle 项目。
 
 ```bash
 export KVSTORE_HOME=~/kvstore
@@ -65,13 +65,13 @@ mkdir $KVSTORE_HOME
 cd $KVSTORE_HOME
 ```
 
-Inside the example directory run:
+在示例目录中运行:
 
 ```bash
 gradle init --dsl groovy --package io.example --project-name example --type java-application --test-framework junit
 ```
 
-This will create a new project for you. The tree of files should look like:
+这将为您创建一个新项目。 文件树应如下所示:
 
 ```bash
 $ tree
@@ -99,7 +99,7 @@ $ tree
         `-- resources
 ```
 
-When run, this should print "Hello world." to the standard output.
+运行时，这应该打印“Hello world”。 到标准输出。
 
 ```bash
 $ ./gradlew run
@@ -107,17 +107,17 @@ $ ./gradlew run
 Hello world.
 ```
 
-## 1.3 Writing a Tendermint Core application
+## 1.3 编写 Tendermint Core 应用程序
 
-Tendermint Core communicates with the application through the Application
-BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
-This allows Tendermint Core to run applications written in any programming
-language.
+Tendermint Core 通过应用程序与应用程序通信
+区块链接口(ABCI)。 所有消息类型都在 [protobuf
+文件](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto)。
+这允许 Tendermint Core 运行以任何编程方式编写的应用程序
+语。
 
-### 1.3.1 Compile .proto files
+### 1.3.1 编译 .proto 文件
 
-Add the following piece to the top of the `build.gradle`:
+将以下部分添加到 `build.gradle` 的顶部:
 
 ```groovy
 buildscript {
@@ -130,7 +130,7 @@ buildscript {
 }
 ```
 
-Enable the protobuf plugin in the `plugins` section of the `build.gradle`:
+在 build.gradle 的 plugins 部分启用 protobuf 插件:
 
 ```groovy
 plugins {
@@ -158,9 +158,9 @@ protobuf {
 }
 ```
 
-Now we should be ready to compile the `*.proto` files.
+现在我们应该准备好编译 `*.proto` 文件了。
 
-Copy the necessary `.proto` files to your project:
+将必要的 `.proto` 文件复制到您的项目中:
 
 ```bash
 mkdir -p \
@@ -191,7 +191,7 @@ cp $GOPATH/src/github.com/gogo/protobuf/gogoproto/gogo.proto \
    $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto/gogo.proto
 ```
 
-Add these dependencies to `build.gradle`:
+将这些依赖项添加到 `build.gradle`:
 
 ```groovy
 dependencies {
@@ -207,7 +207,7 @@ To generate all protobuf-type classes run:
 ./gradlew generateProto
 ```
 
-To verify that everything went smoothly, you can inspect the `build/generated/` directory:
+要验证一切顺利，您可以检查 `build/generated/` 目录:
 
 ```bash
 $ tree build/generated/
@@ -231,12 +231,12 @@ build/generated/
 |                   `-- Types.java
 ```
 
-### 1.3.2 Implementing ABCI
+### 1.3.2 实现 ABCI
 
-The resulting `$KVSTORE_HOME/build/generated/source/proto/main/grpc/types/ABCIApplicationGrpc.java` file
-contains the abstract class `ABCIApplicationImplBase`, which is an interface we'll need to implement.
+生成的`$KVSTORE_HOME/build/generated/source/proto/main/grpc/types/ABCIApplicationGrpc.java`文件
+包含抽象类“ABCIApplicationImplBase”，这是我们需要实现的接口。
 
-Create `$KVSTORE_HOME/src/main/java/io/example/KVStoreApp.java` file with the following content:
+使用以下内容创建 `$KVSTORE_HOME/src/main/java/io/example/KVStoreApp.java` 文件:
 
 ```java
 package io.example;
@@ -252,13 +252,13 @@ class KVStoreApp extends ABCIApplicationGrpc.ABCIApplicationImplBase {
 }
 ```
 
-Now I will go through each method of `ABCIApplicationImplBase` explaining when it's called and adding
-required business logic.
+现在我将通过 ABCIApplicationImplBase 的每个方法解释它何时被调用并添加
+所需的业务逻辑。
 
 ### 1.3.3 CheckTx
 
-When a new transaction is added to the Tendermint Core, it will ask the
-application to check it (validate the format, signatures, etc.).
+当一个新的交易被添加到 Tendermint Core 时，它会询问
+应用程序来检查它(验证格式、签名等)。
 
 ```java
 @Override
@@ -308,21 +308,21 @@ private List<byte[]> split(ByteString tx, char separator) {
 }
 ```
 
-Don't worry if this does not compile yet.
+如果这还没有编译，请不要担心。
 
-If the transaction does not have a form of `{bytes}={bytes}`, we return `1`
-code. When the same key=value already exist (same key and value), we return `2`
-code. For others, we return a zero code indicating that they are valid.
+如果交易没有`{bytes}={bytes}`的形式，我们返回`1`
+代码。 当相同的 key=value 已经存在(相同的 key 和 value)时，我们返回 `2`
+代码。 对于其他人，我们返回一个零代码，表明它们是有效的。
 
-Note that anything with non-zero code will be considered invalid (`-1`, `100`,
-etc.) by Tendermint Core.
+请注意，任何具有非零代码的内容都将被视为无效(`-1`、`100`、
+等)由 Tendermint 核心。
 
-Valid transactions will eventually be committed given they are not too big and
-have enough gas. To learn more about gas, check out ["the
-specification"](https://docs.tendermint.com/master/spec/abci/apps.html#gas).
+有效的交易最终将被提交，因为它们不是太大并且
+有足够的气。 要了解有关天然气的更多信息，请查看 [“
+规范"](https://docs.tendermint.com/master/spec/abci/apps.html#gas)。
 
-For the underlying key-value store we'll use
-[JetBrains Xodus](https://github.com/JetBrains/xodus), which is a transactional schema-less embedded high-performance database written in Java.
+对于我们将使用的底层键值存储
+[JetBrains Xodus](https://github.com/JetBrains/xodus)，这是一个用Java编写的无事务模式的嵌入式高性能数据库。
 
 `build.gradle`:
 
@@ -367,10 +367,10 @@ class KVStoreApp extends ABCIApplicationGrpc.ABCIApplicationImplBase {
 
 ### 1.3.4 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
-When Tendermint Core has decided on the block, it's transferred to the
-application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. `DeliverTx` are being transferred asynchronously, but the
-responses are expected to come in order.
+当 Tendermint Core 决定区块时，它会被转移到
+应用程序分为 3 个部分:`BeginBlock`，每笔交易一个 `DeliverTx` 和
+最后是`EndBlock`。 `DeliverTx` 正在异步传输，但是
+预计响应将有序进行。
 
 ```java
 @Override
@@ -404,19 +404,19 @@ public void deliverTx(RequestDeliverTx req, StreamObserver<ResponseDeliverTx> re
 }
 ```
 
-If the transaction is badly formatted or the same key=value already exist, we
-again return the non-zero code. Otherwise, we add it to the store.
+如果交易格式错误或相同的 key=value 已经存在，我们
+再次返回非零代码。 否则，我们将其添加到商店。
 
-In the current design, a block can include incorrect transactions (those who
-passed `CheckTx`, but failed `DeliverTx` or transactions included by the proposer
-directly). This is done for performance reasons.
+在当前的设计中，一个区块可能包含不正确的交易(那些
+通过“CheckTx”，但“DeliverTx”或提议者包含的交易失败
+直接地)。 这样做是出于性能原因。
 
-Note we can't commit transactions inside the `DeliverTx` because in such case
-`Query`, which may be called in parallel, will return inconsistent data (i.e.
-it will report that some value already exist even when the actual block was not
-yet committed).
+请注意，我们不能在 `DeliverTx` 内提交事务，因为在这种情况下
+可以并行调用的 `Query` 将返回不一致的数据(即
+即使实际块不存在，它也会报告某些值已经存在
+尚未提交)。
 
-`Commit` instructs the application to persist the new state.
+`Commit` 指示应用程序保持新状态。
 
 ```java
 @Override
@@ -430,19 +430,19 @@ public void commit(RequestCommit req, StreamObserver<ResponseCommit> responseObs
 }
 ```
 
-### 1.3.5 Query
+### 1.3.5 查询
 
-Now, when the client wants to know whenever a particular key/value exist, it
-will call Tendermint Core RPC `/abci_query` endpoint, which in turn will call
-the application's `Query` method.
+现在，当客户端想知道特定键/值何时存在时，它
+将调用 Tendermint Core RPC `/abci_query` 端点，后者又会调用
+应用程序的`Query` 方法。
 
-Applications are free to provide their own APIs. But by using Tendermint Core
-as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/light)) can leverage
-the unified API across different applications. Plus they won't have to call the
-otherwise separate Tendermint Core API for additional proofs.
+应用程序可以免费提供自己的 API。 但是通过使用 Tendermint Core
+作为代理，客户端(包括[轻客户端
+包](https://godoc.org/github.com/tendermint/tendermint/light)) 可以利用
+跨不同应用程序的统一 API。 此外，他们将不必致电
+否则单独的 Tendermint 核心 API 用于额外的证明。
 
-Note we don't include a proof here.
+请注意，我们在此处不包含证明。
 
 ```java
 @Override
@@ -462,12 +462,12 @@ public void query(RequestQuery req, StreamObserver<ResponseQuery> responseObserv
 }
 ```
 
-The complete specification can be found
-[here](https://docs.tendermint.com/master/spec/abci/).
+可以找到完整的规范
+[此处](https://docs.tendermint.com/master/spec/abci/)。
 
-## 1.4 Starting an application and a Tendermint Core instances
+## 1.4 启动应用程序和 Tendermint Core 实例
 
-Put the following code into the `$KVSTORE_HOME/src/main/java/io/example/App.java` file:
+将以下代码放入`$KVSTORE_HOME/src/main/java/io/example/App.java`文件中:
 
 ```java
 package io.example;
@@ -489,12 +489,11 @@ public class App {
 }
 ```
 
-It is the entry point of the application.
-Here we create a special object `Environment`, which knows where to store the application state.
-Then we create and start the gRPC server to handle Tendermint Core requests.
+它是应用程序的入口点。
+在这里，我们创建了一个特殊的对象“Environment”，它知道在哪里存储应用程序状态。
+然后我们创建并启动 gRPC 服务器来处理 Tendermint Core 请求。
 
-Create the `$KVSTORE_HOME/src/main/java/io/example/GrpcServer.java` file with the following content:
-
+使用以下内容创建 `$KVSTORE_HOME/src/main/java/io/example/GrpcServer.java` 文件:
 ```java
 package io.example;
 
@@ -536,11 +535,11 @@ class GrpcServer {
 }
 ```
 
-## 1.5 Getting Up and Running
+## 1.5 启动和运行
 
-To create a default configuration, nodeKey and private validator files, let's
-execute `tendermint init`. But before we do that, we will need to install
-Tendermint Core.
+要创建默认配置、nodeKey 和私有验证器文件，让我们
+执行 `tendermint init`。 但在我们这样做之前，我们需要安装
+Tendermint 核心。
 
 ```bash
 $ rm -rf /tmp/example
@@ -566,8 +565,8 @@ We are ready to start our application:
 gRPC server started, listening on 26658
 ```
 
-Then we need to start Tendermint Core and point it to our application. Staying
-within the application directory execute:
+然后我们需要启动 Tendermint Core 并将其指向我们的应用程序。 住宿
+在应用程序目录中执行:
 
 ```bash
 $ TMHOME="/tmp/example" tendermint node --abci grpc --proxy-app tcp://127.0.0.1:26658
@@ -615,13 +614,13 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 }
 ```
 
-`dGVuZGVybWludA==` and `cm9ja3M=` are the base64-encoding of the ASCII of `tendermint` and `rocks` accordingly.
+`dGVuZGVybWludA==` 和 `cm9ja3M=` 分别是 `tendermint` 和 `rocks` 的 ASCII 码的 base64 编码。
 
-## Outro
+## 结尾
 
-I hope everything went smoothly and your first, but hopefully not the last,
-Tendermint Core application is up and running. If not, please [open an issue on
-Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
-deeper, read [the docs](https://docs.tendermint.com/master/).
+我希望一切顺利，你的第一个，但希望不是最后一个，
+Tendermint Core 应用程序已启动并正在运行。 如果没有，请[打开一个问题
+Github](https://github.com/tendermint/tendermint/issues/new/choose)。 挖
+更深入地阅读 [文档](https://docs.tendermint.com/master/)。
 
-The full source code of this example project can be found [here](https://github.com/climber73/tendermint-abci-grpc-java).
+这个示例项目的完整源代码可以在[这里](https://github.com/climber73/tendermint-abci-grpc-java)找到。

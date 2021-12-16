@@ -1,105 +1,105 @@
-# ADR 72: Restore Requests for Comments
+# ADR 72:恢复评论请求
 
-## Changelog
+## 变更日志
 
-- 20-Aug-2021: Initial draft (@creachadair)
+- 2021 年 8 月 20 日:初稿 (@creachadair)
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Context
+## 语境
 
-In the past, we kept a collection of Request for Comments (RFC) documents in `docs/rfc`.
-Prior to the creation of the ADR process, these documents were used to document
-design and implementation decisions about Tendermint Core. The RFC directory
-was removed in favor of ADRs, in commit 3761aa69 (PR
-[\#6345](https://github.com/tendermint/tendermint/pull/6345)).
+过去，我们在 `docs/rfc` 中保存了一个请求评论 (RFC) 文档的集合。
+在创建 ADR 流程之前，这些文件用于记录
+关于 Tendermint Core 的设计和实施决策。 RFC 目录
+在提交 3761aa69 (PR
+[\#6345](https://github.com/tendermint/tendermint/pull/6345))。
 
-For issues where an explicit design decision or implementation change is
-required, an ADR is generally preferable to an open-ended RFC: An ADR is
-relatively narrowly-focused, identifies a specific design or implementation
-question, and documents the consensus answer to that question.
+对于明确的设计决策或实施变更的问题
+需要，ADR 通常比开放式 RFC 更可取:ADR 是
+相对狭窄，确定特定的设计或实现
+问题，并记录对该问题的共识答案。
 
-Some discussions are more open-ended, however, or don't require a specific
-decision to be made (yet). Such conversations are still valuable to document,
-and several members of the Tendermint team have been doing so by writing gists
-or Google docs to share them around. That works well enough in the moment, but
-gists do not support any kind of collaborative editing, and both gists and docs
-are hard to discover after the fact. Google docs have much better collaborative
-editing, but are worse for discoverability, especially when contributors span
-different Google accounts.
+然而，有些讨论是开放式的，或者不需要特定的
+做出决定(尚未)。这样的对话仍然值得记录，
+Tendermint 团队的一些成员一直在通过编写要点来做到这一点
+或 Google 文档以共享它们。目前效果很好，但是
+gist 不支持任何形式的协作编辑，gist 和 docs 都支持
+事后很难发现。 Google 文档具有更好的协作性
+编辑，但在可发现性方面较差，尤其是当贡献者跨越
+不同的 Google 帐户。
 
-Discoverability is important, because these kinds of open-ended discussions are
-useful to people who come later -- either as new team members or as outside
-contributors seeking to use and understand the thoughts behind our designs and
-the architectural decisions that arose from those discussion.
+可发现性很重要，因为这些类型的开放式讨论是
+对后来来的人有用——无论是作为新团队成员还是作为外部成员
+寻求使用和理解我们设计背后的思想的贡献者
+从这些讨论中产生的架构决策。
 
-With these in mind, I propose that:
+考虑到这些，我建议:
 
--  We re-create a new, initially empty `docs/rfc` directory in the repository,
-   and use it to capture these kinds of open-ended discussions in supplement to
-   ADRs.
+- 我们在存储库中重新创建一个新的、最初为空的 `docs/rfc` 目录，
+   并用它来捕捉这些类型的开放式讨论，以补充
+   ADR。
 
--  Unlike in the previous RFC scheme, documents in this new directory will
-   _not_ be used directly for decision-making. This is the key difference
-   between an RFC and an ADR.
+- 与之前的 RFC 方案不同，这个新目录中的文档将
+   _不_直接用于决策。这是关键的区别
+   RFC 和 ADR 之间。
 
-   Instead, an RFC will exist to document background, articulate general
-   principles, and serve as a historical record of discussion and motivation.
+   相反，将存在一个 RFC 来记录背景，阐明一般
+   原则，并作为讨论和动机的历史记录。
 
-   In this system, an RFC may _only_ result in a decision indirectly, via ADR
-   documents created in response to the RFC.
+   在该系统中，RFC 可能_仅_通过 ADR 间接导致决策
+   为响应 RFC 而创建的文档。
 
-   **In short:** If a decision is required, write an ADR; otherwise if a
-   sufficiently broad discussion is needed, write an RFC.
+   **简而言之:** 如果需要做出决定，请写下 ADR；否则，如果
+   需要足够广泛的讨论，请编写 RFC。
 
-Just so that there is a consistent format, I also propose that:
+为了有一个一致的格式，我还建议:
 
--  RFC files are named `rfc-XXX-title.{md,rst,txt}` and are written in plain
-   text, Markdown, or ReStructured Text.
+- RFC 文件被命名为 `rfc-XXX-title.{md,rst,txt}` 并且以普通的方式编写
+   文本、Markdown 或重构文本。
 
--  Like an ADR, an RFC should include a high-level change log at the top of the
-   document, and sections for:
+- 与 ADR 一样，RFC 应在顶部包含高级更改日志
+   文档和部分:
 
-     * Abstract: A brief, high-level synopsis of the topic.
-     * Background: Any background necessary to understand the topic.
-     * Discussion: Detailed discussion of the issue being considered.
+     * 摘要:该主题的简要、高级概要。
+     * 背景:任何理解主题所需的背景。
+     * 讨论:正在考虑的问题的详细讨论。
 
--  Unlike an ADR, an RFC does _not_ include sections for Decisions, Detailed
-   Design, or evaluation of proposed solutions. If an RFC leads to a proposal
-   for an actual architectural change, that must be recorded in an ADR in the
-   usual way, and may refer back to the RFC in its References section.
+- 与 ADR 不同，RFC _不_包括决策部分、详细信息部分
+   设计或评估提议的解决方案。如果 RFC 导致提案
+   对于实际的架构更改，必须在 ADR 中记录
+   通常的方式，并且可以在其参考部分中参考 RFC。
 
-## Alternative Approaches
+## 替代方法
 
-Leaving aside implementation details, the main alternative to this proposal is
-to leave things as they are now, with ADRs as the only log of record and other
-discussions being held informally in whatever medium is convenient at the time.
+撇开实施细节不谈，该提案的主要替代方案是
+保持现状，将 ADR 作为唯一的记录日志和其他
+在当时方便的任何媒体上非正式地进行讨论。
 
-## Decision
+## 决定
 
-(pending)
+(待办的)
 
-## Detailed Design
+## 详细设计
 
-- Create a new `docs/rfc` directory in the `tendermint` repository. Note that
-  this proposal intentionally does _not_ pull back the previous contents of
-  that path from Git history, as those documents were appropriately merged into
-  the ADR process.
+- 在 `tendermint` 存储库中创建一个新的 `docs/rfc` 目录。注意
+  这个提议是故意_不_撤回之前的内容
+  来自 Git 历史的那条路径，因为这些文档被适当地合并到
+  ADR 流程。
 
-- Create a `README.md` for RFCs that explains the rules and their relationship
-  to ADRs.
+- 为 RFC 创建一个 `README.md` 来解释规则和它们之间的关系
+  到 ADR。
 
-- Create an `rfc-template.md` file for RFC files.
+- 为 RFC 文件创建一个 `rfc-template.md` 文件。
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- We will have a more discoverable place to record open-ended discussions that
-  do not immediately result in a design change.
+- 我们将有一个更容易发现的地方来记录开放式讨论
+  不要立即导致设计更改。
 
-### Negative
+### 消极的
 
-- Potentially some people could be confused about the RFC/ADR distinction.
+- 有些人可能会对 RFC/ADR 的区别感到困惑。

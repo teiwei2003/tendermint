@@ -7,10 +7,10 @@ Tendermint Core 是一个区块链应用平台；它提供了等效的
 用任何编程语言编写。就像一个服务于网络应用程序的网络服务器，
 Tendermint 服务于区块链应用程序。
 
-更正式地说，Tendermint Core 执行拜占庭容错（BFT）
+更正式地说，Tendermint Core 执行拜占庭容错(BFT)
 用于任意确定性、有限状态机的状态机复制 (SMR)。
 有关更多背景信息，请参阅 [什么是
-Tendermint？]（介绍/什么是tendermint.md）。
+Tendermint？](介绍/什么是tendermint.md)。
 
 要快速开始使用示例应用程序，请参阅 [快速入门指南](introduction/quick-start.md)。
 

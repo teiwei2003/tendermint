@@ -1,54 +1,54 @@
-# ADR 053: State Sync Prototype
+# ADR 053:状态同步原型
 
-State sync is now [merged](https://github.com/tendermint/tendermint/pull/4705). Up-to-date ABCI documentation is [available](https://github.com/tendermint/spec/pull/90), refer to it rather than this ADR for details.
+状态同步现在[合并](https://github.com/tendermint/tendermint/pull/4705)。最新的 ABCI 文档[可用](https://github.com/tendermint/spec/pull/90)，请参考它而不是这个 ADR 了解详细信息。
 
-This ADR outlines the plan for an initial state sync prototype, and is subject to change as we gain feedback and experience. It builds on discussions and findings in [ADR-042](./adr-042-state-sync.md), see that for background information.
+此 ADR 概述了初始状态同步原型的计划，并且可能会随着我们获得反馈和经验而发生变化。它建立在 [ADR-042](./adr-042-state-sync.md) 中的讨论和发现之上，有关背景信息，请参阅该内容。
 
-## Changelog
+## 变更日志
 
-* 2020-01-28: Initial draft (Erik Grinaker)
+* 2020-01-28:初稿(埃里克·格里纳克)
 
-* 2020-02-18: Updates after initial prototype (Erik Grinaker)
-    * ABCI: added missing `reason` fields.
-    * ABCI: used 32-bit 1-based chunk indexes (was 64-bit 0-based).
-    * ABCI: moved `RequestApplySnapshotChunk.chain_hash` to `RequestOfferSnapshot.app_hash`.
-    * Gaia: snapshots must include node versions as well, both for inner and leaf nodes.
-    * Added experimental prototype info.
-    * Added open questions and implementation plan.
+* 2020-02-18:初始原型后的更新(Erik Grinaker)
+    * ABCI:添加了缺失的“原因”字段。
+    * ABCI:使用 32 位基于 1 的块索引(64 位基于 0)。
+    * ABCI:将`RequestApplySnapshotChunk.chain_hash` 移动到`RequestOfferSnapshot.app_hash`。
+    * Gaia:快照还必须包括节点版本，包括内部节点和叶节点。
+    * 添加了实验原型信息。
+    * 添加了开放问题和实施计划。
 
-* 2020-03-29: Strengthened and simplified ABCI interface (Erik Grinaker)
-    * ABCI: replaced `chunks` with `chunk_hashes` in `Snapshot`.
-    * ABCI: removed `SnapshotChunk` message.
-    * ABCI: renamed `GetSnapshotChunk` to `LoadSnapshotChunk`.
-    * ABCI: chunks are now exchanged simply as `bytes`.
-    * ABCI: chunks are now 0-indexed, for parity with `chunk_hashes` array.
-    * Reduced maximum chunk size to 16 MB, and increased snapshot message size to 4 MB.
+* 2020-03-29:加强和简化的 ABCI 界面(Erik Grinaker)
+    * ABCI:在 `Snapshot` 中用 `chunk_hashes` 替换了 `chunks`。
+    * ABCI:删除了`SnapshotChunk` 消息。
+    * ABCI:将`GetSnapshotChunk` 重命名为`LoadSnapshotChunk`。
+    * ABCI:块现在简单地交换为“字节”。
+    * ABCI:块现在是 0 索引，用于与 `chunk_hashes` 数组奇偶校验。
+    * 将最大块大小减少到 16 MB，并将快照消息大小增加到 4 MB。
 
-* 2020-04-29: Update with final released ABCI interface (Erik Grinaker)
+* 2020-04-29:更新最终发布的 ABCI 界面(Erik Grinaker)
 
-## Context
+## 语境
 
-State sync will allow a new node to receive a snapshot of the application state without downloading blocks or going through consensus. This bootstraps the node significantly faster than the current fast sync system, which replays all historical blocks.
+状态同步将允许新节点在不下载块或通过共识的情况下接收应用程序状态的快照。这使节点的引导速度明显快于当前的快速同步系统，后者重播所有历史块。
 
-Background discussions and justifications are detailed in [ADR-042](./adr-042-state-sync.md). Its recommendations can be summarized as:
+[ADR-042](./adr-042-state-sync.md) 中详细介绍了背景讨论和理由。其建议可概括为:
 
-* The application periodically takes full state snapshots (i.e. eager snapshots).
+* 应用程序会定期拍摄完整状态快照(即热切快照)。
 
-* The application splits snapshots into smaller chunks that can be individually verified against a chain app hash.
+* 应用程序将快照拆分为更小的块，可以根据链应用程序哈希单独验证这些块。
 
-* Tendermint uses the light client to obtain a trusted chain app hash for verification.
+* Tendermint 使用轻客户端获取可信链应用哈希进行验证。
 
-* Tendermint discovers and downloads snapshot chunks in parallel from multiple peers, and passes them to the application via ABCI to be applied and verified against the chain app hash.
+* Tendermint 从多个对等点并行发现和下载快照块，并通过 ABCI 将它们传递给应用程序，以根据链应用程序哈希进行应用和验证。
 
-* Historical blocks are not backfilled, so state synced nodes will have a truncated block history.
+* 历史区块不会被回填，因此状态同步的节点将有一个截断的区块历史。
 
-## Tendermint Proposal
+## Tendermint 提案
 
-This describes the snapshot/restore process seen from Tendermint. The interface is kept as small and general as possible to give applications maximum flexibility.
+这描述了从 Tendermint 看到的快照/恢复过程。界面尽可能小而通用，以便为应用程序提供最大的灵活性。
 
-### Snapshot Data Structure
+### 快照数据结构
 
-A node can have multiple snapshots taken at various heights. Snapshots can be taken in different application-specified formats (e.g. MessagePack as format `1` and Protobuf as format `2`, or similarly for schema versioning). Each snapshot consists of multiple chunks containing the actual state data, for parallel downloads and reduced memory usage.
+一个节点可以在不同高度拍摄多个快照。快照可以采用不同的应用程序指定格式(例如 MessagePack 作为格式“1”和 Protobuf 作为格式“2”，或类似的模式版本控制)。每个快照由包含实际状态数据的多个块组成，用于并行下载和减少内存使用。
 
 ```proto
 message Snapshot {
@@ -60,7 +60,7 @@ message Snapshot {
 }
 ```
 
-Chunks are exchanged simply as `bytes`, and cannot be larger than 16 MB. `Snapshot` messages should be less than 4 MB.
+块仅作为“字节”交换，并且不能大于 16 MB。 `Snapshot` 消息应该小于 4 MB。
 
 ### ABCI Interface
 
@@ -123,132 +123,132 @@ message ResponseApplySnapshotChunk {
 }
 ```
 
-### Taking Snapshots
+### 拍摄快照
 
-Tendermint is not aware of the snapshotting process at all, it is entirely an application concern. The following guarantees must be provided:
+Tendermint 根本不知道快照过程，这完全是一个应用程序问题。必须提供以下保证:
 
-* **Periodic:** snapshots must be taken periodically, not on-demand, for faster restores, lower load, and less DoS risk.
+* **定期:** 快照必须定期拍摄，而不是按需拍摄，以实现更快的恢复、更低的负载和更低的 DoS 风险。
 
-* **Deterministic:** snapshots must be deterministic, and identical across all nodes - typically by taking a snapshot at given height intervals.
+* **确定性:** 快照必须是确定性的，并且在所有节点上都相同 - 通常通过在给定的高度间隔拍摄快照。
 
-* **Consistent:** snapshots must be consistent, i.e. not affected by concurrent writes - typically by using a data store that supports versioning and/or snapshot isolation.
+* **一致:** 快照必须一致，即不受并发写入的影响 - 通常使用支持版本控制和/或快照隔离的数据存储。
 
-* **Asynchronous:** snapshots must be asynchronous, i.e. not halt block processing and state transitions.
+* **异步:** 快照必须是异步的，即不停止块处理和状态转换。
 
-* **Chunked:** snapshots must be split into chunks of reasonable size (on the order of megabytes), and each chunk must be verifiable against the chain app hash.
+* **Chunked:** 快照必须拆分成合理大小的块(以兆字节为单位)，并且每个块都必须可以根据链应用程序哈希进行验证。
 
-* **Garbage collected:** snapshots must be garbage collected periodically.
+* **垃圾收集:**快照必须定期进行垃圾收集。
 
-### Restoring Snapshots
+### 恢复快照
 
-Nodes should have options for enabling state sync and/or fast sync, and be provided a trusted header hash for the light client.
+节点应该有启用状态同步和/或快速同步的选项，并为轻客户端提供可信的头哈希。
 
-When starting an empty node with state sync and fast sync enabled, snapshots are restored as follows:
+在启用状态同步和快速同步的情况下启动一个空节点时，快照恢复如下:
 
-1. The node checks that it is empty, i.e. that it has no state nor blocks.
+1. 节点检查它是否为空，即它没有状态也没有块。
 
-2. The node contacts the given seeds to discover peers.
+2. 节点联系给定的种子以发现对等点。
 
-3. The node contacts a set of full nodes, and verifies the trusted block header using the given hash via the light client.
+3. 节点联系一组全节点，并通过轻客户端使用给定的哈希验证可信块头。
 
-4. The node requests available snapshots via P2P from peers, via `RequestListSnapshots`. Peers will return the 10 most recent snapshots, one message per snapshot.
+4. 节点通过“RequestListSnapshots”通过 P2P 从对等方请求可用快照。对等点将返回 10 个最近的快照，每个快照一条消息。
 
-5. The node aggregates snapshots from multiple peers, ordered by height and format (in reverse). If there are mismatches between different snapshots, the one hosted by the largest amount of peers is chosen. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies all of the following conditions:
+5.节点聚合来自多个peer的快照，按高度和格式排序(反向)。如果不同快照之间存在不匹配，则选择由最多对等点托管的快照。节点按高度和格式以相反的顺序遍历所有快照，直到找到满足以下所有条件的快照:
 
-    * The snapshot height's block is considered trustworthy by the light client (i.e. snapshot height is greater than trusted header and within unbonding period of the latest trustworthy block).
+    * 快照高度的区块被轻客户端认为是可信的(即快照高度大于可信头并且在最新的可信块的解绑期内)。
 
-    * The snapshot's height or format hasn't been explicitly rejected by an earlier `RequestOfferSnapshot`.
+    * 快照的高度或格式没有被早期的 `RequestOfferSnapshot` 明确拒绝。
 
-    * The application accepts the `RequestOfferSnapshot` call.
+    * 应用程序接受`RequestOfferSnapshot` 调用。
 
-6. The node downloads chunks in parallel from multiple peers, via `RequestLoadSnapshotChunk`. Chunk messages cannot exceed 16 MB.
+6. 节点通过`RequestLoadSnapshotChunk`从多个对等点并行下载块。块消息不能超过 16 MB。
 
-7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`.
+7. 节点通过“RequestApplySnapshotChunk”将数据块依次传递给应用程序。
 
-8. Once all chunks have been applied, the node compares the app hash to the chain app hash, and if they do not match it either errors or discards the state and starts over.
+8. 一旦应用了所有块，节点将应用程序哈希与链应用程序哈希进行比较，如果它们不匹配，则错误或丢弃状态并重新开始。
 
-9. The node switches to fast sync to catch up blocks that were committed while restoring the snapshot.
+9. 节点切换到快速同步以赶上恢复快照时提交的块。
 
-10. The node switches to normal consensus mode.
+10.节点切换到普通共识模式。
 
-## Gaia Proposal
+## 盖亚提案
 
-This describes the snapshot process seen from Gaia, using format version `1`. The serialization format is unspecified, but likely to be compressed Amino or Protobuf.
+这描述了从 Gaia 看到的快照过程，使用格式版本“1”。序列化格式未指定，但可能是压缩的 Amino 或 Protobuf。
 
-### Snapshot Metadata
+### 快照元数据
 
-In the initial version there is no snapshot metadata, so it is set to an empty byte buffer.
+在初始版本中没有快照元数据，因此将其设置为空字节缓冲区。
 
-Once all chunks have been successfully built, snapshot metadata should be stored in a database and served via `RequestListSnapshots`.
+成功构建所有块后，快照元数据应存储在数据库中并通过“RequestListSnapshots”提供。
 
-### Snapshot Chunk Format
+### 快照块格式
 
-The Gaia data structure consists of a set of named IAVL trees. A root hash is constructed by taking the root hashes of each of the IAVL trees, then constructing a Merkle tree of the sorted name/hash map.
+Gaia 数据结构由一组命名的 IAVL 树组成。根哈希是通过获取每个 IAVL 树的根哈希来构建的，然后构建一个经过排序的名称/哈希映射的 Merkle 树。
 
-IAVL trees are versioned, but a snapshot only contains the version relevant for the snapshot height. All historical versions are ignored.
+IAVL 树是版本化的，但快照仅包含与快照高度相关的版本。所有历史版本都被忽略。
 
-IAVL trees are insertion-order dependent, so key/value pairs must be set in an appropriate insertion order to produce the same tree branching structure. This insertion order can be found by doing a breadth-first scan of all nodes (including inner nodes) and collecting unique keys in order. However, the node hash also depends on the node's version, so snapshots must contain the inner nodes' version numbers as well.
+IAVL 树依赖于插入顺序，因此必须以适当的插入顺序设置键/值对以生成相同的树分支结构。这个插入顺序可以通过对所有节点(包括内部节点)进行广度优先扫描并按顺序收集唯一键来找到。但是，节点哈希值还取决于节点的版本，因此快照也必须包含内部节点的版本号。
 
-For the initial prototype, each chunk consists of a complete dump of all node data for all nodes in an entire IAVL tree. Thus the number of chunks equals the number of persistent stores in Gaia. No incremental verification of chunks is done, only a final app hash comparison at the end of the snapshot restoration.
+对于初始原型，每个块都包含整个 IAVL 树中所有节点的所有节点数据的完整转储。因此，块的数量等于 Gaia 中持久存储的数量。不进行块的增量验证，仅在快照恢复结束时进行最终的应用程序哈希比较。
 
-For a production version, it should be sufficient to store key/value/version for all nodes (leaf and inner) in insertion order, chunked in some appropriate way. If per-chunk verification is required, the chunk must also contain enough information to reconstruct the Merkle proofs all the way up to the root of the multistore, e.g. by storing a complete subtree's key/value/version data plus Merkle hashes of all other branches up to the multistore root. The exact approach will depend on tradeoffs between size, time, and verification. IAVL RangeProofs are not recommended, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
+对于生产版本，按插入顺序存储所有节点(叶节点和内部节点)的键/值/版本应该就足够了，以某种适当的方式分块。如果需要对每个块进行验证，则块还必须包含足够的信息来重建默克尔证明，一直到多存储的根，例如通过存储完整子树的键/值/版本数据以及所有其他分支的 Merkle 哈希值，直到多存储根。确切的方法将取决于大小、时间和验证之间的权衡。不推荐使用 IAVL RangeProofs，因为它们包括冗余数据，例如可以从上述数据中导出的中间节点和叶节点的证明。
 
-Chunks should be built greedily by collecting node data up to some size limit (e.g. 10 MB) and serializing it. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>`, and a SHA-256 checksum is stored along with the snapshot metadata.
+应该通过收集不超过某个大小限制(例如 10 MB)的节点数据并将其序列化来贪婪地构建块。块数据作为`snapshots/<height>/<format>/<chunk>`存储在文件系统中，并且SHA-256校验和与快照元数据一起存储。
 
-### Snapshot Scheduling
+### 快照调度
 
-Snapshots should be taken at some configurable height interval, e.g. every 1000 blocks. All nodes should preferably have the same snapshot schedule, such that all nodes can serve chunks for a given snapshot.
+快照应该以一些可配置的高度间隔拍摄，例如每 1000 个区块。所有节点最好都应该有相同的快照时间表，这样所有节点都可以为给定的快照提供块。
 
-Taking consistent snapshots of IAVL trees is greatly simplified by them being versioned: simply snapshot the version that corresponds to the snapshot height, while concurrent writes create new versions. IAVL pruning must not prune a version that is being snapshotted.
+通过对 IAVL 树进行版本控制，可以极大地简化对 IAVL 树的一致快照:只需对与快照高度对应的版本进行快照，同时并发写入创建新版本。 IAVL 修剪不得修剪正在快照的版本。
 
-Snapshots must also be garbage collected after some configurable time, e.g. by keeping the latest `n` snapshots.
+快照也必须在一些可配置的时间后进行垃圾收集，例如通过保留最新的 `n` 个快照。
 
-## Resolved Questions
+##已解决的问题
 
-* Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
+* 状态同步节点没有历史区块或历史 IAVL 版本是否可以？
 
-    > Yes, this is as intended. Maybe backfill blocks later.
+    > 是的，正如预期的那样。也许稍后回填块。
 
-* Do we need incremental chunk verification for first version?
+* 第一个版本需要增量块验证吗？
 
-    > No, we'll start simple. Can add chunk verification via a new snapshot format without any breaking changes in Tendermint. For adversarial conditions, maybe consider support for whitelisting peers to download chunks from.
+    > 不，我们从简单的开始。可以通过新的快照格式添加块验证，而无需在 Tendermint 中进行任何重大更改。对于对抗性条件，可以考虑支持将节点列入白名单以从中下载块。
 
-* Should the snapshot ABCI interface be a separate optional ABCI service, or mandatory?
+* 快照 ABCI 接口应该是一个单独的可选 ABCI 服务，还是强制性的？
 
-    > Mandatory, to keep things simple for now. It will therefore be a breaking change and push the release. For apps using the Cosmos SDK, we can provide a default implementation that does not serve snapshots and errors when trying to apply them.
+    > 强制性的，暂时保持简单。因此，这将是一个突破性的变化并推动发布。对于使用 Cosmos SDK 的应用程序，我们可以提供一个默认实现，在尝试应用它们时不提供快照和错误。
 
-* How can we make sure `ListSnapshots` data is valid? An adversary can provide fake/invalid snapshots to DoS peers.
+* 我们如何确保`ListSnapshots` 数据有效？攻击者可以向 DoS 对等方提供虚假/无效的快照。
 
-    > For now, just pick snapshots that are available on a large number of peers. Maybe support whitelisting. We may consider e.g. placing snapshot manifests on the blockchain later.
+    > 目前，只需选择在大量对等点上可用的快照。也许支持白名单。我们可以考虑例如稍后将快照清单放在区块链上。
 
-* Should we punish nodes that provide invalid snapshots? How?
+* 我们是否应该惩罚提供无效快照的节点？如何？
 
-    > No, these are full nodes not validators, so we can't punish them. Just disconnect from them and ignore them.
+    > 不，这些是完整节点而不是验证器，所以我们不能惩罚它们。只需与它们断开连接并忽略它们即可。
 
-* Should we call these snapshots? The SDK already uses the term "snapshot" for `PruningOptions.SnapshotEvery`, and state sync will introduce additional SDK options for snapshot scheduling and pruning that are not related to IAVL snapshotting or pruning.
+* 我们应该称这些快照吗？ SDK 已经为`PruningOptions.SnapshotEvery` 使用了术语“快照”，状态同步将引入额外的 SDK 选项用于快照调度和修剪，这些选项与 IAVL 快照或修剪无关。
 
-    > Yes. Hopefully these concepts are distinct enough that we can refer to state sync snapshots and IAVL snapshots without too much confusion.
+    > 是的。希望这些概念足够清晰，我们可以参考状态同步快照和 IAVL 快照而不会造成太多混淆。
 
-* Should we store snapshot and chunk metadata in a database? Can we use the database for chunks?
+* 我们应该在数据库中存储快照和块元数据吗？我们可以将数据库用于块吗？
 
-    > As a first approach, store metadata in a database and chunks in the filesystem.
+    > 作为第一种方法，将元数据存储在数据库中，并将块存储在文件系统中。
 
-* Should a snapshot at height H be taken before or after the block at H is processed? E.g. RPC `/commit` returns app_hash after _previous_ height, i.e. _before_  current height.
+* 高度 H 的快照应该在处理 H 处的块之前还是之后拍摄？例如。 RPC `/commit` 在 _previous_ 高度之后返回 app_hash，即 _before_ 当前高度。
 
-    > After commit.
+    > 提交后。
 
-* Do we need to support all versions of blockchain reactor (i.e. fast sync)?
+* 我们是否需要支持所有版本的区块链反应器(即快速同步)？
 
-    > We should remove the v1 reactor completely once v2 has stabilized.
+    > 一旦 v2 稳定下来，我们应该完全移除 v1 反应器。
 
-* Should `ListSnapshots` be a streaming API instead of a request/response API?
+* `ListSnapshots` 应该是一个流 API 而不是请求/响应 API？
 
-    > No, just use a max message size.
+    > 不，只需使用最大消息大小。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## References
+## 参考
 
-* [ADR-042](./adr-042-state-sync.md) and its references
+* [ADR-042](./adr-042-state-sync.md) 及其参考

@@ -1,235 +1,234 @@
-# ADR 073: Adopt LibP2P
+# ADR 073:采用 LibP2P
 
-## Changelog
+## 变更日志
 
-- 2021-11-02: Initial Draft (@tychoish)
+- 2021-11-02:初稿(@tychoish)
 
-## Status
+## 状态
 
-Proposed.
+建议的。
 
-## Context
+## 语境
 
 
-As part of the 0.35 development cycle, the Tendermint team completed
-the first phase of the work described in ADRs 61 and 62, which included a
-large scale refactoring of the reactors and the p2p message
-routing. This replaced the switch and many of the other legacy
-components without breaking protocol or network-level
-interoperability and left the legacy connection/socket handling code.
+作为 0.35 开发周期的一部分，Tendermint 团队完成了
+ADR 61 和 62 中描述的工作的第一阶段，其中包括
+反应堆和 p2p 消息的大规模重构
+路由。这取代了开关和许多其他传统
+不破坏协议或网络级别的组件
+互操作性并留下遗留的连接/套接字处理代码。
 
-Following the release, the team has reexamined the state of the code
-and the design, as well as Tendermint's requirements. The notes
-from that process are available in the [P2P Roadmap
-RFC][rfc].
+发布后，团队重新检查了代码的状态
+和设计，以及 Tendermint 的要求。笔记
+可以在 [P2P 路线图
+RFC][RFC]。
 
-This ADR supersedes the decisions made in ADRs 60 and 61, but
-builds on the completed portions of this work. Previously, the
-boundaries of peer management, message handling, and the higher level
-business logic (e.g., "the reactors") were intermingled, and core
-elements of the p2p system were responsible for the orchestration of
-higher-level business logic. Refactoring the legacy components
-made it more obvious that this entanglement of responsibilities
-had outsized influence on the entire implementation, making
-it difficult to iterate within the current abstractions.
-It would not be viable to maintain interoperability with legacy
-systems while also achieving many of our broader objectives.
+本 ADR 取代了 ADR 60 和 61 中做出的决定，但
+建立在这项工作的已完成部分的基础上。此前，该
+对等管理、消息处理和更高级别的边界
+业务逻辑(例如，“反应堆”)混合在一起，核心
+p2p 系统的元素负责编排
+更高层次的业务逻辑。重构遗留组件
+更明显的是这种责任的纠缠
+对整个实施产生了巨大的影响，使得
+很难在当前的抽象中迭代。
+保持与遗留系统的互操作性是不可行的
+系统，同时还实现了我们许多更广泛的目标。
 
-LibP2P is a thoroughly-specified implementation of a peer-to-peer
-networking stack, designed specifically for systems such as
-ours. Adopting LibP2P as the basis of Tendermint will allow the
-Tendermint team to focus more of their time on other differentiating
-aspects of the system, and make it possible for the ecosystem as a
-whole to take advantage of tooling and efforts of the LibP2P
-platform.
+LibP2P 是点对点的彻底指定的实现
+网络堆栈，专为系统而设计，例如
+我们的。采用 LibP2P 作为 Tendermint 的基础将使
+Tendermint 团队将更多的时间集中在其他差异化上
+系统的各个方面，并使生态系统成为可能
+整体利用 LibP2P 的工具和努力
+平台。
 
-## Alternative Approaches
+## 替代方法
 
-As discussed in the [P2P Roadmap RFC][rfc], the primary alternative would be to
-continue development of Tendermint's home-grown peer-to-peer
-layer. While that would give the Tendermint team maximal control
-over the peer system, the current design is unexceptional on its
-own merits, and the prospective maintenance burden for this system
-exceeds our tolerances for the medium term.
+正如 [P2P 路线图 RFC][rfc] 中所讨论的，主要的替代方案是
+继续发展 Tendermint 的本土点对点
+层。虽然这会给 Tendermint 团队最大的控制权
+与对等系统相比，当前的设计在其
+自身的优点，以及该系统的预期维护负担
+超过我们的中期容忍度。
 
-Tendermint can and should differentiate itself not on the basis of
-its networking implementation or peer management tools, but providing
-a consistent operator experience, a battle-tested consensus algorithm,
-and an ergonomic user experience.
+Tendermint 可以而且应该区分自己，而不是基于
+它的网络实施或对等管理工具，但提供
+一致的操作体验，久经考验的共识算法，
+以及符合人体工程学的用户体验。
+## 决定
 
-## Decision
+Tendermint 将在 0.37 开发周期中采用 libp2p，
+替换定制的 Tendermint P2P 堆栈。这将删除
+`Endpoint`、`Transport`、`Connection` 和 `PeerManager` 抽象
+并留下反应器，`p2p.Router` 和 `p2p.Channel`
+抽象。
 
-Tendermint will adopt libp2p during the 0.37 development cycle,
-replacing the bespoke Tendermint P2P stack. This will remove the
-`Endpoint`, `Transport`, `Connection`, and `PeerManager` abstractions
-and leave the reactors, `p2p.Router` and `p2p.Channel`
-abstractions.
+LibP2P 可能不需要专用的对等交换 (PEX)
+反应器，这也将避免需要一个专门的
+种子模式。如果是这种情况，那么所有这些功能都会
+被移除。
 
-LibP2P may obviate the need for a dedicated peer exchange (PEX)
-reactor, which would also in turn obviate the need for a dedicated
-seed mode. If this is the case, then all of this functionality would
-be removed.
+如果结果(根据协议实验室的建议)它使
+维护单独的 pubsub 或 gossipsub 主题的意义
+每个消息类型，那么`Router` 抽象也可以
+被完全纳入。
 
-If it turns out (based on the advice of Protocol Labs) that it makes
-sense to maintain separate pubsub or gossipsub topics
-per-message-type, then the `Router` abstraction could also
-be entirely subsumed.
+## 详细设计
 
-## Detailed Design
+### 实施变更
 
-### Implementation Changes
+更高级别之间 P2P 实现中的接缝
+构造(反应器)，路由层(`Router`)和较低的
+级别连接和对等管理代码使此操作
+实施起来比较简单。关键
+这种设计的目标是尽量减少对反应堆的影响
+(可能完全，)并完全删除较低级别
+组件(例如，`Transport`、`Connection` 和 `PeerManager`)使用
+由`Router`层提供的分离。目前的状态
+代码使这些变化相对外科手术，并且仅限于一个小的
+方法数:
 
-The seams in the P2P implementation between the higher level
-constructs (reactors), the routing layer (`Router`) and the lower
-level connection and peer management code make this operation
-relatively straightforward to implement. A key
-goal in this design is to minimize the impact on the reactors
-(potentially entirely,) and completely remove the lower level
-components (e.g., `Transport`, `Connection` and `PeerManager`) using the
-separation afforded by the `Router` layer. The current state of the
-code makes these changes relatively surgical, and limited to a small
-number of methods:
+- `p2p.Router.OpenChannel` 仍然会返回一个 `Channel` 结构
+  它将继续作为反应堆和反应堆之间的管道
+  `路由器`。实现将不再需要队列
+  实现，而是启动 goroutines
+  负责将消息从通道路由到 libp2p
+  基本原理，替换当前的`p2p.Router.routeChannel`。
 
-- `p2p.Router.OpenChannel` will still return a `Channel` structure
-  which will continue to serve as a pipe between the reactors and the
-  `Router`. The implementation will no longer need the queue
-  implementation, and will instead start goroutines that
-  are responsible for routing the messages from the channel to libp2p
-  fundamentals, replacing the current `p2p.Router.routeChannel`.
+- 当前的`p2p.Router.dialPeers`和`p2p.Router.acceptPeers`，
+  负责建立出站和入站连接，
+  分别。这些方法将被删除，以及
+  `p2p.Router.openConnection`，libp2p 连接管理器将
+  负责维护网络连接。
 
-- The current `p2p.Router.dialPeers` and `p2p.Router.acceptPeers`,
-  are responsible for establishing outbound and inbound connections,
-  respectively. These methods will be removed, along with
-  `p2p.Router.openConnection`, and the libp2p connection manager will
-  be responsible for maintaining network connectivity.
+- `p2p.Channel` 界面将更改以替换 Go
+  具有用于发送消息的更多功能接口的通道。
+  此对象上的新方法将采用上下文来支持安全
+  取消，并返回错误，并且会阻塞而不是
+  异步运行。 “出”通道，通过它
+  反应器向 Peers 发送消息，将被替换为“发送”
+  方法，并且错误通道将被一个 `Error` 替换
+  方法。
 
-- The `p2p.Channel` interface will change to replace Go
-  channels with a more functional interface for sending messages.
-  New methods on this object will take contexts to support safe
-  cancellation, and return errors, and will block rather than
-  running asynchronously. The `Out` channel through which
-  reactors send messages to Peers, will be replaced by a `Send`
-  method, and the Error channel will be replaced by an `Error`
-  method.
+- 反应堆将被传递一个接口，允许他们
+  从 libp2p 访问对等信息。这将取代
+  `p2p.PeerUpdates` 订阅。
 
-- Reactors will be passed an interface that will allow them to
-  access Peer information from libp2p. This will supplant the
-  `p2p.PeerUpdates` subscription.
+- 在应用程序级别添加某种心跳消息
+  (e.g. with a reactor,) 可能连接到 libp2p 的 DHT
+  反应堆用于服务发现、消息定位或其他
+  特征。
 
-- Add some kind of heartbeat message at the application level
-  (e.g. with a reactor,) potentially connected to libp2p's DHT to be
-  used by reactors for service discovery, message targeting, or other
-  features.
+- 用 [Noise](http://www.noiseprotocol.org/noise.html) 替换现有的/传统的握手协议。
 
-- Replace the existing/legacy handshake protocol with [Noise](http://www.noiseprotocol.org/noise.html).
+该项目最初将使用基于 TCP 的传输协议
+libp2p。 QUIC 也可作为我们稍后实施的选项。
+我们不会在初始版本中支持混合网络，但会
+如果确实有需要，请稍后重新考虑这种可能性。
 
-This project will initially use the TCP-based transport protocols within
-libp2p. QUIC is also available as an option that we may implement later.
-We will not support mixed networks in the initial release, but will
-revisit that possibility later if there is a demonstrated need.
+### 升级和兼容性
 
-### Upgrade and Compatibility
+因为路由器和所有当前的 P2P 库都是“内部的”
+包而不是公共 API 的一部分，唯一对公共的更改
+Tendermint 的 API 表面积将是不同的配置
+文件选项，用相关选项替换当前的 P2P 选项
+到 libp2p。
 
-Because the routers and all current P2P libraries are `internal`
-packages and not part of the public API, the only changes to the public
-API surface area of Tendermint will be different configuration
-file options, replacing the current P2P options with options relevant
-to libp2p.
+但是，将无法运行具有两个网络的网络
+堆栈一次激活，因此升级到 Tendermint 版本
+需要在网络的所有节点之间进行协调。这是
+与围绕 Tendermint 移动升级的预期一致
+向前推进，并将有助于管理项目的复杂性和
+实施时间表。
 
-However, it will not be possible to run a network with both networking
-stacks active at once, so the upgrade to the version of Tendermint
-will need to be coordinated between all nodes of the network. This is
-consistent with the expectations around upgrades for Tendermint moving
-forward, and will help manage both the complexity of the project and
-the implementation timeline.
+## 开放问题
 
-## Open Questions
+- 协议实验室在 libp2p 的实现中的作用是什么？
+  Tendermint，无论是在最初的实施期间还是在持续的
+  之后的依据？
 
-- What is the role of Protocol Labs in the implementation of libp2p in
-  tendermint, both during the initial implementation and on an ongoing
-  basis thereafter?
+- 是否应该将给定节点的所有 P2P 流量推送到单个主题，
+  以便主题映射到特定的 ChainID，或者应该
+  每个反应器(或消息类型)都有自己的主题？多少
+  libp2p 网络可以支持主题吗？是否有验证的测试
+  能力？
 
-- Should all P2P traffic for a given node be pushed to a single topic,
-  so that a topic maps to a specific ChainID, or should
-  each reactor (or type of message) have its own topic? How many
-  topics can a libp2p network support? Is there testing that validates
-  the capabilities?
+- Tendermint 目前提供了一个非常粗略的类似 QoS 的功能
+  使用基于消息类型的优先级。
+  这在直觉上/理论上确保了证据和共识
+  消息不会被块同步/状态同步消息饿死。它是
+  不清楚我们是否可以或应该尝试用 libp2p 复制它。
 
-- Tendermint presently provides a very coarse QoS-like functionality
-  using priorities based on message-type.
-  This intuitively/theoretically ensures that evidence and consensus
-  messages don't get starved by blocksync/statesync messages. It's
-  unclear if we can or should attempt to replicate this with libp2p.
+- libp2p 提供什么样的 QoS 功能以及什么样的
+  libp2p 是否提供有关其 QoS 功能的指标？
 
-- What kind of QoS functionality does libp2p provide and what kind of
-  metrics does libp2p provide about it's QoS functionality?
+- 是否可以存储额外的(可能是任意的)
+  信息作为节点之间心跳的一部分进入 DHT，
+  例如最新的高度，然后在
+  反应堆。 DHT多久更新一次？
 
-- Is it possible to store additional (and potentially arbitrary)
-  information into the DHT as part of the heartbeats between nodes,
-  such as the latest height, and then access that in the
-  reactors. How frequently can the DHT be updated?
+- 让反应堆继续消耗入境是否有意义
+  来自频道(`In`)的消息或者是否有另一个接口或
+  我们应该考虑的模式？
 
-- Does it make sense to have reactors continue to consume inbound
-  messages from a Channel (`In`) or is there another interface or
-  pattern that we should consider?
+- 我们应该尽可能避免暴露 Go 通道，并且可能
+某种替代迭代器可能对处理有意义
+反应堆内的消息。
 
-  - We should avoid exposing Go channels when possible, and likely
-	some kind of alternate iterator likely makes sense for processing
-	messages within the reactors.
+- 跟踪的安全性和协议含义是什么
+  来自对等心跳的信息并将其暴露给反应堆？
 
-- What are the security and protocol implications of tracking
-  information from peer heartbeats and exposing that to reactors?
+- Tendermint 可以提供多少(或多少)配置
+  libp2p，尤其是在第一个版本中？
 
-- How much (or how little) configuration can Tendermint provide for
-  libp2p, particularly on the first release?
+  - 一般来说，我们不应该支持 libp2p 的 byo-functionity
+Tendermint 内的组件，并减少配置面
+区域，尽可能。
 
-  - In general, we should not support byo-functionality for libp2p
-	components within Tendermint, and reduce the configuration surface
-	area, as much as possible.
+- 提供请求/响应语义的最佳方法是什么？
+  libp2p之上的反应堆？是否可以添加
+  未来版本中的请求/响应语义或是否存在
+  作为初始阶段的一部分需要完成的预期工作
+  发布？
 
-- What are the best ways to provide request/response semantics for
-  reactors on top of libp2p? Will it be possible to add
-  request/response semantics in a future release or is there
-  anticipatory work that needs to be done as part of the initial
-  release?
+## 结果
 
-## Consequences
+### 积极的
 
-### Positive
+- 通过以下方式减轻 Tendermint 核心团队的维护负担
+  删除大量已被证明是的遗留代码
+  很难安全地修改。
 
-- Reduce the maintenance burden for the Tendermint Core team by
-  removing a large swath of legacy code that has proven to be
-  difficult to modify safely.
+- 免去维护和开发整体的责任
+  对等管理系统 (p2p) 和堆栈。
 
-- Remove the responsibility for maintaining and developing the entire
-  peer management system (p2p) and stack.
+- 为用户提供更稳定的对等网络系统，
+  Tendermint 可以提升运营商体验和网络稳定性。
 
-- Provide users with a more stable peer and networking system,
-  Tendermint can improve operator experience and network stability.
+### 消极的
 
-### Negative
+- 通过遵循库实现对等管理和
+  网络，Tendermint 失去了一些创新的灵活性
+  对等和网络级别。然而，Tendermint 应该在创新
+  主要在共识层，libp2p 不排除
+  在对等层进行优化或开发。
 
-- By deferring to library implementations for peer management and
-  networking, Tendermint loses some flexibility for innovating at the
-  peer and networking level. However, Tendermint should be innovating
-  primarily at the consensus layer, and libp2p does not preclude
-  optimization or development in the peer layer.
+- Libp2p 是一个很大的依赖项，Tendermint 将成为依赖项
+  基于协议实验室的发布周期和错误优先级
+  修复。如果这证明很麻烦，则可以维护供应商
+  根据需要分叉相关组件。
 
-- Libp2p is a large dependency and Tendermint would become dependent
-  upon Protocol Labs' release cycle and prioritization for bug
-  fixes. If this proves onerous, it's possible to maintain a vendor
-  fork of relevant components as needed.
+### 中性的
 
-### Neutral
+- 不适用
 
-- N/A
+## 参考
 
-## References
+- [ADR 61:P2P 重构范围][adr61]
+- [ADR 62:P2P 架构][adr62]
+- [P2P 路线图 RFC][rfc]
 
-- [ADR 61: P2P Refactor Scope][adr61]
-- [ADR 62: P2P Architecture][adr62]
-- [P2P Roadmap RFC][rfc]
-
-[adr61]: ./adr-061-p2p-refactor-scope.md
-[adr62]: ./adr-062-p2p-architecture.md
-[rfc]: ../rfc/rfc-000-p2p.rst
+[adr61]:./adr-061-p2p-refactor-scope.md
+[adr62]:./adr-062-p2p-architecture.md
+[rfc]:../rfc/rfc-000-p2p.rst

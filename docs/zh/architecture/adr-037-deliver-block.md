@@ -1,38 +1,38 @@
-# ADR 037: Deliver Block
+# ADR 037:交付块
 
-Author: Daniil Lashin (@danil-lashin)
+作者:丹尼尔·拉辛(@danil-lashin)
 
-## Changelog
+## 变更日志
 
-13-03-2019: Initial draft
+13-03-2019:初稿
 
-## Context
+## 语境
 
-Initial conversation: https://github.com/tendermint/tendermint/issues/2901
+初始对话:https://github.com/tendermint/tendermint/issues/2901
 
-Some applications can handle transactions in parallel, or at least some
-part of tx processing can be parallelized. Now it is not possible for developer
-to execute txs in parallel because Tendermint delivers them consequentially.
+一些应用程序可以并行处理事务，或者至少一些
+部分 tx 处理可以并行化。现在开发人员不可能
+并行执行 txs，因为 Tendermint 会相应地提供它们。
 
-## Decision
+## 决定
 
-Now Tendermint have `BeginBlock`, `EndBlock`, `Commit`, `DeliverTx` steps
-while executing block. This doc proposes merging this steps into one `DeliverBlock`
-step. It will allow developers of applications to decide how they want to
-execute transactions (in parallel or consequentially). Also it will simplify and
-speed up communications between application and Tendermint.
+现在 Tendermint 有 `BeginBlock`、`EndBlock`、`Commit`、`DeliverTx` 步骤
+在执行块时。该文档建议将这些步骤合并为一个 `DeliverBlock`
+步。它将允许应用程序的开发人员决定他们想要的方式
+执行事务(并行或连续)。它也将简化和
+加速应用程序和 Tendermint 之间的通信。
 
-As @jaekwon [mentioned](https://github.com/tendermint/tendermint/issues/2901#issuecomment-477746128)
-in discussion not all application will benefit from this solution. In some cases,
-when application handles transaction consequentially, it way slow down the blockchain,
-because it need to wait until full block is transmitted to application to start
-processing it. Also, in the case of complete change of ABCI, we need to force all the apps
-to change their implementation completely. That's why I propose to introduce one more ABCI
-type.
+正如@jaekwon [提到](https://github.com/tendermint/tendermint/issues/2901#issuecomment-477746128)
+在讨论中，并非所有应用程序都将从该解决方案中受益。在某些情况下，
+当应用程序相应地处理交易时，它会减慢区块链，
+因为它需要等到完整的块传输到应用程序才能启动
+处理它。另外，在ABCI完全改变的情况下，我们需要强制所有的应用程序
+彻底改变他们的实施。这就是为什么我提议再引入一个 ABCI
+类型。
 
-# Implementation Changes
+# 实施变更
 
-In addition to default application interface which now have this structure
+除了现在具有此结构的默认应用程序界面
 
 ```go
 type Application interface {
@@ -76,25 +76,25 @@ type ResponseDeliverBlock struct {
 
 ```
 
-Also, we will need to add new config param, which will specify what kind of ABCI application uses.
-For example, it can be `abci_type`. Then we will have 2 types:
-- `advanced` - current ABCI
-- `simple` - proposed implementation
+此外，我们需要添加新的配置参数，它将指定 ABCI 应用程序使用的类型。
+例如，它可以是 `abci_type`。 然后我们将有两种类型:
+- `高级` - 当前的 ABCI
+- `简单` - 建议的实现
 
-## Status
+## 状态
 
-In review
+审核中
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- much simpler introduction and tutorials for new developers (instead of implementing 5 methods whey
-will need to implement only 3)
-- txs can be handled in parallel
-- simpler interface
-- faster communications between Tendermint and application
+- 为新开发人员提供更简单的介绍和教程(而不是实施 5 种方法乳清
+只需要实施 3)
+- txs 可以并行处理
+- 更简单的界面
+- Tendermint 和应用程序之间更快的通信
 
-### Negative
+### 消极的
 
-- Tendermint should now support 2 kinds of ABCI
+- Tendermint 现在应该支持 2 种 ABCI
