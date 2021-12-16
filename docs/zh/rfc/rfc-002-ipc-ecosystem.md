@@ -1,420 +1,420 @@
-# RFC 002: Interprocess Communication (IPC) in Tendermint
+# RFC 002:Tendermint 中的进程间通信 (IPC)
 
-## Changelog
+## 变更日志
 
-- 08-Sep-2021: Initial draft (@creachadair).
-
-
-## Abstract
-
-Communication in Tendermint among consensus nodes, applications, and operator
-tools all use different message formats and transport mechanisms.  In some
-cases there are multiple options. Having all these options complicates both the
-code and the developer experience, and hides bugs. To support a more robust,
-trustworthy, and usable system, we should document which communication paths
-are essential, which could be removed or reduced in scope, and what we can
-improve for the most important use cases.
-
-This document proposes a variety of possible improvements of varying size and
-scope. Specific design proposals should get their own documentation.
+- 2021 年 9 月 8 日:初稿 (@creachadair)。
 
 
-## Background
+## 抽象的
 
-The Tendermint state replication engine has a complex IPC footprint.
+Tendermint 共识节点、应用程序和运营商之间的通信
+工具都使用不同的消息格式和传输机制。在一些
+情况有多种选择。拥有所有这些选项使两者都变得复杂
+代码和开发人员体验，并隐藏错误。为了支持更强大的，
+值得信赖和可用的系统，我们应该记录哪些通信路径
+是必不可少的，可以删除或缩小范围，以及我们可以做什么
+针对最重要的用例进行改进。
 
-1. Consensus nodes communicate with each other using a networked peer-to-peer
-   message-passing protocol.
-
-2. Consensus nodes communicate with the application whose state is being
-   replicated via the [Application BlockChain Interface (ABCI)][abci].
-
-3. Consensus nodes export a network-accessible [RPC service][rpc-service] to
-   support operations (bootstrapping, debugging) and synchronization of [light clients][light-client].
-   This interface is also used by the [`tendermint` CLI][tm-cli].
-
-4. Consensus nodes export a gRPC service exposing a subset of the methods of
-   the RPC service described by (3). This was intended to simplify the
-   implementation of tools that already use gRPC to communicate with an
-   application (via the Cosmos SDK), and wanted to also talk to the consensus
-   node without implementing yet another RPC protocol.
-
-   The gRPC interface to the consensus node has been deprecated and is slated
-   for removal in the forthcoming Tendermint v0.36 release.
-
-5. Consensus nodes may optionally communicate with a "remote signer" that holds
-   a validator key and can provide public keys and signatures to the consensus
-   node. One of the stated goals of this configuration is to allow the signer
-   to be run on a private network, separate from the consensus node, so that a
-   compromise of the consensus node from the public network would be less
-   likely to expose validator keys.
-
-## Discussion: Transport Mechanisms
-
-### Remote Signer Transport
-
-A remote signer communicates with the consensus node in one of two ways:
-
-1. "Raw": Using a TCP or Unix-domain socket which carries varint-prefixed
-   protocol buffer messages. In this mode, the consensus node is the server,
-   and the remote signer is the client.
-
-   This mode has been deprecated, and is intended to be removed.
-
-2. gRPC: This mode uses the same protobuf messages as "Raw" node, but uses a
-   standard encrypted gRPC HTTP/2 stub as the transport. In this mode, the
-   remote signer is the server and the consensus node is the client.
+本文件提出了各种不同大小和不同的可能改进
+范围。具体的设计方案应该有自己的文档。
 
 
-### ABCI Transport
+## 背景
 
-In ABCI, the _application_ is the server, and the Tendermint consensus engine
-is the client.  Most applications implement the server using the [Cosmos SDK][cosmos-sdk],
-which handles low-level details of the ABCI interaction and provides a
-higher-level interface to the rest of the application. The SDK is written in Go.
+Tendermint 状态复制引擎具有复杂的 IPC 足迹。
 
-Beneath the SDK, the application communicates with Tendermint core in one of
-two ways:
+1. 共识节点使用网络化的点对点相互通信
+   消息传递协议。
 
-- In-process direct calls (for applications written in Go and compiled against
-  the Tendermint code).  This is an optimization for the common case where an
-  application is written in Go, to save on the overhead of marshaling and
-  unmarshaling requests and responses within the same process:
+2. 共识节点与状态为正在的应用程序通信
+   通过 [应用程序区块链接口 (ABCI)][abci] 复制。
+
+3. 共识节点导出一个网络可访问的[RPC service][rpc-service]到
+   支持[轻客户端][轻客户端]的操作(引导、调试)和同步。
+   [`tendermint` CLI][tm-cli] 也使用此接口。
+
+4. 共识节点导出一个 gRPC 服务，暴露了以下方法的子集
+   (3)描述的RPC服务。这是为了简化
+   已经使用 gRPC 与
+   应用程序(通过 Cosmos SDK)，并且还想与共识对话
+   节点而无需实现另一个 RPC 协议。
+
+   共识节点的 gRPC 接口已被弃用并计划
+   在即将发布的 Tendermint v0.36 版本中删除。
+
+5. 共识节点可以选择与持有的“远程签名者”通信
+   验证者密钥，可以为共识提供公钥和签名
+   节点。此配置的既定目标之一是允许签名者
+   在私有网络上运行，与共识节点分开，以便
+   来自公共网络的共识节点的妥协会更少
+   可能会暴露验证器密钥。
+
+## 讨论:传输机制
+
+### 远程签名者传输
+
+远程签名者通过以下两种方式之一与共识节点通信:
+
+1.“原始”:使用带有 varint 前缀的 TCP 或 Unix 域套接字
+   协议缓冲区消息。在这种模式下，共识节点是服务器，
+   远程签名者是客户端。
+
+   此模式已被弃用，并打算将其删除。
+
+2. gRPC:此模式使用与“原始”节点相同的 protobuf 消息，但使用一个
+   标准加密 gRPC HTTP/2 存根作为传输。在这种模式下，
+   远程签名者是服务器，共识节点是客户端。
+
+
+### ABCI 运输
+
+在 ABCI 中，_application_ 是服务器，Tendermint 共识引擎
+是客户。大多数应用程序使用 [Cosmos SDK][cosmos-sdk] 实现服务器，
+它处理 ABCI 交互的低级细节并提供
+应用程序其余部分的高级接口。 SDK 是用 Go 编写的。
+
+在 SDK 下，应用程序通过以下方式与 Tendermint 核心通信
+两种方式:
+
+- 进程内直接调用(适用于用 Go 编写并编译的应用程序)
+  Tendermint 代码)。这是对常见情况的优化，其中
+  应用程序是用 Go 编写的，以节省编组和
+  在同一进程中解组请求和响应:
   [`abci/client/local_client.go`][local-client]
 
-- A custom remote procedure protocol built on wire-format protobuf messages
-  using a socket (the "socket protocol"): [`abci/server/socket_server.go`][socket-server]
-
-The SDK also provides a [gRPC service][sdk-grpc] accessible from outside the
-application, allowing transactions to be broadcast to the network, look up
-transactions, and simulate transaction costs.
-
-
-### RPC Transport
-
-The consensus node RPC service allows callers to query consensus parameters
-(genesis data, transactions, commits), node status (network info, health
-checks), application state (abci_query, abci_info), mempool state, and other
-attributes of the node and its application. The service also provides methods
-allowing transactions and evidence to be injected ("broadcast") into the
-blockchain.
-
-The RPC service is exposed in several ways:
-
-- HTTP GET: Queries may be sent as URI parameters, with method names in the path.
-
-- HTTP POST: Queries may be sent as JSON-RPC request messages in the body of an
-  HTTP POST request.  The server uses a custom implementation of JSON-RPC that
-  is not fully compatible with the [JSON-RPC 2.0 spec][json-rpc], but handles
-  the common cases.
-
-- Websocket: Queries may be sent as JSON-RPC request messages via a websocket.
-  This transport uses more or less the same JSON-RPC plumbing as the HTTP POST
-  handler.
-
-  The websocket endpoint also includes three methods that are _only_ exported
-  via websocket, which appear to support event subscription.
-
-- gRPC: A subset of queries may be issued in protocol buffer format to the gRPC
-  interface described above under (4). As noted, this endpoint is deprecated
-  and will be removed in v0.36.
-
-### Opportunities for Simplification
-
-**Claim:** There are too many IPC mechanisms.
-
-The preponderance of ABCI usage is via the Cosmos SDK, which means the
-application and the consensus node are compiled together into a single binary,
-and the consensus node calls the ABCI methods of the application directly as Go
-functions.
-
-We also need a true IPC transport to support ABCI applications _not_ written in
-Go.  There are also several known applications written in Rust, for example
-(including [Anoma](https://github.com/anoma/anoma), Penumbra,
-[Oasis](https://github.com/oasisprotocol/oasis-core), Twilight, and
-[Nomic](https://github.com/nomic-io/nomic)). Ideally we will have at most one
-such transport "built-in": More esoteric cases can be handled by a custom proxy.
-Pragmatically, gRPC is probably the right choice here.
-
-The primary consumers of the multi-headed "RPC service" today are the light
-client and the `tendermint` command-line client. There is probably some local
-use via curl, but I expect that is mostly ad hoc. Ethan reports that nodes are
-often configured with the ports to the RPC service blocked, which is good for
-security but complicates use by the light client.
-
-### Context: Remote Signer Issues
-
-Since the remote signer needs a secure communication channel to exchange keys
-and signatures, and is expected to run truly remotely from the node (i.e., on a
-separate physical server), there is not a whole lot we can do here. We should
-finish the deprecation and removal of the "raw" socket protocol between the
-consensus node and remote signers, but the use of gRPC is appropriate.
-
-The main improvement we can make is to simplify the implementation quite a bit,
-once we no longer need to support both "raw" and gRPC transports.
-
-### Context: ABCI Issues
-
-In the original design of ABCI, the presumption was that all access to the
-application should be mediated by the consensus node. The idea is that outside
-access could change application state and corrupt the consensus process, which
-relies on the application to be deterministic. Of course, even without outside
-access an application could behave nondeterministically, but allowing other
-programs to send it requests was seen as courting trouble.
-
-Conversely, users noted that most of the time, tools written for a particular
-application don't want to talk to the consensus module directly. The
-application "owns" the state machine the consensus engine is replicating, so
-tools that care about application state should talk to the application.
-Otherwise, they would have to bake in knowledge about Tendermint (e.g., its
-interfaces and data structures) just because of the mediation.
-
-For clients to talk directly to the application, however, there is another
-concern: The consensus node is the ABCI _client_, so it is inconvenient for the
-application to "push" work into the consensus module via ABCI itself.  The
-current implementation works around this by calling the consensus node's RPC
-service, which exposes an `ABCIQuery` kitchen-sink method that allows the
-application a way to poke ABCI messages in the other direction.
-
-Without this RPC method, you could work around this (at least in principle) by
-having the consensus module "poll" the application for work that needs done,
-but that has unsatisfactory implications for performance and robustness, as
-well as being harder to understand.
-
-There has apparently been discussion about trying to make a more bidirectional
-communication between the consensus node and the application, but this issue
-seems to still be unresolved.
-
-Another complication of ABCI is that it requires the application (server) to
-maintain [four separate connections][abci-conn]: One for "consensus" operations
-(BeginBlock, EndBlock, DeliverTx, Commit), one for "mempool" operations, one
-for "query" operations, and one for "snapshot" (state synchronization) operations.
-The rationale seems to have been that these groups of operations should be able
-to proceed concurrently with each other. In practice, it results in a very complex
-state management problem to coordinate state updates between the separate streams.
-While application authors in Go are mostly insulated from that complexity by the
-Cosmos SDK, the plumbing to maintain those separate streams is complicated, hard
-to understand, and we suspect it contains concurrency bugs and/or lock contention
-issues affecting performance that are subtle and difficult to pin down.
-
-Even without changing the semantics of any ABCI operations, this code could be
-made smaller and easier to debug by separating the management of concurrency
-and locking from the IPC transport: If all requests and responses are routed
-through one connection, the server can explicitly maintain priority queues for
-requests and responses, and make less-conservative decisions about when locks
-are (or aren't) required to synchronize state access. With independent queues,
-the server must lock conservatively, and no optimistic scheduling is practical.
-
-This would be a tedious implementation change, but should be achievable without
-breaking any of the existing interfaces. More importantly, it could potentially
-address a lot of difficult concurrency and performance problems we currently
-see anecdotally but have difficultly isolating because of how intertwined these
-separate message streams are at runtime.
-
-TODO: Impact of ABCI++ for this topic?
-
-### Context: RPC Issues
-
-The RPC system serves several masters, and has a complex surface area. I
-believe there are some improvements that can be exposed by separating some of
-these concerns.
-
-The Tendermint light client currently uses the RPC service to look up blocks
-and transactions, and to forward ABCI queries to the application.  The light
-client proxy uses the RPC service via a websocket. The Cosmos IBC relayer also
-uses the RPC service via websocket to watch for transaction events, and uses
-the `ABCIQuery` method to fetch information and proofs for posted transactions.
-
-Some work is already underway toward using P2P message passing rather than RPC
-to synchronize light client state with the rest of the network.  IBC relaying,
-however, requires access to the event system, which is currently not accessible
-except via the RPC interface. Event subscription _could_ be exposed via P2P,
-but that is a larger project since it adds P2P communication load, and might
-thus have an impact on the performance of consensus.
-
-If event subscription can be moved into the P2P network, we could entirely
-remove the websocket transport, even for clients that still need access to the
-RPC service. Until then, we may still be able to reduce the scope of the
-websocket endpoint to _only_ event subscription, by moving uses of the RPC
-server as a proxy to ABCI over to the gRPC interface.
-
-Having the RPC server still makes sense for local bootstrapping and operations,
-but can be further simplified. Here are some specific proposals:
-
-- Remove the HTTP GET interface entirely.
-
-- Simplify JSON-RPC plumbing to remove unnecessary reflection and wrapping.
-
-- Remove the gRPC interface (this is already planned for v0.36).
-
-- Separate the websocket interface from the rest of the RPC service, and
-  restrict it to only event subscription.
-
-  Eventually we should try to emove the websocket interface entirely, but we
-  will need to revisit that (probably in a new RFC) once we've done some of the
-  easier things.
-
-These changes would preserve the ability of operators to issue queries with
-curl (but would require using JSON-RPC instead of URI parameters). That would
-be a little less user-friendly, but for a use case that should not be that
-prevalent.
-
-These changes would also preserve compatibility with existing JSON-RPC based
-code paths like the `tendermint` CLI and the light client (even ahead of
-further work to remove that dependency).
-
-**Design goal:** An operator should be able to disable non-local access to the
-RPC server on any node in the network without impairing the ability of the
-network to function for service of state replication, including light clients.
-
-**Design principle:** All communication required to implement and monitor the
-consensus network should use P2P, including the various synchronizations.
-
-### Options for ABCI Transport
-
-The majority of current usage is in Go, and the majority of that is mediated by
-the Cosmos SDK, which uses the "direct call" interface. There is probably some
-opportunity to clean up the implementation of that code, notably by inverting
-which interface is at the "top" of the abstraction stack (currently it acts
-like an RPC interface, and escape-hatches into the direct call). However, this
-general approach works fine and doesn't need to be fundamentally changed.
-
-For applications _not_ written in Go, the two remaining options are the
-"socket" protocol (another variation on varint-prefixed protobuf messages over
-an unstructured stream) and gRPC. It would be nice if we could get rid of one
-of these to reduce (unneeded?) optionality.
-
-Since both the socket protocol and gRPC depend on protocol buffers, the
-"socket" protocol is the most obvious choice to remove. While gRPC is more
-complex, the set of languages that _have_ protobuf support but _lack_ gRPC
-support is small. Moreover, gRPC is already widely used in the rest of the
-ecosystem (including the Cosmos SDK).
-
-If some use case did arise later that can't work with gRPC, it would not be too
-difficult for that application author to write a little proxy (in Go) that
-bridges the convenient SDK APIs into a simpler protocol than gRPC.
-
-**Design principle:** It is better for an uncommon special case to carry the
-burdens of its specialness, than to bake an escape hatch into the infrastructure.
-
-**Recommendation:** We should deprecate and remove the socket protocol.
-
-### Options for RPC Transport
-
-[ADR 057][adr-57] proposes using gRPC for the Tendermint RPC implementation.
-This is still possible, but if we are able to simplify and decouple the
-concerns as described above, I do not think it should be necessary.
-
-While JSON-RPC is not the best possible RPC protocol for all situations, it has
-some advantages over gRPC for our domain. Specifically:
-
-- It is easy to call JSON-RPC manually from the command-line, which helps with
-  a common concern for the RPC service, local debugging and operations.
-
-  Relatedly: JSON is relatively easy for humans to read and write, and it can
-  be easily copied and pasted to share sample queries and debugging results in
-  chat, issue comments, and so on. Ideally, the RPC service will not be used
-  for activities where the costs of a text protocol are important compared to
-  its legibility and manual usability benefits.
-
-- gRPC has an enormous dependency footprint for both clients and servers, and
-  many of the features it provides to support security and performance
-  (encryption, compression, streaming, etc.) are mostly irrelevant to local
-  use. Tendermint already needs to include a gRPC client for the remote signer,
-  but if we can avoid the need for a _client_ to depend on gRPC, that is a win
-  for usability.
-
-- If we intend to migrate light clients off RPC to use P2P entirely, there is
-  no advantage to forcing a temporary migration to gRPC along the way; and once
-  the light client is not dependent on the RPC service, the efficiency of the
-  protocol is much less important.
-
-- We can still get the benefits of generated data types using protocol buffers, even
-  without using gRPC:
-
-  - Protobuf defines a standard JSON encoding for all message types so
-    languages with protobuf support do not need to worry about type mapping
-    oddities.
-
-  - Using JSON means that even languages _without_ good protobuf support can
-    implement the protocol with a bit more work, and I expect this situation to
-    be rare.
-
-Even if a language lacks a good standard JSON-RPC mechanism, the protocol is
-lightweight and can be implemented by simple send/receive over TCP or
-Unix-domain sockets with no need for code generation, encryption, etc. gRPC
-uses a complex HTTP/2 based transport that is not easily replicated.
-
-### Future Work
-
-The background and proposals sketched above focus on the existing structure of
-Tendermint and improvements we can make in the short term. It is worthwhile to
-also consider options for longer-term broader changes to the IPC ecosystem.
-The following outlines some ideas at a high level:
-
-- **Consensus service:** Today, the application and the consensus node are
-  nominally connected only via ABCI. Tendermint was originally designed with
-  the assumption that all communication with the application should be mediated
-  by the consensus node.  Based on further experience, however, the design goal
-  is now that the _application_ should be the mediator of application state.
-
-  As noted above, however, ABCI is a client/server protocol, with the
-  application as the server. For outside clients that turns out to have been a
-  good choice, but it complicates the relationship between the application and
-  the consensus node: Previously transactions were entered via the node, now
-  they are entered via the app.
-
-  We have worked around this by using the Tendermint RPC service to give the
-  application a "back channel" to the consensus node, so that it can push
-  transactions back into the consensus network. But the RPC service exposes a
-  lot of other functionality, too, including event subscription, block and
-  transaction queries, and a lot of node status information.
-
-  Even if we can't easily "fix" the orientation of the ABCI relationship, we
-  could improve isolation by splitting out the parts of the RPC service that
-  the application needs as a back-channel, and sharing those _only_ with the
-  application. By defining a "consensus service", we could give the application
-  a way to talk back limited to only the capabilities it needs. This approach
-  has the benefit that we could do it without breaking existing use, and if we
-  later did "fix" the ABCI directionality, we could drop the special case
-  without disrupting the rest of the RPC interface.
-
-- **Event service:** Right now, the IBC relayer relies on the Tendermint RPC
-  service to provide a stream of block and transaction events, which it uses to
-  discover which transactions need relaying to other chains.  While I think
-  that event subscription should eventually be handled via P2P, we could gain
-  some immediate benefit by splitting out event subscription from the rest of
-  the RPC service.
-
-  In this model, an event subscription service would be exposed on the public
-  network, but on a different endpoint. This would remove the need for the RPC
-  service to support the websocket protocol, and would allow operators to
-  isolate potentially sensitive status query results from the public network.
-
-  At the moment the relayers also use the RPC service to get block data for
-  synchronization, but work is already in progress to handle that concern via
-  the P2P layer. Once that's done, event subscription could be separated.
-
-Separating parts of the existing RPC service is not without cost: It might
-require additional connection endpoints, for example, though it is also not too
-difficult for multiple otherwise-independent services to share a connection.
-
-In return, though, it would become easier to reduce transport options and for
-operators to independently control access to sensitive data. Considering the
-viability and implications of these ideas is beyond the scope of this RFC, but
-they are documented here since they follow from the background we have already
-discussed.
-
-## References
-
-[abci]: https://github.com/tendermint/spec/tree/95cf253b6df623066ff7cd4074a94e7a3f147c7a/spec/abci
-[rpc-service]: https://docs.tendermint.com/master/rpc/
-[light-client]: https://docs.tendermint.com/master/tendermint-core/light-client.html
-[tm-cli]: https://github.com/tendermint/tendermint/tree/master/cmd/tendermint
-[cosmos-sdk]: https://github.com/cosmos/cosmos-sdk/
-[local-client]: https://github.com/tendermint/tendermint/blob/master/abci/client/local_client.go
-[socket-server]: https://github.com/tendermint/tendermint/blob/master/abci/server/socket_server.go
-[sdk-grpc]: https://pkg.go.dev/github.com/cosmos/cosmos-sdk/types/tx#ServiceServer
-[json-rpc]: https://www.jsonrpc.org/specification
-[abci-conn]: https://github.com/tendermint/spec/blob/master/spec/abci/apps.md#state
-[adr-57]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md
+- 基于线格式 protobuf 消息的自定义远程过程协议
+  使用套接字(“套接字协议”):[`abci/server/socket_server.go`][socket-server]
+
+SDK 还提供了一个 [gRPC 服务][sdk-grpc] 从外部访问
+应用程序，允许将交易广播到网络，查找
+交易，并模拟交易成本。
+
+
+### RPC 传输
+
+共识节点RPC服务允许调用者查询共识参数
+(创世数据、交易、提交)、节点状态(网络信息、健康
+检查)、应用程序状态(abci_query、abci_info)、内存池状态和其他
+节点的属性及其应用。该服务还提供了方法
+允许将交易和证据注入(“广播”)到
+区块链。
+
+RPC 服务以多种方式公开:
+
+- HTTP GET:查询可以作为 URI 参数发送，路径中带有方法名称。
+
+- HTTP POST:查询可以作为 JSON-RPC 请求消息发送到
+  HTTP POST 请求。服务器使用 JSON-RPC 的自定义实现
+  与 [JSON-RPC 2.0 规范][json-rpc] 不完全兼容，但处理
+  常见的情况。
+
+- Websocket:可以通过 websocket 将查询作为 JSON-RPC 请求消息发送。
+  此传输或多或少使用与 HTTP POST 相同的 JSON-RPC 管道
+  处理程序。
+
+  websocket端点还包括三个_only_导出的方法
+  通过 websocket，它似乎支持事件订阅。
+
+- gRPC:可能会以协议缓冲区格式向 gRPC 发出一部分查询
+  上面(4)中描述的接口。如前所述，此端点已弃用
+  并将在 v0.36 中删除。
+
+### 简化的机会
+
+**声明:** IPC 机制过多。
+
+ABCI 的主要使用是通过 Cosmos SDK，这意味着
+应用程序和共识节点一起编译成一个二进制文件，
+并且共识节点直接调用应用程序的 ABCI 方法作为 Go
+职能。
+
+我们还需要一个真正的 IPC 传输来支持 ABCI 应用程序 _not_ 写在
+去。还有几个已知的应用程序是用 Rust 编写的，例如
+(包括[Anoma](https://github.com/anoma/anoma), Penumbra,
+[Oasis](https://github.com/oasisprotocol/oasis-core)、暮光之城和
+[Nomic](https://github.com/nomic-io/nomic))。理想情况下，我们最多只有一个
+这种传输“内置”:自定义代理可以处理更深奥的情况。
+从实用角度讲，gRPC 可能是这里的正确选择。
+
+今天多头“RPC服务”的主要消费者是光
+客户端和 `tendermin` 命令行客户端。可能有一些当地的
+通过 curl 使用，但我希望这主要是临时的。 Ethan 报告说节点是
+通常配置为阻塞 RPC 服务的端口，这对
+安全，但使轻客户端的使用复杂化。
+
+### 上下文:远程签名者问题
+
+由于远程签名者需要一个安全的通信通道来交换密钥
+和签名，并有望真正从节点远程运行(即，在一个
+单独的物理服务器)，我们在这里可以做的并不多。我们应该
+完成弃用和删除之间的“原始”套接字协议
+共识节点和远程签名者，但使用 gRPC 是合适的。
+
+我们可以做的主要改进是大大简化了实现，
+一旦我们不再需要同时支持“原始”和 gRPC 传输。
+
+### 背景:ABCI 问题
+
+在 ABCI 的最初设计中，假设所有访问
+应用程序应由共识节点调解。这个想法是在外面
+访问可能会改变应用程序状态并破坏共识过程，这
+依赖于应用程序的确定性。当然，即使没有外面
+访问应用程序的行为可能具有不确定性，但允许其他
+向它发送请求的程序被认为是在招惹麻烦。
+
+相反，用户注意到大多数时候，为特定的工具编写的工具
+应用程序不想直接与共识模块交谈。这
+应用程序“拥有”共识引擎正在复制的状态机，所以
+关心应用程序状态的工具应该与应用程序对话。
+否则，他们将不得不深入了解 Tendermint(例如，它的
+接口和数据结构)只是因为中介。
+
+然而，对于客户端直接与应用程序交谈，还有另一个
+关注点:共识节点是ABCI_client_，不方便
+应用程序通过 ABCI 本身将工作“推送”到共识模块中。这
+当前的实现通过调用共识节点的 RPC 来解决这个问题
+服务，它公开了一个“ABCIQuery”厨房水槽方法，允许
+应用程序在另一个方向戳 ABCI 消息的方法。
+
+如果没有此 RPC 方法，您可以通过以下方式解决此问题(至少原则上是这样)
+让共识模块“轮询”需要完成的工作的应用程序，
+但这对性能和健壮性的影响并不令人满意，因为
+以及更难理解。
+
+显然已经讨论过尝试制作更双向的
+共识节点和应用之间的通信，但是这个问题
+好像还是没有解决。
+
+ABCI 的另一个复杂之处是它要求应用程序(服务器)
+维护[四个独立的连接][abci-conn]:一个用于“共识”操作
+(BeginBlock, EndBlock, DeliverTx, Commit)，一个用于“mempool”操作，一个
+用于“查询”操作，一种用于“快照”(状态同步)操作。
+理由似乎是这些行动组应该能够
+彼此同时进行。在实践中，它导致一个非常复杂的
+状态管理问题来协调不同流之间的状态更新。
+虽然 Go 中的应用程序作者大多与这种复杂性隔离
+Cosmos SDK，维护这些独立流的管道很复杂，很难
+理解，我们怀疑它包含并发错误和/或锁争用
+影响性能的问题是微妙且难以确定的。
+
+即使不改变任何 ABCI 操作的语义，这段代码也可以是
+通过分离并发管理使更小更易于调试
+并从 IPC 传输锁定:如果所有请求和响应都被路由
+通过一个连接，服务器可以显式地维护优先级队列
+请求和响应，并就何时锁定做出不太保守的决定
+需要(或不需要)同步状态访问。有独立的队列，
+服务器必须保守锁定，没有乐观调度是可行的。
+
+这将是一个乏味的实现更改，但应该可以在没有
+破坏任何现有的接口。更重要的是，它可能
+解决了我们目前很多困难的并发和性能问题
+看到轶事，但由于这些交织在一起而难以隔离
+单独的消息流在运行时。
+
+TODO:ABCI++ 对这个主题的影响？
+
+### 上下文:RPC 问题
+
+RPC 系统服务于多个 master，并且具有复杂的表面积。一世
+相信有一些改进可以通过分离一些
+这些担忧。
+
+Tendermint 轻客户端目前使用 RPC 服务查找区块
+和交易，并将 ABCI 查询转发到应用程序。光
+客户端代理通过 websocket 使用 RPC 服务。 Cosmos IBC 中继器也
+通过 websocket 使用 RPC 服务来监视事务事件，并使用
+用于获取已发布交易的信息和证明的“ABCIQuery”方法。
+
+使用 P2P 消息传递而不是 RPC 的一些工作已经在进行中
+将轻客户端状态与网络的其余部分同步。 IBC中继，
+但是，需要访问当前无法访问的事件系统
+除了通过 RPC 接口。事件订阅_可以_通过 P2P 公开，
+但这是一个更大的项目，因为它增加了 P2P 通信负载，并且可能
+从而对共识的表现产生影响。
+
+如果事件订阅可以移动到 P2P 网络中，我们完全可以
+删除 websocket 传输，即使对于仍然需要访问
+RPC 服务。在那之前，我们可能仍然能够缩小范围
+websocket端点到_only_事件订阅，通过移动RPC的使用
+服务器作为 ABCI 的代理到 gRPC 接口。
+
+让 RPC 服务器对本地引导和操作仍然有意义，
+但可以进一步简化。下面是一些具体的建议:
+
+- 完全删除 HTTP GET 接口。
+
+- 简化 JSON-RPC 管道以消除不必要的反射和包装。
+
+- 删除 gRPC 接口(这已经为 v0.36 计划)。
+
+- 将 websocket 接口与 RPC 服务的其余部分分开，并且
+  将其限制为仅事件订阅。
+
+  最终我们应该尝试完全移除 websocket 接口，但是我们
+  一旦我们完成了一些工作，就需要重新审视(可能在新的 RFC 中)
+  更容易的事情。
+
+这些更改将保留操作员发出查询的能力
+curl(但需要使用 JSON-RPC 而不是 URI 参数)。那会
+对用户不那么友好，但对于不应该那样的用例
+流行。
+
+这些更改还将保持与现有的基于 JSON-RPC 的兼容性
+代码路径，如 `tendermint` CLI 和轻客户端(甚至领先于
+进一步的工作以消除这种依赖性)。
+
+**设计目标:** 操作员应该能够禁止非本地访问
+网络中任何节点上的 RPC 服务器，而不会影响
+用于状态复制服务的网络，包括轻客户端。
+
+**设计原则:** 实施和监控所需的所有沟通
+共识网络应该使用 P2P，包括各种同步。
+
+### ABCI 传输选项
+
+当前的大部分使用是在 Go 中，其中大部分是由
+Cosmos SDK，使用“直接调用”接口。大概有一些
+有机会清理该代码的实现，特别是通过反转
+哪个接口位于抽象堆栈的“顶部”(当前它起作用)
+就像一个 RPC 接口，并转义到直接调用中)。然而，这
+一般方法工作正常，不需要从根本上改变。
+
+对于 _not_ 用 Go 编写的应用程序，剩下的两个选项是
+“套接字”协议(varint 前缀的 protobuf 消息的另一种变体
+非结构化流)和 gRPC。如果我们能摆脱一个就好了
+其中之一是为了减少(不需要的？)可选性。
+
+由于套接字协议和 gRPC 都依赖于协议缓冲区，因此
+“socket”协议是最明显的删除选择。虽然 gRPC 更多
+复杂的，_拥有_protobuf支持但_缺乏_gRPC的一组语言
+支持很小。此外，gRPC 已经广泛应用于其他领域
+生态系统(包括 Cosmos SDK)。
+
+如果后来确实出现了一些无法与 gRPC 一起使用的用例，那也不会太
+该应用程序作者难以编写一个小代理(在 Go 中)
+将方便的 SDK API 桥接到比 gRPC 更简单的协议中。
+
+**设计原则:** 不常见的特殊情况最好携带
+其特殊性的负担，而不是在基础设施中烘烤逃生舱口。
+
+**建议:** 我们应该弃用并删除套接字协议。
+
+### RPC 传输选项
+
+[ADR 057][adr-57] 提议将 gRPC 用于 Tendermint RPC 实现。
+这仍然是可能的，但如果我们能够简化和解耦
+如上所述，我认为没有必要。
+
+虽然 JSON-RPC 不是所有情况下最好的 RPC 协议，但它具有
+对于我们的域，gRPC 的一些优势。具体来说:
+
+- 很容易从命令行手动调用 JSON-RPC，这有助于
+  RPC 服务、本地调试和操作的常见问题。
+
+  相关:JSON 对人类来说相对容易读写，而且它可以
+  可以轻松复制和粘贴以共享示例查询和调试结果
+  聊天、发表评论等。理想情况下，不会使用 RPC 服务
+  对于文本协议的成本很重要的活动
+  它的易读性和手动可用性优势。
+
+- gRPC 对客户端和服务器都有巨大的依赖，并且
+  它提供的许多功能来支持安全性和性能
+  (加密、压缩、流媒体等)大多与本地无关
+  利用。 Tendermint 已经需要为远程签名者包含一个 gRPC 客户端，
+  但如果我们可以避免需要一个 _client_ 依赖 gRPC，那就是胜利
+  为了可用性。
+
+- 如果我们打算将轻客户端从 RPC 迁移到完全使用 P2P，则有
+  沿途强制临时迁移到 gRPC 没有优势；还有一次
+  轻客户端不依赖于RPC服务，效率
+  协议没有那么重要。
+
+- 我们仍然可以获得使用协议缓冲区生成数据类型的好处，即使
+  不使用 gRPC:
+
+  - Protobuf 为所有消息类型定义了标准的 JSON 编码，因此
+    支持 protobuf 的语言不需要担心类型映射
+    怪事。
+
+  - 使用 JSON 意味着即使语言 _without_ 良好的 protobuf 支持也可以
+    用更多的工作来实现协议，我希望这种情况
+    少见。
+
+即使一种语言缺乏良好的标准 JSON-RPC 机制，协议也是
+轻量级，可以通过简单的发送/接收通过 TCP 或
+Unix 域套接字，无需代码生成、加密等。 gRPC
+使用复杂的基于 HTTP/2 的传输，不容易复制。
+
+### 未来的工作
+
+上面概述的背景和建议侧重于现有的结构
+Tendermint 和我们可以在短期内做出的改进。值得
+还应考虑对 IPC 生态系统进行更长期更广泛变化的选项。
+以下概述了一些高层次的想法:
+
+- **共识服务:** 今天，应用和共识节点
+  名义上仅通过 ABCI 连接。 Tendermint 最初设计为
+  与应用程序的所有通信都应该被中介的假设
+  由共识节点。然而，根据进一步的经验，设计目标
+  现在 _application_ 应该是应用程序状态的中介。
+
+  然而，如上所述，ABCI 是一个客户端/服务器协议，具有
+  应用程序作为服务器。对于结果证明是外部客户
+  不错的选择，但它使应用程序和
+  共识节点:以前交易是通过节点输入的，现在
+  它们是通过应用程序输入的。
+
+  我们已经通过使用 Tendermint RPC 服务来解决这个问题
+  向共识节点应用“反向通道”，以便它可以推送
+  交易回到共识网络。但是 RPC 服务暴露了一个
+  还有许多其他功能，包括事件订阅、阻止和
+  交易查询，以及大量的节点状态信息。
+
+  即使我们不能轻易“固定”ABCI 关系的方向，我们
+  可以通过拆分 RPC 服务的部分来改善隔离
+  应用程序需要作为一个反向通道，并与 _only_ 共享那些
+  应用。通过定义一个“共识服务”，我们可以给应用程序
+  一种仅限于它需要的功能的回话方式。这种方法
+  好处是我们可以在不破坏现有用途的情况下做到这一点，如果我们
+  后来确实“修复”了 ABCI 方向性，我们可以放弃特殊情况
+  不会中断 RPC 接口的其余部分。
+
+- **事件服务:** 目前，IBC 中继器依赖于 Tendermint RPC
+  提供区块和交易事件流的服务，它用于
+  发现哪些交易需要中继到其他链。虽然我认为
+  事件订阅最终应该通过 P2P 处理，我们可以获得
+  通过将事件订阅与其余部分分开来获得一些直接的好处
+  RPC 服务。
+
+  在此模型中，事件订阅服务将向公众公开
+  网络，但在不同的端点上。这将消除对 RPC 的需要
+  支持 websocket 协议的服务，并允许运营商
+  将潜在的敏感状态查询结果与公共网络隔离。
+
+  目前中继者也使用 RPC 服务来获取区块数据
+  同步，但工作已经在进行中以通过
+  P2P 层。一旦完成，事件订阅就可以分开了。
+
+分离现有 RPC 服务的各个部分并非没有代价:它可能
+需要额外的连接端点，例如，虽然它也不太
+多个其他独立的服务难以共享连接。
+
+然而，作为回报，减少运输选择会变得更容易，并且
+操作员独立控制对敏感数据的访问。考虑到
+这些想法的可行性和影响超出了本 RFC 的范围，但是
+它们被记录在此处，因为它们来自我们已经了解的背景
+讨论。
+
+## 参考
+
+[abci]:https://github.com/tendermint/spec/tree/95cf253b6df623066ff7cd4074a94e7a3f147c7a/spec/abci
+[rpc-service]:https://docs.tendermint.com/master/rpc/
+[轻客户端]:https://docs.tendermint.com/master/tendermint-core/light-client.html
+[tm-cli]:https://github.com/tendermint/tendermint/tree/master/cmd/tendermint
+[cosmos-sdk]:https://github.com/cosmos/cosmos-sdk/
+[本地客户端]:https://github.com/tendermint/tendermint/blob/master/abci/client/local_client.go
+[套接字服务器]:https://github.com/tendermint/tendermint/blob/master/abci/server/socket_server.go
+[sdk-grpc]:https://pkg.go.dev/github.com/cosmos/cosmos-sdk/types/tx#ServiceServer
+[json-rpc]:https://www.jsonrpc.org/specification
+[abci-conn]:https://github.com/tendermint/spec/blob/master/spec/abci/apps.md#state
+[adr-57]:https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md

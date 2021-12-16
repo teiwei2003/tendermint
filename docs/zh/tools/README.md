@@ -1,29 +1,29 @@
-# Overview
+# 概述
 
-Tendermint has some tools that are associated with it for:
+Tendermint 有一些与之相关的工具:
 
-- [Debugging](./debugging/pro.md)
-- [Benchmarking](#benchmarking)
-- [Testnets](#testnets)
+- [调试](./debugging/pro.md)
+- [基准测试](#benchmarking)
+- [测试网](#testnets)
 
-## Benchmarking
+## 基准测试
 
 - <https://github.com/informalsystems/tm-load-test>
 
-`tm-load-test` is a distributed load testing tool (and framework) for load
-testing Tendermint networks.
+`tm-load-test` 是一个分布式负载测试工具(和框架)，用于负载
+测试 Tendermint 网络。
 
-## Testnets
+## 测试网
 
 - <https://github.com/informalsystems/testnets>
 
-This repository contains various different configurations of test networks for,
-and relating to, Tendermint.
+该存储库包含各种不同的测试网络配置，
+并与 Tendermint 相关。
 
-Use [Docker Compose](./docker-compose.md) to spin up Tendermint testnets on your
-local machine.
+使用 [Docker Compose](./docker-compose.md) 在你的系统上启动 Tendermint 测试网
+本地机器。
 
-Use [Terraform and Ansible](./terraform-and-ansible.md) to deploy Tendermint
-testnets to the cloud.
+使用 [Terraform and Ansible](./terraform-and-ansible.md) 部署 Tendermint
+测试网到云端。
 
-See the `tendermint testnet --help` command for more help initializing testnets.
+有关初始化测试网的更多帮助，请参阅 `tendermint testnet --help` 命令。

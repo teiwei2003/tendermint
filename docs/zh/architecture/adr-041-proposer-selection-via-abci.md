@@ -1,29 +1,28 @@
-# ADR 041: Application should be in charge of validator set
+# ADR 041:应用程序应该负责验证器集
 
-## Changelog
+## 变更日志
 
 
-## Context
+## 语境
 
-Currently Tendermint is in charge of validator set and proposer selection. Application can only update the validator set changes at EndBlock time.
-To support Light Client, application should make sure at least 2/3 of validator are same at each round.
+目前 Tendermint 负责验证者集和提议者选择。 应用程序只能在 EndBlock 时间更新验证器集更改。
+为了支持轻客户端，应用程序应该确保每轮至少有 2/3 的验证器是相同的。
 
-Application should have full control on validator set changes and proposer selection. In each round Application can provide the list of validators for next rounds in order with their power. The proposer is the first in the list, in case the proposer is offline, the next one can propose the proposal and so on.
+应用程序应完全控制验证器集更改和提议者选择。 在每一轮中，应用程序可以提供下一轮的验证器列表，按它们的能力排序。 提议者是列表中的第一个，如果提议者离线，下一个可以提出建议，依此类推。
 
-## Decision
+## 决定
 
-## Status
+## 状态
 
-## Consequences
+## 结果
 
-Tendermint is no more in charge of validator set and its changes. The Application should provide the correct information.
-However Tendermint can provide psedo-randomness algorithm to help application for selecting proposer in each round.
+Tendermint 不再负责验证器集及其更改。 应用程序应提供正确的信息。
+然而，Tendermint 可以提供伪随机算法来帮助应用程序在每一轮中选择提议者。
 
-### Positive
+### 积极的
 
-### Negative
+### 消极的
 
-### Neutral
+### 中性的
 
-## References
-
+## 参考

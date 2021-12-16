@@ -1,21 +1,20 @@
-# ADR 059: Evidence Composition and Lifecycle
+# ADR 059:证据构成和生命周期
 
-## Changelog
+## 变更日志
 
-- 04/09/2020: Initial Draft (Unabridged)
-- 07/09/2020: First Version
-- 13/03/2021: Ammendment to accomodate forward lunatic attack
-- 29/06/2021: Add information about ABCI specific fields
+- 04/09/2020:初稿(未删节)
+- 07/09/2020:第一个版本
+- 13/03/2021:修正以适应向前的疯狂攻击
+- 29/06/2021:添加有关 ABCI 特定字段的信息
 
-## Scope
+## 范围
 
-This document is designed to collate together and surface some predicaments involving evidence in Tendermint: both its composition and lifecycle. It then aims to find a solution to these. The scope does not extend to the verification nor detection of certain types of evidence but concerns itself mainly with the general form of evidence and how it moves from inception to application.
+本文档旨在整理和揭示一些涉及 Tendermint 证据的困境:其组成和生命周期。然后，它旨在找到解决这些问题的方法。范围不扩展到某些类型证据的验证或检测，而主要涉及证据的一般形式以及它如何从开始到应用。
 
-## Background
+## 背景
 
-For a long time `DuplicateVoteEvidence`, formed in the consensus reactor, was the only evidence Tendermint had. It was produced whenever two votes from the same validator in the same round
-was observed and thus it was designed that each evidence was for a single validator. It was predicted that there may come more forms of evidence and thus `DuplicateVoteEvidence` was used as the model for the `Evidence` interface and also for the form of the evidence data sent to the application. It is important to note that Tendermint concerns itself just with the detection and reporting of evidence and it is the responsibility of the application to exercise punishment.
-
+长期以来，在共识反应堆中形成的“DuplicateVoteEvidence”是 Tendermint 拥有的唯一证据。它是在同一轮中同一验证者的两次投票时产生的
+被观察到，因此设计每个证据都是针对单个验证者的。据预测，可能会有更多形式的证据，因此“DuplicateVoteEvidence”被用作“证据”界面的模型以及发送到应用程序的证据数据的形式。需要注意的是，Tendermint 只关注证据的检测和报告，应用程序有责任进行惩罚。
 ```go
 type Evidence interface { //existing
   Height() int64                                     // height of the offense
@@ -40,7 +39,7 @@ type DuplicateVoteEvidence struct {
 }
 ```
 
-Tendermint has now introduced a new type of evidence to protect light clients from being attacked. This `LightClientAttackEvidence` (see [here](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence-handling.md) for more information) is vastly different to `DuplicateVoteEvidence` in that it is physically a much different size containing a complete signed header and validator set. It is formed within the light client, not the consensus reactor and requires a lot more information from state to verify (`VerifyLightClientAttack(commonHeader, trustedHeader *SignedHeader, commonVals *ValidatorSet)`  vs `VerifyDuplicateVote(chainID string, pubKey PubKey)`). Finally it batches validators together (a single piece of evidence that implicates multiple malicious validators at a height) as opposed to having individual evidence (each piece of evidence is per validator per height). This evidence stretches the existing mould that was used to accommodate new types of evidence and has thus caused us to reconsider how evidence should be formatted and processed.
+Tendermint 现在引入了一种新型证据来保护轻客户端免受攻击。这个`LightClientAttackEvidence`(见[这里](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence)对于更多不同的信息处理是非常不同的。 `DuplicateVoteEvidence` 因为它在物理上有很大不同，包含完整的签名标头和验证器集。它是在轻客户端中形成的，而不是在共识反应器中形成，并且需要来自状态的更多信息来验证(`VerifyLightClientAttack(commonHeader,trustedHeader *SignedHeader, commonVals *ValidatorSet)` vs `VerifyDuplicateVote(chainID string, pubKey PubKey)`)。最后，它将验证器分批在一起(单个证据暗示同一高度的多个恶意验证器)，而不是拥有单独的证据(每条证据是每个高度的每个验证器)。该证据扩展了用于容纳新类型证据的现有模式，因此促使我们重新考虑应如何格式化和处理证据。
 
 ```go
 type LightClientAttackEvidence struct { // proposed struct in spec
@@ -51,17 +50,17 @@ type LightClientAttackEvidence struct { // proposed struct in spec
   timestamp time.Time // taken from the block time at the common height
 }
 ```
-*Note: These three attack types have been proven by the research team to be exhaustive*
+*注:这三种攻击类型已被研究团队证明是详尽无遗的*
 
-## Possible Approaches for Evidence Composition
+## 证据组合的可能方法
 
-### Individual framework
+### 个人框架
 
-Evidence remains on a per validator basis. This causes the least disruption to the current processes but requires that we break `LightClientAttackEvidence` into several pieces of evidence for each malicious validator. This not only has performance consequences in that there are n times as many database operations and that the gossiping of evidence will require more bandwidth then necessary (by requiring a header for each piece) but it potentially impacts our ability to validate it. In batch form, the full node can run the same process the light client did to see that 1/3 validating power was present in both the common block and the conflicting block whereas this becomes more difficult to verify individually without opening the possibility that malicious validators forge evidence against innocent . Not only that, but `LightClientAttackEvidence` also deals with amnesia attacks which unfortunately have the characteristic where we know the set of validators involved but not the subset that were actually malicious (more to be said about this later). And finally splitting the evidence into individual pieces makes it difficult to understand the severity of the attack (i.e. the total voting power involved in the attack)
+证据保留在每个验证者的基础上。这对当前流程造成的干扰最小，但要求我们将“LightClientAttackEvidence”分解为每个恶意验证器的几个证据。这不仅会对性能产生影响，因为数据库操作数量是 n 倍，而且证据八卦将需要更多的带宽(通过要求每个部分的标头)，而且它可能会影响我们验证它的能力。以批处理形式，全节点可以运行与轻客户端相同的过程，以查看公共块和冲突块中都存在 1/3 的验证能力，而在不打开恶意验证器的可能性的情况下，这变得更加难以单独验证伪造不利于无辜的证据。不仅如此，“LightClientAttackEvidence”还处理健忘症攻击，不幸的是，这种攻击的特点是我们知道所涉及的验证器集，但不知道实际上是恶意的子集(稍后将对此进行更多说明)。最后将证据分成单独的部分使得很难理解攻击的严重性(即攻击中涉及的总投票权)
 
-#### An example of a possible implementation path
+####一个可能的实现路径的例子
 
-We would ignore amnesia evidence (as individually it's hard to make) and revert to the initial split we had before where `DuplicateVoteEvidence` is also used for light client equivocation attacks and thus we only need `LunaticEvidence`. We would also most likely need to remove `Verify` from the interface as this isn't really something that can be used.
+我们将忽略健忘症证据(因为很难单独制作)并恢复到我们之前的初始拆分，其中“DuplicateVoteEvidence”也用于轻客户端模棱两可攻击，因此我们只需要“LunaticEvidence”。我们也很可能需要从界面中删除“Verify”，因为这并不是真正可以使用的东西。
 
 ``` go
 type LunaticEvidence struct { // individual lunatic attack
@@ -73,26 +72,26 @@ type LunaticEvidence struct { // individual lunatic attack
 }
 ```
 
-### Batch Framework
+### 批处理框架
 
-The last approach of this category would be to consider batch only evidence. This works fine with `LightClientAttackEvidence` but would require alterations to `DuplicateVoteEvidence` which would most likely mean that the consensus would send conflicting votes to a buffer in the evidence module which would then wrap all the votes together per height before gossiping them to other nodes and trying to commit it on chain. At a glance this may improve IO and verification speed and perhaps more importantly grouping validators gives the application and Tendermint a better overview of the severity of the attack.
+此类别的最后一种方法是仅考虑批处理证据。这适用于“LightClientAttackEvidence”，但需要更改“DuplicateVoteEvidence”，这很可能意味着共识会将相互冲突的投票发送到证据模块中的缓冲区，然后将所有投票按高度包装在一起，然后再将它们八卦到其他节点并试图在链上提交它。乍一看，这可能会提高 IO 和验证速度，也许更重要的是，对验证器进行分组可以让应用程序和 Tendermint 更好地了解攻击的严重程度。
 
-However individual evidence has the advantage that it is easy to check if a node already has that evidence meaning we just need to check hashes to know that we've already verified this evidence before. Batching evidence would imply that each node may have a different combination of duplicate votes which may complicate things.
+然而，单个证据的优点是很容易检查节点是否已经拥有该证据，这意味着我们只需要检查哈希值即可知道我们之前已经验证过该证据。批处理证据意味着每个节点可能有不同的重复投票组合，这可能会使事情复杂化。
 
-#### An example of a possible implementation path
+####一个可能的实现路径的例子
 
-`LightClientAttackEvidence` won't change but the evidence interface will need to look like the proposed one above and `DuplicateVoteEvidence` will need to change to encompass multiple double votes. A problem with batch evidence is that it needs to be unique to avoid people from submitting different permutations.
+`LightClientAttackEvidence` 不会改变，但证据界面需要看起来像上面提议的那样，并且 `DuplicateVoteEvidence` 需要改变以包含多个双重投票。批处理证据的一个问题是它需要是唯一的，以避免人们提交不同的排列。
 
-## Decision
+## 决定
 
-The decision is to adopt a hybrid design.
+决定是采用混合设计。
 
-We allow individual and batch evidence to coexist together, meaning that verification is done depending on the evidence type and that  the bulk of the work is done in the evidence pool itself (including forming the evidence to be sent to the application).
+我们允许单个证据和批次证据共存，这意味着根据证据类型进行验证，并且大部分工作在证据池本身中完成(包括形成要发送给应用程序的证据)。
 
 
-## Detailed Design
+## 详细设计
 
-Evidence has the following simple interface:
+证据有以下简单的界面:
 
 ```go
 type Evidence interface {  //proposed
@@ -104,9 +103,9 @@ type Evidence interface {  //proposed
 }
 ```
 
-The changing of the interface is backwards compatible as these methods are all present in the previous version of the interface. However, networks will need to upgrade to be able to process the new evidence as verification has changed.
+接口的更改是向后兼容的，因为这些方法都存在于先前版本的接口中。 但是，随着验证的变化，网络将需要升级才能处理新的证据。
 
-We have two concrete types of evidence that fulfil this interface
+我们有两种具体类型的证据可以满足这个接口
 
 ```go
 type LightClientAttackEvidence struct {
@@ -119,9 +118,9 @@ type LightClientAttackEvidence struct {
 	Timestamp           time.Time    // timestamp of the block at the common height
 }
 ```
-where the `Hash()` is the hash of the header and commonHeight.
+其中`Hash()` 是头部和commonHeight 的哈希值。
 
-Note: It was also discussed whether to include the commit hash which captures the validators that signed the header. However this would open the opportunity for someone to propose multiple permutations of the same evidence (through different commit signatures) hence it was omitted. Consequentially, when it comes to verifying evidence in a block, for `LightClientAttackEvidence` we can't just check the hashes because someone could have the same hash as us but a different commit where less than 1/3 validators voted which would be an invalid version of the evidence. (see `fastCheck` for more details)
+注意:还讨论了是否包含提交哈希来捕获对标头进行签名的验证器。 然而，这将为某人提供机会提出相同证据的多个排列(通过不同的提交签名)，因此它被省略了。 因此，当涉及到验证区块中的证据时，对于“LightClientAttackEvidence”，我们不能只检查哈希值，因为有人可能拥有与我们相同的哈希值，但提交不同的提交，其中不到 1/3 的验证者投票，这将是无效的 证据的版本。 (有关更多详细信息，请参阅“fastCheck”)
 
 ```go
 type DuplicateVoteEvidence {
@@ -134,96 +133,96 @@ type DuplicateVoteEvidence {
 	Timestamp        time.Time
 }
 ```
-where the `Hash()` is the hash of the two votes
+其中`Hash()`是两票的哈希值
 
-For both of these types of evidence, `Bytes()` represents the proto-encoded byte array format of the evidence and `ValidateBasic` is
-an initial consistency check to make sure the evidence has a valid structure.
+对于这两种类型的证据，`Bytes()` 表示证据的原始编码字节数组格式，`ValidateBasic` 是
+初始一致性检查，以确保证据具有有效的结构。
 
-### The Evidence Pool
+###证据池
 
-`LightClientAttackEvidence` is generated in the light client and `DuplicateVoteEvidence` in consensus. Both are sent to the evidence pool through `AddEvidence(ev Evidence) error`. The evidence pool's primary purpose is to verify evidence. It also gossips evidence to other peers' evidence pool and serves it to consensus so it can be committed on chain and the relevant information can be sent to the application in order to exercise punishment. When evidence is added, the pool first runs `Has(ev Evidence)` to check if it has already received it (by comparing hashes) and then  `Verify(ev Evidence) error`.  Once verified the evidence pool stores it it's pending database. There are two databases: one for pending evidence that is not yet committed and another of the committed evidence (to avoid committing evidence twice)
+`LightClientAttackEvidence` 在轻客户端中生成，`DuplicateVoteEvidence` 在共识中生成。两者都通过“AddEvidence(ev Evidence) error”发送到证据池。证据池的主要目的是验证证据。它还可以将证据八卦到其他节点的证据池，并提供给共识，以便在链上提交并将相关信息发送到应用程序以进行惩罚。添加证据时，池首先运行“Has(ev Evidence)”以检查它是否已经收到(通过比较哈希值)，然后运行“Verify(ev Evidence) error”。验证后，证据池将其存储为待处理数据库。有两个数据库:一个用于尚未提交的待决证据，另一个用于提交的证据(避免提交两次证据)
 
-#### Verification
+#### 确认
 
-`Verify()` does the following:
+`Verify()` 执行以下操作:
 
-- Use the hash to see if we already have this evidence in our committed database.
+- 使用散列来查看我们提交的数据库中是否已经有了这个证据。
 
-- Use the height to check if the evidence hasn't expired.
+- 使用高度检查证据是否未过期。
 
-- If it has expired then use the height to find the block header and check if the time has also expired in which case we drop the evidence
+- 如果它已过期，则使用高度查找区块头并检查时间是否也已过期，在这种情况下我们丢弃证据
 
-- Then proceed with switch statement for each of the two evidence:
+- 然后对两个证据中的每一个进行 switch 语句:
 
-For `DuplicateVote`:
+对于`DuplicateVote`:
 
-- Check that height, round, type and validator address are the same
+- 检查高度、圆形、类型和验证器地址是否相同
 
-- Check that the Block ID is different
+- 检查块 ID 是否不同
 
-- Check the look up table for addresses to make sure there already isn't evidence against this validator
+- 检查地址查找表以确保已经没有针对此验证器的证据
 
-- Fetch the validator set and confirm that the address is in the set at the height of the attack
+- 获取验证人集合并确认地址在攻击高度的集合中
 
-- Check that the chain ID and signature is valid.
+- 检查链 ID 和签名是否有效。
 
-For `LightClientAttack`
+对于`LightClientAttack`
 
-- Fetch the common signed header and val set from the common height and use skipping verification to verify the conflicting header
+- 从公共高度获取公共签名头和val集，并使用跳过验证来验证冲突的头
 
-- Fetch the trusted signed header at the same height as the conflicting header and compare with the conflicting header to work out which type of attack it is and in doing so return the malicious validators. NOTE: If the node doesn't have the signed header at the height of the conflicting header, it instead fetches the latest header it has and checks to see if it can prove the evidence based on a violation of header time. This is known as forward lunatic attack.
+- 获取与冲突头部相同高度的可信签名头部，并与冲突头部进行比较，以确定它是哪种类型的攻击，并在这样做时返回恶意验证器。注意:如果节点在冲突头的高度处没有签名头，它会获取最新的头并检查它是否可以证明基于违反头时间的证据。这被称为前向疯狂攻击。
 
-  - If equivocation, return the validators that signed for the commits of both the trusted and signed header
+  - 如果模棱两可，则返回为受信任和已签名标头的提交签名的验证器
 
-  - If lunatic, return the validators from the common val set that signed in the conflicting block
+  - 如果疯了，从在冲突块中签名的公共验证集返回验证器
 
-  - If amnesia, return no validators (since we can't know which validators are malicious). This also means that we don't currently send amnesia evidence to the application, although we will introduce more robust amnesia evidence handling in future Tendermint Core releases
+  - 如果失忆，则不返回验证器(因为我们无法知道哪些验证器是恶意的)。这也意味着我们目前不会向应用程序发送失忆证据，尽管我们将在未来的 Tendermint Core 版本中引入更强大的失忆证据处理
 
-- Check that the hashes of the conflicting header and the trusted header are different
+- 检查冲突标头和可信标头的哈希值是否不同
 
-- In the case of a forward lunatic attack, where the trusted header height is less than the conflicting header height, the node checks that the time of the trusted header is later than the time of conflicting header. This proves that the conflicting header breaks monotonically increasing time. If the node doesn't have a trusted header with a later time then it is unable to validate the evidence for now. 
+- 在前向疯子攻击的情况下，可信头高度小于冲突头高度，节点检查可信头的时间晚于冲突头的时间。这证明冲突的标头中断了单调增加的时间。如果该节点在以后没有受信任的标头，则它现在无法验证证据。
 
-- Lastly, for each validator, check the look up table to make sure there already isn't evidence against this validator
+- 最后，对于每个验证器，检查查找表以确保已经没有针对该验证器的证据
 
-After verification we persist the evidence with the key `height/hash` to the pending evidence database in the evidence pool.
+验证后，我们将带有关键字“height/hash”的证据保存到证据池中的待处理证据数据库中。
 
-#### ABCI Evidence
+#### ABCI 证据
 
-Both evidence structures contain data (such as timestamp) that are necessary to be passed to the application but do not strictly constitute evidence of misbehaviour. As such, these fields are verified last. If any of these fields are invalid to a node i.e. they don't correspond with their state, nodes will reconstruct a new evidence struct from the existing fields and repopulate the abci specific fields with their own state data.
+两种证据结构都包含传递给应用程序所必需的数据(例如时间戳)，但严格来说并不构成不当行为的证据。因此，最后验证这些字段。如果这些字段中的任何一个对节点无效，即它们与它们的状态不对应，则节点将从现有字段重建新的证据结构，并用它们自己的状态数据重新填充 abci 特定字段。
 
-#### Broadcasting and receiving evidence
+####广播和接收证据
 
-The evidence pool also runs a reactor that broadcasts the newly validated
-evidence to all connected peers.
+证据池还运行一个反应堆，广播新验证的
+向所有连接的对等方提供证据。
 
-Receiving evidence from other evidence reactors works in the same manner as receiving evidence from the consensus reactor or a light client.
-
-
-#### Proposing evidence on the block
-
-When it comes to prevoting and precomitting a proposal that contains evidence, the full node will once again
-call upon the evidence pool to verify the evidence using `CheckEvidence(ev []Evidence)`:
-
-This performs the following actions:
-
-1. Loops through all the evidence to check that nothing has been duplicated
-
-2. For each evidence, run `fastCheck(ev evidence)` which works similar to `Has` but instead for `LightClientAttackEvidence` if it has the
-same hash it then goes on to check that the validators it has are all signers in the commit of the conflicting header. If it doesn't pass fast check (because it hasn't seen the evidence before) then it will have to verify the evidence.
-
-3. runs `Verify(ev Evidence)` - Note: this also saves the evidence to the db as mentioned before.
+从其他证据反应器接收证据的工作方式与从共识反应器或轻客户端接收证据的方式相同。
 
 
-#### Updating application and pool
+#### 在区块上提出证据
 
-The final part of the lifecycle is when the block is committed and the `BlockExecutor` then updates state. As part of this process, the `BlockExecutor` gets the evidence pool to create a simplified format for the evidence to be sent to the application. This happens in `ApplyBlock` where the executor calls `Update(Block, State) []abci.Evidence`.
+当涉及到预先投票和预先提交包含证据的提案时，全节点将再次
+调用证据池使用`CheckEvidence(ev []Evidence)`来验证证据:
+
+这将执行以下操作:
+
+1. 遍历所有证据以检查没有任何重复
+
+2. 对于每个证据，运行“fastCheck(ev evidence)”，它的工作原理类似于“Has”，但如果它具有“LightClientAttackEvidence”
+相同的哈希然后继续检查它拥有的验证器是否都是冲突标头提交中的签名者。如果它没有通过快速检查(因为它之前没有看到证据)，那么它就必须验证证据。
+
+3. 运行 `Verify(ev Evidence)` - 注意:这也将证据保存到数据库中，如前所述。
+
+
+#### 更新应用程序和池
+
+生命周期的最后一部分是提交块，然后“BlockExecutor”更新状态。作为此过程的一部分，“BlockExecutor”获取证据池以创建要发送到应用程序的证据的简化格式。这发生在“ApplyBlock”中，执行程序调用“Update(Block, State) []abci.Evidence”。
 
 ```go
 abciResponses.BeginBlock.ByzantineValidators = evpool.Update(block, state)
 ```
 
-Here is the format of the evidence that the application will receive. As seen above, this is stored as an array within `BeginBlock`.
-The changes to the application are minimal (it is still formed one for each malicious validator) with the exception of using an enum instead of a string for the evidence type.
+以下是申请将收到的证据格式。 如上所示，这在“BeginBlock”中存储为数组。
+除了使用枚举而不是字符串作为证据类型之外，对应用程序的更改很小(它仍然为每个恶意验证器形成一个)。
 
 ```go
 type Evidence struct {
@@ -243,14 +242,14 @@ type Evidence struct {
 ```
 
 
-This `Update()` function does the following:
+这个 `Update()` 函数执行以下操作:
 
-- Increments state which keeps track of both the current time and height used for measuring expiry
+- 跟踪用于测量到期的当前时间和高度的增量状态
 
-- Marks evidence as committed and saves to db. This prevents validators from proposing committed evidence in the future
-  Note: the db just saves the height and the hash. There is no need to save the entire committed evidence
+- 将证据标记为已提交并保存到数据库。 这可以防止验证者在未来提出已提交的证据
+   注意:db 只保存高度和哈希值。 无需保存全部提交的证据
 
-- Forms ABCI evidence as such:  (note for `DuplicateVoteEvidence` the validators array size is 1)
+- 形成这样的 ABCI 证据:(注意“DuplicateVoteEvidence”，验证器数组大小为 1)
   ```go
   for _, val := range evInfo.Validators {
     abciEv = append(abciEv, &abci.Evidence{
@@ -263,44 +262,44 @@ This `Update()` function does the following:
   }
   ```
 
-- Removes expired evidence from both pending and committed databases
+- 从挂起和提交的数据库中删除过期的证据
 
-The ABCI evidence is then sent via the `BlockExecutor` to the application.
+然后通过“BlockExecutor”将 ABCI 证据发送到应用程序。
 
-#### Summary
+#### 概括
 
-To summarize, we can see the lifecycle of evidence as such:
+总而言之，我们可以看到证据的生命周期如下:
 
 ![evidence_lifecycle](../imgs/evidence_lifecycle.png)
 
-Evidence is first detected and created in the light client and consensus reactor. It is verified and stored as `EvidenceInfo` and gossiped to the evidence pools in other nodes. The consensus reactor later communicates with the evidence pool to either retrieve evidence to be put into a block, or verify the evidence the consensus reactor has retrieved in a block. Lastly when a block is added to the chain, the block executor sends the committed evidence back to the evidence pool so a pointer to the evidence can be stored in the evidence pool and it can update it's height and time. Finally, it turns the committed evidence into ABCI evidence and through the block executor passes the evidence to the application so the application can handle it.
+首先在轻客户端和共识反应器中检测和创建证据。它被验证并存储为“EvidenceInfo”，并传到其他节点的证据池中。共识反应器稍后与证据池通信以检索要放入块中的证据，或验证共识反应器在块中检索到的证据。最后，当一个块被添加到链中时，块执行器将提交的证据发送回证据池，这样指向证据的指针就可以存储在证据池中，并且可以更新它的高度和时间。最后，它将提交的证据转换为 ABCI 证据，并通过块执行器将证据传递给应用程序，以便应用程序可以处理它。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-<!-- > This section describes the consequences, after applying the decision. All consequences should be summarized here, not just the "positive" ones. -->
+<!--> 本节描述应用决定后的后果。所有的后果都应该在这里总结，而不仅仅是“积极的”后果。 -->
 
-### Positive
+### 积极的
 
-- Evidence is better contained to the evidence pool / module
-- LightClientAttack is kept together (easier for verification and bandwidth)
-- Variations on commit sigs in LightClientAttack doesn't lead to multiple permutations and multiple evidence
-- Address to evidence map prevents DOS attacks, where a single validator could DOS the network by flooding it with evidence submissions
+- 证据更好地包含在证据池/模块中
+- LightClientAttack 保持在一起(更容易验证和带宽)
+- LightClientAttack 中提交信号的变化不会导致多重排列和多重证据
+- 证据映射地址可防止 DOS 攻击，在这种攻击中，单个验证者可以通过大量提交证据来对网络进行 DOS 攻击
 
-### Negative
+### 消极的
 
-- Changes the `Evidence` interface and thus is a block breaking change
-- Changes the ABCI `Evidence` and is thus a ABCI breaking change
-- Unable to query evidence for address / time without evidence pool
+- 更改了`Evidence`界面，因此是一个块破坏更改
+- 更改了 ABCI `Evidence`，因此是 ABCI 的重大更改
+- 没有证据池无法查询地址/时间的证据
 
-### Neutral
+### 中性的
 
 
-## References
+## 参考
 
-<!-- > Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here! -->
+<!--> 是否有任何相关的 PR 评论、导致此问题的问题，或关于我们为何做出给定设计选择的参考文章？如果是这样，请在此处链接它们！ -->
 
 - [LightClientAttackEvidence](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence-handling.md)

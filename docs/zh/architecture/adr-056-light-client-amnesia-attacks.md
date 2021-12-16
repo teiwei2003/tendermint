@@ -1,113 +1,113 @@
-# ADR 056: Light client amnesia attacks
+# ADR 056:轻客户端健忘症攻击
 
-## Changelog
+## 变更日志
 
-- 02.04.20: Initial Draft
-- 06.04.20: Second Draft
-- 10.06.20: Post Implementation Revision
-- 19.08.20: Short Term Amnesia Alteration
-- 01.10.20: Status of Amnesia for 0.34
+- 02.04.20:初稿
+- 06.04.20:第二稿
+- 10.06.20:实施后修订
+- 19.08.20:短期健忘症改变
+- 01.10.20:0.34 的失忆状态
 
-## Context
+## 语境
 
-Whilst most created evidence of malicious behavior is self evident such that any individual can verify them independently there are types of evidence, known collectively as global evidence, that require further collaboration from the network in order to accumulate enough information to create evidence that is individually verifiable and can therefore be processed through consensus. [Fork Accountability](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md) has been coined to describe the entire process of detection, proving and punishing of malicious behavior. This ADR addresses specifically what a light client amnesia attack is and how it can be proven and the current decision around handling light client amnesia attacks. For information on evidence handling by the light client, it is recommended to read [ADR 47](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md).
+虽然大多数恶意行为的创建证据都是不言自明的，因此任何人都可以独立验证它们，但也有一些类型的证据，统称为全局证据，需要网络进一步合作，以积累足够的信息来创建可单独验证的证据因此可以通过共识进行处理。 [Fork Accountability](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md) 被创造来描述恶意行为的检测、证明和惩罚的整个过程.该 ADR 特别说明了什么是轻客户端健忘症攻击、如何证明它以及当前关于处理轻客户端健忘症攻击的决定。有关轻客户端证据处理的信息，建议阅读 [ADR 47](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-轻客户端.md)。
 
-### Amnesia Attack
+### 失忆症发作
 
-The schematic below explains a scenario where an amnesia attack can occur such that two sets of honest nodes, C1 and C2, commit different blocks.
+下面的示意图解释了一种可能发生健忘症攻击的场景，即两组诚实节点 C1 和 C2 提交不同的块。
 
 ![](../imgs/tm-amnesia-attack.png)
 
-1. C1 and F send PREVOTE messages for block A.
-2. C1 sends PRECOMMIT for round 1 for block A.
-3. A new round is started, C2 and F send PREVOTE messages for a different block B.
-4. C2 and F then send PRECOMMIT messages for block B.
-5. F later on creates PRECOMMITS for block A and combines it with those from C1 to form a block
+1. C1 和 F 为区块 A 发送 PREVOTE 消息。
+2. C1 为区块 A 的第 1 轮发送 PRECOMMIT。
+3. 新一轮开始，C2 和 F 为不同的块 B 发送 PREVOTE 消息。
+4. C2 和 F 然后为块 B 发送 PRECOMMIT 消息。
+5. F 稍后为区块 A 创建 PRECOMMITS 并将其与来自 C1 的那些组合形成一个区块
 
 
-This forged block can then be used to fool light clients trying to verify it. It must be stressed that there are a few more hurdles or dimensions to the attack to consider.For a more detailed walkthrough refer to Appendix A.
+然后可以使用这个伪造的块来欺骗试图验证它的轻客户端。必须强调的是，攻击还需要考虑更多的障碍或维度。有关更详细的演练，请参阅附录 A。
 
-## Decision
+## 决定
 
-The decision surrounding amnesia attacks has both a short term and long term component. In the long term, a more sturdy protocol will need to be fleshed out and implemented. There is already draft documents outlining what such a protocol would look like and the resources it would require (see references). Prior revisions however outlined a protocol which had been implemented (See Appendix B). It was agreed that it still required greater consideration and review given it's importance. It was therefore discussed, with the limited time frame set before 0.34, whether the protocol should be completely removed or if there should remain some logic in handling the aforementioned scenarios.
+围绕健忘症发作的决定既有短期成分，也有长期成分。从长远来看，需要充实和实施一个更强大的协议。已经有草稿文件概述了这样一个协议的外观和它需要的资源(见参考资料)。然而，先前的修订概述了已实施的协议(参见附录 B)。大家一致认为，鉴于它的重要性，它仍然需要更多的考虑和审查。因此，讨论了在 0.34 之前设置的有限时间框架，是否应该完全删除该协议，或者是否应该在处理上述场景时保留一些逻辑。
 
-The latter of the two options meant storing a record of all votes in any height with which there was more than one round. This information would then be accessible for applications if they wanted to perform some off-chain verification and punishment.
+两个选项中的后一个意味着以任何高度存储超过一轮的所有投票记录。如果应用程序想要执行一些链下验证和惩罚，则可以访问这些信息。
 
-In summary, this seemed like too much to ask of the application to implement only on a temporary basis, whilst not having the domain specific knowledge and considering such a difficult and unlikely attack. Therefore the short term decision is to identify when the attack has occurred and implement the detector algorithm highlighted in [ADR 47](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md) but to not implement any accountability protocol that would identify malicious validators and allow applications to punish them. This will hopefully change in the long term with the focus on eventually reaching a concrete and secure protocol with identifying and dealing with these attacks.
+总而言之，要求应用程序仅在临时基础上实施，而没有特定领域的知识并考虑到这种困难且不太可能的攻击，这似乎太过分了。因此，短期决策是确定攻击何时发生并实施 [ADR 47](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling) 中突出显示的检测器算法-evidence-from-light-client.md)，但不实施任何可识别恶意验证器并允许应用程序惩罚它们的问责协议。从长远来看，这种情况有望发生改变，重点是最终达成一个具体且安全的协议，以识别和处理这些攻击。
 
-## Implications
+## 影响
 
-- Light clients will still be able to detect amnesia attacks so long as the assumption of having at least one correct witness holds
-- Light clients will gossip the attack to witnesses and halt thus failing to validate the incorrect block (and therefore not being fooled)
-- Validators will propose and commit evidence of the amnesia attack on chain
-- No evidence will be passed to the application indicting any malicious validators, thus meaning that no malicious validators will be punished for performing the attack
-- If a light clients bubble of providers are all faulty the light client will falsely validate amnesia attacks as well as any other 1/3+ light client attack.
+- 只要假设至少有一个正确的见证人成立，轻客户端仍然能够检测到健忘症攻击
+- 轻客户端会将攻击八卦给目击者并停止，从而无法验证不正确的块(因此不会被愚弄)
+- 验证者将提出并提交链上健忘症攻击的证据
+- 不会将任何证据传递给应用程序来指控任何恶意验证者，这意味着恶意验证者不会因执行攻击而受到惩罚
+- 如果供应商的轻客户端泡沫全部出现故障，轻客户端将错误地验证健忘症攻击以及任何其他 1/3+ 轻客户端攻击。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-Light clients are still able to prevent falsely validating a block.
+轻客户端仍然能够防止错误地验证块。
 
-Already implemented.
+已经实施。
 
-### Negative
+### 消极的
 
-Light clients where all witnesses are faulty can be subject to an amnesia attack and verify a forged block that is not part of the chain.
+所有证人都有错误的轻客户端可能会受到健忘症攻击并验证不属于链一部分的伪造块。
 
-### Neutral
+### 中性的
 
 
-## References
+## 参考
 
-- [Fork accountability algorithm](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit)
-- [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
+- [分叉问责算法](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit)
+- [分叉问责规范](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
 
-## Appendix A: Detailed Walkthrough of Performing a Light Client Amnesia Attack
+## 附录 A:执行轻客户端失忆攻击的详细演练
 
-As the attacker, a prerequisite to this attack is first to observe or attempt to craft a block where a subset (less than ⅓) of correct validators sent precommit votes for a proposal in an earlier round and later received ⅔ prevotes for a different proposal thus changing their lock and correctly sending precommit votes (and later committing) for the proposal in the latter round. The second prerequisite is to have at least ⅓ validating power in that height (or enough voting power to have ⅔+ when combined with the precommits of the earlier round).
+作为攻击者，此攻击的先决条件是首先观察或尝试制作一个区块，其中正确验证者的子集(少于 1/3)在较早的一轮中为某个提案发送了预提交投票，随后收到了 ⅔ 个不同提案的预投票，因此更改他们的锁定并正确地为后一轮中的提案发送预提交投票(以及稍后提交)。第二个先决条件是在那个高度至少有 ⅓ 的验证权(或者在结合前一轮的预提交时有足够的投票权获得 ⅔+)。
 
-To go back to how one may craft such a block, we begin with one of the validators in this cabal being the proposer. They propose a block with all the txs that they want to fool a light client with. The proposer then only relays this to the members of their cabal and a controlled subset of correct validators (less than ⅓). We will call ourselves f for faulty and c1 for this correct subset.
+回到如何制作这样一个区块的问题，我们从这个阴谋集团中的一个验证者作为提议者开始。他们提出了一个包含他们想要欺骗轻客户端的所有交易的区块。然后，提议者仅将其转发给其阴谋集团的成员和正确验证者的受控子集(少于 ⅓)。我们将称自己为 f 代表错误，而 c1 代表这个正确的子集。
 
-Attackers need to rely on the assistance of some form of a network partition or on the nature of the sporadic voting to conjure their desired environment. The attackers need at least ⅓ of the validating power of the remaining correct validators, we shall denote this as c2, to not see ⅔ prevotes and thus not be locked on a block when it comes to the next round. If we have less than ⅓ remaining validators that don’t see this first proposal, then we will not have enough voting power to reach ⅔+ prevotes (the sum of f and c2) in the following round and thus change the lock of c1 such that we correctly commit the block in the latter round yet have enough precommits in the earlier round to fool the light client. Remember this is our desired scenario: to save all these precommit votes for a different (in this case earlier) proposed block.
+攻击者需要依靠某种形式的网络分区的帮助或零星投票的性质来召唤他们想要的环境。攻击者至少需要其余正确验证者的验证能力的 1/3，我们将其表示为 c2，以看不到 ⅔ 预投票，从而在进入下一轮时不会被锁定在一个块上。如果我们没有看到第一个提案的剩余验证者少于 ⅓，那么我们将没有足够的投票权在下一轮达到 ⅔+ 预投票(f 和 c2 的总和)，从而更改 c1 的锁定，例如我们在后一轮正确提交了块，但在前一轮中有足够的预提交来欺骗轻客户端。请记住，这是我们想要的场景:将所有这些预提交投票保存到不同的(在本例中为较早的)提议块。
 
-To try to break this down even further let’s go back to the first round. F sends c1 a proposal (and not c2), c1 in turn sends their prevotes to all whom they are connected to. This means that some will be received by c2. F then sends their prevotes just to c1. Now not all validators in c1 may be connected to each other, so perhaps some validators in c1 might not receive ⅔ (from their own cohort and from f) and thus not precommit. In other situations we may see a validator in c2 connected to all validators in c1. Therefore they too will receive ⅔ prevotes and thus precommit. We can conclude therefore that although targeting this c1 subset of validators, those that actually precommit may be somewhat different. The key is for the attackers to observe the n amount of precommits they need in round 1 where n is ⅔+ - f, whilst ensuring that n itself does not go over ⅓. If it does then less than ⅔ validators remain to be able to change the lock and commit the block in the later round.
+为了进一步分解，让我们回到第一轮。 F 向 c1 发送提案(而不是 c2)，然后 c1 将他们的赞成票发送给所有与他们有联系的人。这意味着一些将被 c2 接收。 F 然后将他们的赞成票发送到 c1。现在并非 c1 中的所有验证器都可能相互连接，因此 c1 中的某些验证器可能不会收到 ⅔(来自他们自己的队列和 f)，因此不会预先提交。在其他情况下，我们可能会看到 c2 中的一个验证器连接到 c1 中的所有验证器。因此，他们也将收到 ⅔ 预投票，从而预提交。因此，我们可以得出结论，虽然针对这个 c1 验证器子集，但那些实际预提交的验证器可能会有所不同。关键是攻击者在第 1 轮中观察他们需要的 n 次预提交，其中 n 是 ⅔+ - f，同时确保 n 本身不会超过 ⅓。如果是这样，那么只有不到 ⅔ 的验证者能够更改锁定并在后面的轮次中提交块。
 
-An extra dimension to this puzzle is the timeouts. Whilst c1 is relaying votes to its peers and these validators count closer towards the ⅔ threshold needed to send their precommit votes at any moment the timeout could be reached and thus the nodes will precommit nil and ignore any late prevote messages.
+这个难题的一个额外维度是超时。虽然 c1 正在将投票转发给它的对等节点，并且这些验证器更接近于在可能达到超时的任何时刻发送其预提交投票所需的 ⅔ 阈值，因此节点将预提交 nil 并忽略任何迟到的预投票消息。
 
-This is all to say that such an attack is partly out of the attackers hands. All they can do is tweak the subset of validators that they first choose to gossip the proposal and modify the timings around when they send their prevotes until they reach the desired precondition: n precommits for an earlier proposal and ⅔ precommits for the later proposal. So this is up to the gods of non deterministic behavior to help them out with their plight. I’m not going to allocate the hours to calculate the probability but it could be in the magnitude of 1000’s of blocks trying to get this scenario before the precondition is met.
+这就是说，这样的攻击部分出在攻击者的手中。他们所能做的就是调整他们首先选择八卦提案的验证者子集，并修改他们发送预投票的时间，直到达到所需的前提条件:n 次预提交用于较早的提议，而 ⅔ 预提交用于较晚的提议。因此，这取决于非确定性行为的众神来帮助他们解决困境。我不打算分配时间来计算概率，但在满足先决条件之前，可能有 1000 个区块试图获得这种情况。
 
-Obviously, the probability becomes substantially higher as the cabal’s voting power nears ⅔. This is because both n decreases and there is greater tolerance to send prevotes to a greater amount of validators without going overboard and reaching the ⅓ precommit threshold in the first round which would mean they would have to try again.
+显然，随着阴谋集团的投票权接近 ⅔，概率会变得更高。这是因为 n 都减少了，并且有更大的容忍度，可以将预投票发送给更多的验证者，而不会过火并在第一轮中达到 ⅓ 预提交阈值，这意味着他们将不得不再次尝试。
 
-Once we’ve got our n, we can then forge the remaining signatures for that block (from the f) and bundle them all together and tada we have a forged signed header.
+一旦我们得到了 n，我们就可以为那个块(来自 f)伪造剩余的签名，并将它们捆绑在一起，这样我们就有了一个伪造的签名头。
 
-Now we’ve done that, it’s time to find some light clients to fool.
+现在我们已经做到了，是时候找一些轻客户端来愚弄了。
 
-Also critical to this type of attack is that the light client that is connected to our nodes must request a light block at that specific height with which we forged this signed header but this shouldn’t be hard to do. To bring this back to a real context, say our faulty cabal, f, bought some groceries using atoms and then wanted to prove that they did, the grocery owner whips out their phone, runs the light client and f tells them the height they committed the transaction.
+对这种类型的攻击也很关键的是，连接到我们节点的轻客户端必须在我们伪造这个签名头的特定高度请求一个轻块，但这应该不难做到。为了将其带回真实的背景，假设我们的错误阴谋集团 f 使用原子购买了一些杂货，然后想要证明他们确实这样做了，杂货店老板拿出他们的手机，运行轻客户端，f 告诉他们他们承诺的高度交易。
 
-An important note here is that because the validator sets are the same between the canonical and the forged block, this attack also works on light clients that verify sequentially. In fact, they are especially vulnerable because they currently don’t run the detector function afterwards.
+这里的一个重要注意事项是，由于规范块和伪造块之间的验证器集相同，因此这种攻击也适用于顺序验证的轻客户端。事实上，它们特别容易受到攻击，因为它们目前不会在之后运行检测器功能。
 
-However, if our grocery owner verifies using the skipping algorithm, they will then run the detector and therefore they will compare with other witness nodes. Ideally for our attackers, if f has a lot of nodes exposing their rpc endpoints, then there is a chance that all the witnesses the light client has are faulty and thus we have a successful attack and the grocery owner has been fooled into handing f a few apples and carrots.
+但是，如果我们的杂货店老板使用跳过算法进行验证，他们将运行检测器，因此他们将与其他见证节点进行比较。对我们的攻击者来说，理想的情况是，如果 f 有很多节点暴露了他们的 rpc 端点，那么轻客户端的所有见证人都有可能出错，因此我们的攻击成功了，杂货店老板被愚弄了苹果和胡萝卜。
 
-However, there is a greater chance, especially if the light client is connected to quite a few other nodes that a divergence will be detected. The light client will figure out there was an amnesia attack and send the evidence to the witness to commit on chain. The grocery owner will see that verification failed and won't hand over the apples or carrots but also f won't be punished for their villainous behavior. This means that they can go over to the hairdressers and see if they can pull off the same stunt again.
+然而，有更大的机会，特别是如果轻客户端连接到相当多的其他节点时，会检测到分歧。轻客户端会发现发生了失忆症攻击，并将证据发送给证人以进行链上提交。杂货店老板会看到验证失败，不会交出苹果或胡萝卜，但也不会因为他们的恶行而受到惩罚。这意味着他们可以去理发师那里看看他们是否可以再次完成同样的特技。
 
-So this brings to the fore the current defenses that are in place. As long as there has not been a cabal of validators with greater than 1/3 power (or the trust level), the light clients verification algorithm will prevent any attempts to deceive it. Greater than this threshold and we rely on the detector as a second layer of defense to pick up on any attack. It's security is chiefly tied with the assumption that at least one of the witnesses is correct. If this fails then as illustrated above, the light client can be suceptible to amnesia (as well as equivocation and lunatic) attacks.
+因此，这凸显了现有的防御措施。只要没有超过 1/3 权力(或信任级别)的验证者阴谋集团，轻客户端验证算法将阻止任何欺骗它的企图。大于此阈值，我们依靠检测器作为第二层防御来应对任何攻击。它的安全性主要与至少一个证人是正确的假设有关。如果这失败了，那么如上所示，轻客户端可能容易受到健忘症(以及模棱两可和疯子)的攻击。
 
-The outstanding problem, if we indeed consider it big enough to be one, therefore lies in the incentivisation mechanism which is how f and other malicious validators are punished. This is decided by the application but it's up to Tendermint to identify them. With other forms of attacks the evidence lies in the precommits. But because an amnesia attack uses precommits from another round, which is information that is discarded by the consensus engine once the block is committed, it is difficult to understand which validators were in fact faulty.
+悬而未决的问题，如果我们确实认为它足够大，那么就在于激励机制，即 f 和其他恶意验证者如何受到惩罚。这是由应用程序决定的，但由 Tendermint 来识别它们。对于其他形式的攻击，证据在于预提交。但是因为健忘症攻击使用了另一轮的预提交，即一旦区块提交，共识引擎就会丢弃的信息，所以很难理解哪些验证器实际上是错误的。
 
-If we cast our minds back to what I previously wrote, part of an amnesia attack depends on getting n precommits from an earlier round. These are then bundled with the malicious validators' own signatures. This means that the light client nor full nodes are capable of distinguishing which of the signatures were correctly created as part of Tendermint consensus and which were forged later on.
+如果我们回想我之前写的内容，失忆症的一部分取决于从前一轮中获得 n 次预提交。然后将这些与恶意验证者自己的签名捆绑在一起。这意味着轻客户端和完整节点都无法区分哪些签名是作为 Tendermint 共识的一部分正确创建的，哪些是后来伪造的。
 
-## Appendix B: Prior Amnesia Evidence Accountability Implementation
+## 附录 B:先前健忘症证据问责实施
 
-As the distinction between these two attacks (amnesia and back to the past) can only be distinguished by confirming with all validators (to see if it is a full fork or a light fork), for the purpose of simplicity, these attacks will be treated as the same.
+由于这两种攻击(健忘症和回到过去)的区别只能通过与所有验证者确认(看是全分叉还是轻分叉)来区分，为了简单起见，这些攻击将被处理一样。
 
-Currently, the evidence reactor is used to simply broadcast and store evidence. The idea of creating a new reactor for the specific task of verifying these attacks was briefly discussed, but it is decided that the current evidence reactor will be extended.
+目前，证据反应器用于简单地广播和存储证据。简要讨论了为验证这些攻击的特定任务创建新反应堆的想法，但决定将扩展当前的证据反应堆。
 
-The process begins with a light client receiving conflicting headers (in the future this could also be a full node during fast sync or state sync), which it sends to a full node to analyze. As part of [evidence handling](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md), this is extracted into potential amnesia evidence when the validator voted in more than one round for a different block.
+该过程始于轻客户端接收冲突的标头(在未来，这也可能是快速同步或状态同步期间的完整节点)，然后将其发送到完整节点进行分析。作为[证据处理](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md)的一部分，这被提取为潜在的当验证者为不同的区块进行多轮投票时的健忘证据。
 
 ```golang
 type PotentialAmnesiaEvidence struct {
@@ -118,18 +118,18 @@ type PotentialAmnesiaEvidence struct {
 }
 ```
 
-*NOTE: There had been an earlier notion towards batching evidence against the entire set of validators all together but this has given way to individual processing predominantly to maintain consistency with the other forms of evidence. A more extensive breakdown can be found [here](https://github.com/tendermint/tendermint/issues/4729)*
+*注意:早先有一个想法是将针对整个验证器集的证据一起分批进行，但这已经让位于个人处理，主要是为了与其他形式的证据保持一致。可以在 [此处](https://github.com/tendermint/tendermint/issues/4729)* 中找到更广泛的细分
 
-The evidence will contain the precommit votes for a validator that voted for both rounds. If the validator voted in more than two rounds, then they will have multiple `PotentialAmnesiaEvidence` against them hence it is possible that there is multiple evidence for a validator in a single height but not for a single round. The votes should be all valid and the height and time that the infringement was made should be within:
+证据将包含对两轮投票的验证者的预提交投票。如果验证者在两轮以上投票，那么他们将有多个针对他们的“PotentialAmnesiaEvidence”，因此有可能在一个高度上有多个验证者的证据，但没有一个轮次。投票应全部有效，且违规的高度和时间应在:
 
 `MaxEvidenceAge - ProofTrialPeriod`
 
-This trial period will be discussed later.
+这个试用期将在后面讨论。
 
-Returning to the event of an amnesia attack, if we were to examine the behavior of the honest nodes, C1 and C2, in the schematic, C2 will not PRECOMMIT an earlier round, but it is likely, if a node in C1 were to receive +2/3 PREVOTE's or PRECOMMIT's for a higher round, that it would remove the lock and PREVOTE and PRECOMMIT for the later round. Therefore, unfortunately it is not a case of simply punishing all nodes that have double voted in the `PotentialAmnesiaEvidence`.
+回到失忆攻击事件，如果我们要检查原理图中诚实节点 C1 和 C2 的行为，C2 将不会预先提交前一轮，但很可能，如果 C1 中的节点要接收+2/3 PREVOTE's 或 PRECOMMIT's 用于更高的回合，它将取消锁定，并为后面的回合解除 PREVOTE 和 PRECOMMIT。因此，不幸的是，这不是简单地惩罚所有在“PotentialAmnesiaEvidence”中进行双重投票的节点的情况。
 
-Instead we use the Proof of Lock Change (PoLC) referred to in the [consensus spec](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md#terms). When an honest node votes again for a different block in a later round
-(which will only occur in very rare cases), it will generate the PoLC and store it in the evidence reactor for a time equal to the `MaxEvidenceAge`
+相反，我们使用[共识规范](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md#terms)中提到的锁定变更证明(PoLC)。当诚实节点在稍后的一轮中再次投票支持不同的区块时
+(这只会在极少数情况下发生)，它将生成 PoLC 并将其存储在证据反应器中的时间等于“MaxEvidenceAge”
 
 ```golang
 type ProofOfLockChange struct {
@@ -138,9 +138,9 @@ type ProofOfLockChange struct {
 }
 ```
 
-This can be either evidence of +2/3 PREVOTES or PRECOMMITS (either warrants the honest node the right to vote) and is valid, among other checks, so long as the PRECOMMIT vote of the node in V2 came after all the votes in the `ProofOfLockChange` i.e. it received +2/3 votes for a block and then voted for that block thereafter (F is unable to prove this).
+这可以是 +2/3 PREVOTES 或 PRECOMMITS(保证诚实节点有投票权)的证据，并且在其他检查中是有效的，只要 V2 中节点的 PRECOMMIT 投票是在所有投票之后出现的 `ProofOfLockChange` 即它获得了+2/3 的区块投票，然后在此之后投票支持该区块(F 无法证明这一点)。
 
-In the event that an honest node receives `PotentialAmnesiaEvidence` it will first `ValidateBasic()` and `Verify()` it and then will check if it is among the suspected nodes in the evidence. If so, it will retrieve the `ProofOfLockChange` and combine it with `PotentialAmensiaEvidence` to form `AmensiaEvidence`. All honest nodes that are part of the indicted group will have a time, measured in blocks, equal to `ProofTrialPeriod`, the aforementioned evidence paramter, to gossip their `AmnesiaEvidence` with their `ProofOfLockChange`
+如果诚实节点收到“PotentialAmnesiaEvidence”，它将首先“ValidateBasic()”和“Verify()”，然后检查它是否在证据中的可疑节点中。 如果是这样，它将检索“ProofOfLockChange”并将其与“PotentialAmensiaEvidence”组合以形成“AmensiaEvidence”。 属于被起诉组的所有诚实节点将有时间(以块为单位)等于上述证据参数“ProofTrialPeriod”，用“ProofOfLockChange”八卦他们的“AmnesiaEvidence”
 
 ```golang
 type AmnesiaEvidence struct {
@@ -149,22 +149,22 @@ type AmnesiaEvidence struct {
 }
 ```
 
-If the node is not required to submit any proof than it will simply broadcast the `PotentialAmnesiaEvidence`, stamp the height that it received the evidence and begin to wait out the trial period. It will ignore other `PotentialAmnesiaEvidence` gossiped at the same height and round.
+如果节点不需要提交任何证据，它会简单地广播“PotentialAmnesiaEvidence”，标记它收到证据的高度并开始等待试用期。它将忽略在相同高度和回合中闲聊的其他“PotentialAmnesiaEvidence”。
 
-If a node receives `AmnesiaEvidence` that contains a valid `ProofOfClockChange` it will add it to the evidence store and replace any PotentialAmnesiaEvidence of the same height and round. At this stage, an amnesia evidence with polc, it is ready to be submitted to the chin. If a node receives `AmnesiaEvidence` with an empty polc it will ignore it as each honest node will conduct their own trial period to be sure that time was given for any other honest nodes to respond.
+如果节点收到包含有效的“ProofOfClockChange”的“AmnesiaEvidence”，它会将其添加到证据存储并替换任何具有相同高度和圆形的 PotentialAmnesiaEvidence。在这个阶段，有polc的失忆证据，就准备提交给下巴了。如果节点收到带有空 plc 的“AmnesiaEvidence”，它将忽略它，因为每个诚实节点将进行自己的试用期，以确保有时间让任何其他诚实节点做出响应。
 
-There can only be one `AmnesiaEvidence` and one `PotentialAmneisaEvidence` stored for each attack (i.e. for each height).
+每次攻击(即每个高度)只能存储一个“AmnesiaEvidence”和一个“PotentialAmneisaEvidence”。
 
-When, `state.LastBlockHeight > PotentialAmnesiaEvidence.timestamp + ProofTrialPeriod`, nodes will upgrade the corresponding `PotentialAmnesiaEvidence` and attach an empty `ProofOfLockChange`. Then honest validators of the current validator set can begin proposing the block that contains the `AmnesiaEvidence`.
+当`state.LastBlockHeight > PotentialAmnesiaEvidence.timestamp + ProofTrialPeriod`时，节点会升级对应的`PotentialAmnesiaEvidence`并附加一个空的`ProofOfLockChange`。然后，当前验证者集的诚实验证者可以开始提议包含“AmnesiaEvidence”的区块。
 
-*NOTE: Even before the evidence is proposed and committed, the off-chain process of gossiping valid evidence could be
- enough for honest nodes to recognize the fork and halt.*
+*注意:即使在提出和提交证据之前，八卦有效证据的链下过程也可能是
+ 足以让诚实的节点识别分叉和停止。*
 
-Other validators will vote `nil` if:
+如果出现以下情况，其他验证器将投票为“nil”:
 
-- The Amnesia Evidence is not valid
-- The Amensia Evidence is not within their own trial period i.e. too soon.
-- They don't have the Amnesia Evidence and it is has an empty polc (each validator needs to run their own trial period of the evidence)
-- Is of an AmnesiaEvidence that has already been committed to the chain.
+- 健忘症证据无效
+- 亚美尼亚证据不在他们自己的试用期内，即太早了。
+- 他们没有健忘症证据，它有一个空的 plc(每个验证者需要运行自己的证据试用期)
+- 属于已经提交给链的失忆症证据。
 
-Finally it is important to stress that the protocol of having a trial period addresses attacks where a validator voted again for a different block at a later round and time. In the event, however, that the validator voted for an earlier round after voting for a later round i.e. `VoteA.Timestamp < VoteB.Timestamp && VoteA.Round > VoteB.Round` then this action is inexcusable and can be punished immediately without the need of a trial period. In this case, PotentialAmnesiaEvidence will be instantly upgraded to AmnesiaEvidence.
+最后，需要强调的是，具有试用期的协议解决了验证者在稍后的轮次和时间再次投票支持不同区块的攻击。然而，如果验证者在为后一轮投票后投票支持前一轮，即“VoteA.Timestamp < VoteB.Timestamp && VoteA.Round > VoteB.Round”，那么这个行为是不可原谅的，并且可以在没有需要试用期。在这种情况下，PotentialAmnesiaEvidence 将立即升级为 AmnesiaEvidence。

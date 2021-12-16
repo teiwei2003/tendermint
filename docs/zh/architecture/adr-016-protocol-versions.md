@@ -1,108 +1,108 @@
-# ADR 016: Protocol Versions
+# ADR 016:协议版本
 
-## TODO
+## 去做
 
-- How to / should we version the authenticated encryption handshake itself (ie.
-  upfront protocol negotiation for the P2PVersion)
-- How to / should we version ABCI itself? Should it just be absorbed by the
-  BlockVersion?
+- 我们如何/应该对经过身份验证的加密握手本身进行版本控制(即。
+  P2PVersion的前期协议协商)
+- 我们如何/应该对 ABCI 本身进行版本控制？它应该被吸收吗
+  块版本？
 
-## Changelog
+## 变更日志
 
-- 18-09-2018: Updates after working a bit on implementation
-    - ABCI Handshake needs to happen independently of starting the app
-      conns so we can see the result
-    - Add question about ABCI protocol version
-- 16-08-2018: Updates after discussion with SDK team
-    - Remove signalling for next version from Header/ABCI
-- 03-08-2018: Updates from discussion with Jae:
-  - ProtocolVersion contains Block/AppVersion, not Current/Next
-  - signal upgrades to Tendermint using EndBlock fields
-  - dont restrict peer compatibilty by version to simplify syncing old nodes
-- 28-07-2018: Updates from review
-  - split into two ADRs - one for protocol, one for chains
-  - include signalling for upgrades in header
-- 16-07-2018: Initial draft - was originally joint ADR for protocol and chain
-  versions
+- 18-09-2018:在实施上做了一些工作后更新
+    - ABCI 握手需要独立于启动应用程序发生
+      conns 所以我们可以看到结果
+    - 增加关于ABCI协议版本的问题
+- 16-08-2018:与 SDK 团队讨论后的更新
+    - 从 Header/ABCI 中删除下一版本的信号
+- 03-08-2018:与 Jae 讨论的更新:
+  - ProtocolVersion 包含 Block/AppVersion，而不是 Current/Next
+  - 使用 EndBlock 字段将信号升级到 Tendermint
+  - 不要通过版本限制对等兼容性以简化同步旧节点
+- 28-07-2018:审核更新
+  - 分成两个 ADR - 一个用于协议，一个用于链
+  - 在标题中包含升级信号
+- 16-07-2018:初始草案 - 最初是协议和链的联合 ADR
+  版本
 
-## Context
+## 语境
 
-Here we focus on software-agnostic protocol versions.
+在这里，我们关注与软件无关的协议版本。
 
-The Software Version is covered by SemVer and described elsewhere.
-It is not relevant to the protocol description, suffice to say that if any protocol version
-changes, the software version changes, but not necessarily vice versa.
+软件版本由 SemVer 涵盖并在别处描述。
+它与协议描述无关，只要说如果有任何协议版本
+更改，软件版本会更改，但不一定反之亦然。
 
-Software version should be included in NodeInfo for convenience/diagnostics.
+为了方便/诊断，应在 NodeInfo 中包含软件版本。
 
-We are also interested in versioning across different blockchains in a
-meaningful way, for instance to differentiate branches of a contentious
-hard-fork. We leave that for a later ADR.
+我们也对跨不同区块链的版本控制感兴趣
+有意义的方式，例如区分有争议的分支
+硬分叉。我们将其留待稍后的 ADR。
 
-## Requirements
+## 要求
 
-We need to version components of the blockchain that may be independently upgraded.
-We need to do it in a way that is scalable and maintainable - we can't just litter
-the code with conditionals.
+我们需要对可以独立升级的区块链组件进行版本控制。
+我们需要以一种可扩展和可维护的方式来做——我们不能只是乱扔垃圾
+带条件的代码。
 
-We can consider the complete version of the protocol to contain the following sub-versions:
-BlockVersion, P2PVersion, AppVersion. These versions reflect the major sub-components
-of the software that are likely to evolve together, at different rates, and in different ways,
-as described below.
+我们可以考虑协议的完整版本包含以下子版本:
+BlockVersion、P2PVersion、AppVersion。这些版本反映了主要的子组件
+可能以不同速度和不同方式一起发展的软件，
+如下所述。
 
-The BlockVersion defines the core of the blockchain data structures and
-should change infrequently.
+BlockVersion 定义了区块链数据结构的核心和
+应该不经常改变。
 
-The P2PVersion defines how peers connect and communicate with eachother - it's
-not part of the blockchain data structures, but defines the protocols used to build the
-blockchain. It may change gradually.
+P2PVersion 定义了对等点如何相互连接和通信 - 它是
+不是区块链数据结构的一部分，而是定义用于构建区块链的协议
+区块链。它可能会逐渐改变。
 
-The AppVersion determines how we compute app specific information, like the
-AppHash and the Results.
+AppVersion 决定了我们如何计算特定于应用程序的信息，例如
+AppHash 和结果。
 
-All of these versions may change over the life of a blockchain, and we need to
-be able to help new nodes sync up across version changes. This means we must be willing
-to connect to peers with older version.
+所有这些版本都可能在区块链的整个生命周期中发生变化，我们需要
+能够帮助新节点跨版本更改同步。这意味着我们必须愿意
+连接到旧版本的对等点。
 
-### BlockVersion
+###块版本
 
-- All tendermint hashed data-structures (headers, votes, txs, responses, etc.).
-  - Note the semantic meaning of a transaction may change according to the AppVersion, but the way txs are merklized into the header is part of the BlockVersion
-- It should be the least frequent/likely to change.
-  - Tendermint should be stabilizing - it's just Atomic Broadcast.
-  - We can start considering for Tendermint v2.0 in a year
-- It's easy to determine the version of a block from its serialized form
+- 所有tendermint 散列数据结构(标题、投票、交易、响应等)。
+  - 注意交易的语义可能会根据 AppVersion 发生变化，但 txs 被 merklize 到 header 的方式是 BlockVersion 的一部分
+- 它应该是最不频繁/最不可能改变的。
+  - Tendermint 应该是稳定的 - 这只是原子广播。
+  - 我们可以在一年内开始考虑使用 Tendermint v2.0
+- 很容易从一个块的序列化形式确定它的版本
 
-### P2PVersion
+### P2P 版本
 
-- All p2p and reactor messaging (messages, detectable behaviour)
-- Will change gradually as reactors evolve to improve performance and support new features - eg proposed new message types BatchTx in the mempool and HasBlockPart in the consensus
-- It's easy to determine the version of a peer from its first serialized message/s
-- New versions must be compatible with at least one old version to allow gradual upgrades
+- 所有 p2p 和反应器消息传递(消息、可检测行为)
+- 将随着反应堆的发展而逐渐改变以提高性能并支持新功能 - 例如在内存池中提议的新消息类型 BatchTx 和共识中的 HasBlockPart
+- 很容易从第一个序列化消息中确定对等体的版本
+- 新版本必须至少兼容一个旧版本才能逐步升级
 
-### AppVersion
+### 应用程序版本
 
-- The ABCI state machine (txs, begin/endblock behaviour, commit hashing)
-- Behaviour and message types will change abruptly in the course of the life of a chain
-- Need to minimize complexity of the code for supporting different AppVersions at different heights
-- Ideally, each version of the software supports only a _single_ AppVersion at one time
-  - this means we checkout different versions of the software at different heights instead of littering the code
-    with conditionals
-  - minimize the number of data migrations required across AppVersion (ie. most AppVersion should be able to read the same state from disk as previous AppVersion).
+- ABCI 状态机(交易、开始/结束块行为、提交散列)
+- 行为和消息类型将在链的生命周期中突然改变
+- 需要尽量减少代码的复杂性，以支持不同高度的不同 AppVersions
+- 理想情况下，软件的每个版本一次仅支持一个_single_ AppVersion
+  - 这意味着我们在不同的高度检查不同版本的软件，而不是乱扔代码
+    带条件
+  - 最小化跨 AppVersion 所需的数据迁移次数(即，大多数 AppVersion 应该能够从磁盘读取与以前的 AppVersion 相同的状态)。
 
-## Ideal
+## 理想的
 
-Each component of the software is independently versioned in a modular way and its easy to mix and match and upgrade.
+软件的每个组件都以模块化方式独立版本控制，易于混合搭配和升级。
 
-## Proposal
+## 提议
 
-Each of BlockVersion, AppVersion, P2PVersion, is a monotonically increasing uint64.
+BlockVersion、AppVersion、P2PVersion，每一个都是单调递增的uint64。
 
-To use these versions, we need to update the block Header, the p2p NodeInfo, and the ABCI.
+要使用这些版本，我们需要更新区块 Header、p2p NodeInfo 和 ABCI。
 
-### Header
+### 标题
 
-Block Header should include a `Version` struct as its first field like:
+Block Header 应该包含一个 `Version` 结构作为它的第一个字段，例如:
 
 ```
 type Version struct {
@@ -111,22 +111,22 @@ type Version struct {
 }
 ```
 
-Here, `Version.Block` defines the rules for the current block, while
-`Version.App` defines the app version that processed the last block and computed
-the `AppHash` in the current block. Together they provide a complete description
-of the consensus-critical protocol.
+这里，`Version.Block` 定义了当前块的规则，而
+`Version.App` 定义了处理最后一个块并计算的应用程序版本
+当前区块中的“AppHash”。 它们一起提供了完整的描述
+共识关键协议。
 
-Since we have settled on a proto3 header, the ability to read the BlockVersion out of the serialized header is unanimous.
+由于我们已经确定了 proto3 标头，因此从序列化标头中读取 BlockVersion 的能力是一致的。
 
-Using a Version struct gives us more flexibility to add fields without breaking
-the header.
+使用 Version 结构使我们可以更灵活地添加字段而不会破坏
+标题。
 
-The ProtocolVersion struct includes both the Block and App versions - it should
-serve as a complete description of the consensus-critical protocol.
+ProtocolVersion 结构体包括 Block 和 App 版本 - 它应该
+作为共识关键协议的完整描述。
 
-### NodeInfo
+###节点信息
 
-NodeInfo should include a Version struct as its first field like:
+NodeInfo 应该包含一个 Version 结构作为它的第一个字段，例如:
 
 ```
 type Version struct {
@@ -138,33 +138,33 @@ type Version struct {
 }
 ```
 
-Note this effectively makes `Version.P2P` the first field in the NodeInfo, so it
-should be easy to read this out of the serialized header if need be to facilitate an upgrade.
+请注意，这有效地使 `Version.P2P` 成为 NodeInfo 中的第一个字段，因此它
+如果需要方便升级，应该很容易从序列化的标头中读取它。
 
-The `Version.Other` here should include additional information like the name of the software client and
-it's SemVer version - this is for convenience only. Eg.
-`tendermint-core/v0.22.8`. It's a `[]string` so it can include information about
-the version of Tendermint, of the app, of Tendermint libraries, etc.
+此处的“Version.Other”应包括附加信息，例如软件客户端的名称和
+它是 SemVer 版本 - 这只是为了方便。例如。
+`tendermint-core/v0.22.8`。它是一个 `[]string` 所以它可以包含有关
+Tendermint 的版本、应用程序的版本、Tendermint 库的版本等。
 
 ### ABCI
 
-Since the ABCI is responsible for keeping Tendermint and the App in sync, we
-need to communicate version information through it.
+由于 ABCI 负责保持 Tendermint 和应用程序同步，我们
+需要通过它来传达版本信息。
 
-On startup, we use Info to perform a basic handshake. It should include all the
-version information.
+在启动时，我们使用 Info 来执行基本的握手。它应该包括所有
+版本信息。
 
-We also need to be able to update versions in the life of a blockchain. The
-natural place to do this is EndBlock.
+我们还需要能够在区块链的生命周期中更新版本。这
+这样做的自然场所是 EndBlock。
 
-Note that currently the result of the Handshake isn't exposed anywhere, as the
-handshaking happens inside the `proxy.AppConns` abstraction. We will need to
-remove the handshaking from the `proxy` package so we can call it independently
-and get the result, which should contain the application version.
+请注意，目前握手的结果未在任何地方公开，因为
+握手发生在`proxy.AppConns` 抽象内部。我们将需要
+从 `proxy` 包中删除握手，以便我们可以独立调用它
+并获取结果，其中应包含应用程序版本。
 
-#### Info
+#### 信息
 
-RequestInfo should add support for protocol versions like:
+RequestInfo 应该添加对协议版本的支持，例如:
 
 ```
 message RequestInfo {
@@ -174,7 +174,7 @@ message RequestInfo {
 }
 ```
 
-Similarly, ResponseInfo should return the versions:
+同样，ResponseInfo 应该返回版本:
 
 ```
 message ResponseInfo {
@@ -188,19 +188,19 @@ message ResponseInfo {
 }
 ```
 
-The existing `version` fields should be called `software_version` but we leave
-them for now to reduce the number of breaking changes.
+现有的 `version` 字段应该被称为 `software_version` 但我们离开
+它们现在可以减少破坏性更改的数量。
 
-#### EndBlock
+#### 结束块
 
-Updating the version could be done either with new fields or by using the
-existing `tags`. Since we're trying to communicate information that will be
-included in Tendermint block Headers, it should be native to the ABCI, and not
-something embedded through some scheme in the tags. Thus, version updates should
-be communicated through EndBlock.
+可以使用新字段或使用
+现有的“标签”。 由于我们正试图传达信息
+包含在 Tendermint 区块头中，它应该是 ABCI 原生的，而不是
+通过标签中的某种方案嵌入的东西。 因此，版本更新应该
+通过 EndBlock 进行通信。
 
-EndBlock already contains `ConsensusParams`. We can add version information to
-the ConsensusParams as well:
+EndBlock 已经包含`ConsensusParams`。 我们可以添加版本信息到
+ConsensusParams 也是:
 
 ```
 message ConsensusParams {
@@ -216,93 +216,93 @@ message VersionParams {
 }
 ```
 
-For now, the `block_version` will be ignored, as we do not allow block version
-to be updated live. If the `app_version` is set, it signals that the app's
-protocol version has changed, and the new `app_version` will be included in the
-`Block.Header.Version.App` for the next block.
+现在，`block_version` 将被忽略，因为我们不允许块版本
+待更新。如果设置了 `app_version`，它表示应用程序的
+协议版本已更改，新的`app_version` 将包含在
+下一个块的`Block.Header.Version.App`。
 
-### BlockVersion
+###块版本
 
-BlockVersion is included in both the Header and the NodeInfo.
+BlockVersion 包含在 Header 和 NodeInfo 中。
 
-Changing BlockVersion should happen quite infrequently and ideally only for
-critical upgrades. For now, it is not encoded in ABCI, though it's always
-possible to use tags to signal an external process to co-ordinate an upgrade.
+更改 BlockVersion 应该很少发生，理想情况下仅适用于
+关键升级。目前，它不是用 ABCI 编码的，尽管它总是
+可以使用标签向外部进程发出信号以协调升级。
 
-Note Ethereum has not had to make an upgrade like this (everything has been at state machine level, AFAIK).
+注意以太坊不必进行这样的升级(一切都在状态机级别，AFAIK)。
 
-### P2PVersion
+### P2P 版本
 
-P2PVersion is not included in the block Header, just the NodeInfo.
+P2PVersion 不包含在区块头中，只包含在 NodeInfo 中。
 
-P2PVersion is the first field in the NodeInfo. NodeInfo is also proto3 so this is easy to read out.
+P2PVersion 是 NodeInfo 中的第一个字段。 NodeInfo 也是 proto3，所以这很容易读出。
 
-Note we need the peer/reactor protocols to take the versions of peers into account when sending messages:
+请注意，在发送消息时，我们需要 peer/reactor 协议来考虑 peers 的版本:
 
-- don't send messages they don't understand
-- don't send messages they don't expect
+- 不要发送他们不理解的信息
+- 不要发送他们不期望的消息
 
-Doing this will be specific to the upgrades being made.
+这样做将特定于正在进行的升级。
 
-Note we also include the list of reactor channels in the NodeInfo and already don't send messages for channels the peer doesn't understand.
-If upgrades always use new channels, this simplifies the development cost of backwards compatibility.
+请注意，我们还在 NodeInfo 中包含了反应器通道列表，并且已经不会为对等方不理解的通道发送消息。
+如果升级总是使用新通道，这会简化向后兼容的开发成本。
 
-Note NodeInfo is only exchanged after the authenticated encryption handshake to ensure that it's private.
-Doing any version exchange before encrypting could be considered information leakage, though I'm not sure
-how much that matters compared to being able to upgrade the protocol.
+注意 NodeInfo 仅在经过身份验证的加密握手后交换，以确保它是私有的。
+在加密之前进行任何版本交换都可能被视为信息泄漏，尽管我不确定
+与能够升级协议相比，这有多重要。
 
-XXX: if needed, can we change the meaning of the first byte of the first message to encode a handshake version?
-this is the first byte of a 32-byte ed25519 pubkey.
+XXX:如果需要，我们可以改变第一条消息的第一个字节的含义来编码握手版本吗？
+这是 32 字节 ed25519 公钥的第一个字节。
 
-### AppVersion
+### 应用程序版本
 
-AppVersion is also included in the block Header and the NodeInfo.
+AppVersion 也包含在块 Header 和 NodeInfo 中。
 
-AppVersion essentially defines how the AppHash and LastResults are computed.
+AppVersion 本质上定义了 AppHash 和 LastResults 的计算方式。
 
-### Peer Compatibility
+### 对等兼容性
 
-Restricting peer compatibility based on version is complicated by the need to
-help old peers, possibly on older versions, sync the blockchain.
+基于版本限制对等兼容性很复杂，因为需要
+帮助可能在旧版本上的旧同行同步区块链。
 
-We might be tempted to say that we only connect to peers with the same
-AppVersion and BlockVersion (since these define the consensus critical
-computations), and a select list of P2PVersions (ie. those compatible with
-ours), but then we'd need to make accomodations for connecting to peers with the
-right Block/AppVersion for the height they're on.
+我们可能会想说我们只连接到具有相同
+AppVersion 和 BlockVersion(因为这些定义了关键的共识
+计算)，以及 P2PVersions 的选择列表(即那些与
+我们的)，但是我们需要为连接到同龄人与
+正确的 Block/AppVersion 对应于它们所在的高度。
 
-For now, we will connect to peers with any version and restrict compatibility
-solely based on the ChainID. We leave more restrictive rules on peer
-compatibiltiy to a future proposal.
+目前，我们将连接到任何版本的对等点并限制兼容性
+仅基于 ChainID。我们对peer 留下了更多的限制性规则
+与未来提案的兼容性。
 
-### Future Changes
+### 未来的变化
 
-It may be valuable to support an `/unsafe_stop?height=_` endpoint to tell Tendermint to shutdown at a given height.
-This could be use by an external manager process that oversees upgrades by
-checking out and installing new software versions and restarting the process. It
-would subscribe to the relevant upgrade event (needs to be implemented) and call `/unsafe_stop` at
-the correct height (of course only after getting approval from its user!)
+支持 `/unsafe_stop?height=_` 端点告诉 Tendermint 在给定高度关闭可能很有价值。
+这可以由监督升级的外部管理器进程使用
+检查并安装新的软件版本并重新启动该过程。它
+将订阅相关的升级事件(需要实现)并调用 `/unsafe_stop` 在
+正确的高度(当然只有在得到用户的批准后！)
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Make tendermint and application versions native to the ABCI to more clearly
-  communicate about them
-- Distinguish clearly between protocol versions and software version to
-  facilitate implementations in other languages
-- Versions included in key data structures in easy to discern way
-- Allows proposers to signal for upgrades and apps to decide when to actually change the
-  version (and start signalling for a new version)
+- 使 ABCI 原生的 Tendermint 和应用程序版本更清晰
+  沟通他们
+- 明确区分协议版本和软件版本以
+  促进其他语言的实现
+- 以易于识别的方式包含在关键数据结构中的版本
+- 允许提议者发出升级信号，并允许应用程序决定何时实际更改
+  版本(并开始发出新版本的信号)
 
-### Neutral
+### 中性的
 
-- Unclear how to version the initial P2P handshake itself
-- Versions aren't being used (yet) to restrict peer compatibility
-- Signalling for a new version happens through the proposer and must be
-  tallied/tracked in the app.
+- 不清楚如何对初始 P2P 握手本身进行版本控制
+- 尚未使用版本来限制对等兼容性
+- 新版本的信号通过提议者发生，并且必须是
+  在应用程序中记录/跟踪。
 
-### Negative
+### 消极的
 
-- Adds more fields to the ABCI
-- Implies that a single codebase must be able to handle multiple versions
+- 向 ABCI 添加更多字段
+- 意味着单个代码库必须能够处理多个版本

@@ -1,109 +1,109 @@
-# ADR 061: P2P Refactor Scope
+# ADR 061:P2P 重构范围
 
-## Changelog
+## 变更日志
 
-- 2020-10-30: Initial version (@erikgrinaker)
+- 2020 年 10 月 30 日:初始版本 (@erikgrinaker)
 
-## Context
+## 语境
 
-The `p2p` package responsible for peer-to-peer networking is rather old and has a number of weaknesses, including tight coupling, leaky abstractions, lack of tests, DoS vulnerabilites, poor performance, custom protocols, and incorrect behavior. A refactor has been discussed for several years ([#2067](https://github.com/tendermint/tendermint/issues/2067)).
+负责点对点网络的“p2p”包相当陈旧，有许多弱点，包括紧耦合、抽象泄漏、缺乏测试、DoS 漏洞、性能不佳、自定义协议和不正确的行为。重构已经讨论了好几年([#2067](https://github.com/tendermint/tendermint/issues/2067))。
 
-Informal Systems are also building a Rust implementation of Tendermint, [Tendermint-rs](https://github.com/informalsystems/tendermint-rs), and plan to implement P2P networking support over the next year. As part of this work, they have requested adopting e.g. [QUIC](https://datatracker.ietf.org/doc/draft-ietf-quic-transport/) as a transport protocol instead of implementing the custom application-level `MConnection` stream multiplexing protocol that Tendermint currently uses.
+Informal Systems 也在构建 Tendermint 的 Rust 实现，[Tendermint-rs](https://github.com/informalsystems/tendermint-rs)，并计划在明年实现 P2P 网络支持。作为这项工作的一部分，他们要求采用例如[QUIC](https://datatracker.ietf.org/doc/draft-ietf-quic-transport/) 作为传输协议，而不是实现 Tendermint 当前使用的自定义应用程序级`MConnection` 流复用协议。
 
-This ADR summarizes recent discussion with stakeholders on the scope of a P2P refactor. Specific designs and implementations will be submitted as separate ADRs.
+本 ADR 总结了最近与利益相关者关于 P2P 重构范围的讨论。具体设计和实施将作为单独的 ADR 提交。
 
-## Alternative Approaches
+## 替代方法
 
-There have been recurring proposals to adopt [LibP2P](https://libp2p.io) instead of maintaining our own P2P networking stack (see [#3696](https://github.com/tendermint/tendermint/issues/3696)). While this appears to be a good idea in principle, it would be a highly breaking protocol change, there are indications that we might have to fork and modify LibP2P, and there are concerns about the abstractions used.
+已经反复出现采用 [LibP2P](https://libp2p.io) 而不是维护我们自己的 P2P 网络堆栈的建议(参见 [#3696](https://github.com/tendermint/tendermint/issues/3696) )。虽然这在原则上似乎是一个好主意，但这将是一个高度破坏性的协议更改，有迹象表明我们可能不得不分叉和修改 LibP2P，并且对使用的抽象存在担忧。
 
-In discussions with Informal Systems we decided to begin with incremental improvements to the current P2P stack, add support for pluggable transports, and then gradually start experimenting with LibP2P as a transport layer. If this proves successful, we can consider adopting it for higher-level components at a later time.
+在与 Informal Systems 的讨论中，我们决定从对当前 P2P 堆栈的增量改进开始，添加对可插拔传输的支持，然后逐渐开始尝试将 LibP2P 作为传输层。如果这证明是成功的，我们可以考虑稍后将其用于更高级别的组件。
 
-## Decision
+## 决定
 
-The P2P stack will be refactored and improved iteratively, in several phases:
+P2P 堆栈将分几个阶段迭代重构和改进:
 
-* **Phase 1:** code and API refactoring, maintaining protocol compatibility as far as possible.
+* **第一阶段:** 代码和API重构，尽可能保持协议兼容性。
 
-* **Phase 2:** additional transports and incremental protocol improvements.
+* **阶段 2:** 额外的传输和增量协议改进。
 
-* **Phase 3:** disruptive protocol changes.
+* **第 3 阶段:** 破坏性协议更改。
 
-The scope of phases 2 and 3 is still uncertain, and will be revisited once the preceding phases have been completed as we'll have a better sense of requirements and challenges.
+第 2 和第 3 阶段的范围仍然不确定，一旦前面的阶段完成，我们将重新审视，因为我们将对需求和挑战有更好的认识。
 
-## Detailed Design
+## 详细设计
 
-Separate ADRs will be submitted for specific designs and changes in each phase, following research and prototyping. Below are objectives in order of priority.
+在研究和原型设计之后，将针对每个阶段的特定设计和更改提交单独的 ADR。以下是按优先顺序排列的目标。
 
-### Phase 1: Code and API Refactoring
+### 阶段 1:代码和 API 重构
 
-This phase will focus on improving the internal abstractions and implementations in the `p2p` package. As far as possible, it should not change the P2P protocol in a backwards-incompatible way.
+此阶段将专注于改进 p2p 包中的内部抽象和实现。尽可能不以向后不兼容的方式改变 P2P 协议。
 
-* Cleaner, decoupled abstractions for e.g. `Reactor`, `Switch`, and `Peer`. [#2067](https://github.com/tendermint/tendermint/issues/2067) [#5287](https://github.com/tendermint/tendermint/issues/5287) [#3833](https://github.com/tendermint/tendermint/issues/3833)
-    * Reactors should receive messages in separate goroutines or via buffered channels. [#2888](https://github.com/tendermint/tendermint/issues/2888)
-* Improved peer lifecycle management. [#3679](https://github.com/tendermint/tendermint/issues/3679) [#3719](https://github.com/tendermint/tendermint/issues/3719) [#3653](https://github.com/tendermint/tendermint/issues/3653) [#3540](https://github.com/tendermint/tendermint/issues/3540) [#3183](https://github.com/tendermint/tendermint/issues/3183) [#3081](https://github.com/tendermint/tendermint/issues/3081) [#1356](https://github.com/tendermint/tendermint/issues/1356)
-    * Peer prioritization. [#2860](https://github.com/tendermint/tendermint/issues/2860) [#2041](https://github.com/tendermint/tendermint/issues/2041)
-* Pluggable transports, with `MConnection` as one implementation. [#5587](https://github.com/tendermint/tendermint/issues/5587) [#2430](https://github.com/tendermint/tendermint/issues/2430) [#805](https://github.com/tendermint/tendermint/issues/805)
-* Improved peer address handling.
-    * Address book refactor. [#4848](https://github.com/tendermint/tendermint/issues/4848) [#2661](https://github.com/tendermint/tendermint/issues/2661)
-    * Transport-agnostic peer addressing. [#5587](https://github.com/tendermint/tendermint/issues/5587) [#3782](https://github.com/tendermint/tendermint/issues/3782) [#3692](https://github.com/tendermint/tendermint/issues/3692)
-    * Improved detection and advertisement of own address. [#5588](https://github.com/tendermint/tendermint/issues/5588) [#4260](https://github.com/tendermint/tendermint/issues/4260) [#3716](https://github.com/tendermint/tendermint/issues/3716) [#1727](https://github.com/tendermint/tendermint/issues/1727)
-    * Support multiple IPs per peer. [#1521](https://github.com/tendermint/tendermint/issues/1521) [#2317](https://github.com/tendermint/tendermint/issues/2317)
+* 更清晰、解耦的抽象，例如`Reactor`、`Switch` 和 `Peer`。 [#2067](https://github.com/tendermint/tendermint/issues/2067) [#5287](https://github.com/tendermint/tendermint/issues/5287) [#3833](https:// /github.com/tendermint/tendermint/issues/3833)
+    * Reactor 应该在单独的 goroutine 中或通过缓冲通道接收消息。 [#2888](https://github.com/tendermint/tendermint/issues/2888)
+* 改进了对等生命周期管理。 [#3679](https://github.com/tendermint/tendermint/issues/3679) [#3719](https://github.com/tendermint/tendermint/issues/3719) [#3653](https:// /github.com/tendermint/tendermint/issues/3653) [#3540](https://github.com/tendermint/tendermint/issues/3540) [#3183](https://github.com/tendermint/tendermint /issues/3183) [#3081](https://github.com/tendermint/tendermint/issues/3081) [#1356](https://github.com/tendermint/tendermint/issues/1356)
+    * 同行优先。 [#2860](https://github.com/tendermint/tendermint/issues/2860) [#2041](https://github.com/tendermint/tendermint/issues/2041)
+* 可插拔传输，以`MConnection` 作为一种实现。 [#5587](https://github.com/tendermint/tendermint/issues/5587) [#2430](https://github.com/tendermint/tendermint/issues/2430) [#805](https:// /github.com/tendermint/tendermint/issues/805)
+* 改进的对等地址处理。
+    * 地址簿重构。 [#4848](https://github.com/tendermint/tendermint/issues/4848) [#2661](https://github.com/tendermint/tendermint/issues/2661)
+    * 与传输无关的对等寻址。 [#5587](https://github.com/tendermint/tendermint/issues/5587) [#3782](https://github.com/tendermint/tendermint/issues/3782) [#3692](https:// /github.com/tendermint/tendermint/issues/3692)
+    * 改进了对自己地址的检测和广告。 [#5588](https://github.com/tendermint/tendermint/issues/5588) [#4260](https://github.com/tendermint/tendermint/issues/4260) [#3716](https:// /github.com/tendermint/tendermint/issues/3716) [#1727](https://github.com/tendermint/tendermint/issues/1727)
+    * 每个对等点支持多个 IP。 [#1521](https://github.com/tendermint/tendermint/issues/1521) [#2317](https://github.com/tendermint/tendermint/issues/2317)
 
-The refactor should attempt to address the following secondary objectives: testability, observability, performance, security, quality-of-service, backpressure, and DoS resilience. Much of this will be revisited as explicit objectives in phase 2.
+重构应该尝试解决以下次要目标:可测试性、可观察性、性能、安全性、服务质量、背压和 DoS 弹性。其中大部分将作为第 2 阶段的明确目标重新审视。
 
-Ideally, the refactor should happen incrementally, with regular merges to `master` every few weeks. This will take more time overall, and cause frequent breaking changes to internal Go APIs, but it reduces the branch drift and gets the code tested sooner and more broadly.
+理想情况下，重构应该逐步进行，每隔几周定期合并到“master”。总体而言，这将花费更多时间，并导致内部 Go API 频繁发生重大更改，但它减少了分支漂移并使代码更快、更广泛地测试。
 
-### Phase 2: Additional Transports and Protocol Improvements
+### 阶段 2:额外的传输和协议改进
 
-This phase will focus on protocol improvements and other breaking changes. The following are considered proposals that will need to be evaluated separately once the refactor is done. Additional proposals are likely to be added during phase 1.
+此阶段将侧重于协议改进和其他重大更改。以下是重构完成后需要单独评估的建议。在第 1 阶段可能会添加其他提案。
 
-* QUIC transport. [#198](https://github.com/tendermint/spec/issues/198)
-* Noise protocol for secret connection handshake. [#5589](https://github.com/tendermint/tendermint/issues/5589) [#3340](https://github.com/tendermint/tendermint/issues/3340)
-* Peer ID in connection handshake. [#5590](https://github.com/tendermint/tendermint/issues/5590)
-* Peer and service discovery (e.g. RPC nodes, state sync snapshots). [#5481](https://github.com/tendermint/tendermint/issues/5481) [#4583](https://github.com/tendermint/tendermint/issues/4583)
-* Rate-limiting, backpressure, and QoS scheduling. [#4753](https://github.com/tendermint/tendermint/issues/4753) [#2338](https://github.com/tendermint/tendermint/issues/2338)
-* Compression. [#2375](https://github.com/tendermint/tendermint/issues/2375)
-* Improved metrics and tracing. [#3849](https://github.com/tendermint/tendermint/issues/3849) [#2600](https://github.com/tendermint/tendermint/issues/2600)
-* Simplified P2P configuration options.
+* QUIC 传输。 [#198](https://github.com/tendermint/spec/issues/198)
+* 秘密连接握手的噪声协议。 [#5589](https://github.com/tendermint/tendermint/issues/5589) [#3340](https://github.com/tendermint/tendermint/issues/3340)
+* 连接握手中的对等 ID。 [#5590](https://github.com/tendermint/tendermint/issues/5590)
+* 对等点和服务发现(例如 RPC 节点、状态同步快照)。 [#5481](https://github.com/tendermint/tendermint/issues/5481) [#4583](https://github.com/tendermint/tendermint/issues/4583)
+* 速率限制、背压和 QoS 调度。 [#4753](https://github.com/tendermint/tendermint/issues/4753) [#2338](https://github.com/tendermint/tendermint/issues/2338)
+* 压缩。 [#2375](https://github.com/tendermint/tendermint/issues/2375)
+* 改进的指标和跟踪。 [#3849](https://github.com/tendermint/tendermint/issues/3849) [#2600](https://github.com/tendermint/tendermint/issues/2600)
+* 简化的 P2P 配置选项。
 
-### Phase 3: Disruptive Protocol Changes
+### 第 3 阶段:破坏性协议更改
 
-This phase covers speculative, wide-reaching proposals that are poorly defined and highly uncertain. They will be evaluated once the previous phases are done.
+此阶段涵盖了定义不明确且高度不确定的投机性、影响广泛的提案。一旦前几个阶段完成，它们将被评估。
 
-* Adopt LibP2P. [#3696](https://github.com/tendermint/tendermint/issues/3696)
-* Allow cross-reactor communication, possibly without channels.
-* Dynamic channel advertisment, as reactors are enabled/disabled. [#4394](https://github.com/tendermint/tendermint/issues/4394) [#1148](https://github.com/tendermint/tendermint/issues/1148)
-* Pubsub-style networking topology and pattern.
-* Support multiple chain IDs in the same network.
+* 采用 LibP2P。 [#3696](https://github.com/tendermint/tendermint/issues/3696)
+* 允许跨反应器通信，可能没有通道。
+* 动态频道广告，因为反应器已启用/禁用。 [#4394](https://github.com/tendermint/tendermint/issues/4394) [#1148](https://github.com/tendermint/tendermint/issues/1148)
+* 发布订阅式网络拓扑和模式。
+* 支持同一网络中的多个链ID。
 
-## Status
+## 状态
 
-Accepted
+公认
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-* Cleaner, simpler architecture that's easier to reason about and test, and thus hopefully less buggy.
+* 更简洁、更简单的架构，更容易推理和测试，因此希望减少错误。
 
-* Improved performance and robustness.
+* 改进的性能和稳健性。
 
-* Reduced maintenance burden and increased interoperability by the possible adoption of standardized protocols such as QUIC and Noise.
+* 通过可能采用 QUIC 和 Noise 等标准化协议，减少维护负担并提高互操作性。
 
-* Improved usability, with better observability, simpler configuration, and more automation (e.g. peer/service/address discovery, rate-limiting, and backpressure).
+* 提高可用性，具有更好的可观察性、更简单的配置和更多的自动化(例如对等/服务/地址发现、速率限制和背压)。
 
-### Negative
+### 消极的
 
-* Maintaining our own P2P networking stack is resource-intensive.
+* 维护我们自己的 P2P 网络堆栈是资源密集型的。
 
-* Abstracting away the underlying transport may prevent usage of advanced transport features.
+* 抽象掉底层传输可能会阻止使用高级传输功能。
 
-* Breaking changes to APIs and protocols are disruptive to users.
+* 对 API 和协议的重大更改会对用户造成破坏。
 
-## References
+## 参考
 
-See issue links above.
+请参阅上面的问题链接。
 
-- [#2067: P2P Refactor](https://github.com/tendermint/tendermint/issues/2067)
+- [#2067: P2P 重构](https://github.com/tendermint/tendermint/issues/2067)
 
-- [P2P refactor brainstorm document](https://docs.google.com/document/d/1FUTADZyLnwA9z7ndayuhAdAFRKujhh_y73D0ZFdKiOQ/edit?pli=1#)
+- [P2P 重构头脑风暴文档](https://docs.google.com/document/d/1FUTADZyLnwA9z7ndayuhAdAFRKujhh_y73D0ZFdKiOQ/edit?pli=1#)

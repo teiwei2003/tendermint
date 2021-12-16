@@ -1,104 +1,104 @@
-# ADR 020: Limiting txs size inside a block
+# ADR 020:限制块内的 txs 大小
 
-## Changelog
+## 变更日志
 
-13-08-2018: Initial Draft
-15-08-2018: Second version after Dev's comments
-28-08-2018: Third version after Ethan's comments
-30-08-2018: AminoOverheadForBlock => MaxAminoOverheadForBlock
-31-08-2018: Bounding evidence and chain ID
-13-01-2019: Add section on MaxBytes vs MaxDataBytes
+13-08-2018:初稿
+15-08-2018:Dev 评论后的第二个版本
+28-08-2018:Ethan 发表评论后的第三个版本
+30-08-2018:AminoOverheadForBlock => MaxAminoOverheadForBlock
+31-08-2018:边界证据和链 ID
+13-01-2019:添加有关 MaxBytes 与 MaxDataBytes 的部分
 
-## Context
+## 语境
 
-We currently use MaxTxs to reap txs from the mempool when proposing a block,
-but enforce MaxBytes when unmarshaling a block, so we could easily propose a
-block thats too large to be valid.
+我们目前使用 MaxTxs 在提议一个区块时从内存池中获取 txs，
+但是在解组块时强制执行 MaxBytes，所以我们可以很容易地提出一个
+块太大而无效。
 
-We should just remove MaxTxs all together and stick with MaxBytes, and have a
-`mempool.ReapMaxBytes`.
+我们应该一起删除 MaxTxs 并坚持使用 MaxBytes，并有一个
+`mempool.ReapMaxBytes`。
 
-But we can't just reap BlockSize.MaxBytes, since MaxBytes is for the entire block,
-not for the txs inside the block. There's extra amino overhead + the actual
-headers on top of the actual transactions + evidence + last commit.
-We could also consider using a MaxDataBytes instead of or in addition to MaxBytes.
+但是我们不能只收获 BlockSize.MaxBytes，因为 MaxBytes 是针对整个块的，
+不适用于块内的 txs。有额外的氨基开销 + 实际
+实际交易顶部的标题 + 证据 + 上次提交。
+我们还可以考虑使用 MaxDataBytes 代替 MaxBytes 或除了 MaxBytes。
 
-## MaxBytes vs MaxDataBytes
+## MaxBytes 与 MaxDataBytes
 
-The [PR #3045](https://github.com/tendermint/tendermint/pull/3045) suggested
-additional clarity/justification was necessary here, wither respect to the use
-of MaxDataBytes in addition to, or instead of, MaxBytes.
+[PR #3045](https://github.com/tendermint/tendermint/pull/3045) 建议
+这里需要额外的澄清/理由，考虑到使用
+除了或代替 MaxBytes 的 MaxDataBytes。
 
-MaxBytes provides a clear limit on the total size of a block that requires no
-additional calculation if you want to use it to bound resource usage, and there
-has been considerable discussions about optimizing tendermint around 1MB blocks.
-Regardless, we need some maximum on the size of a block so we can avoid
-unmarshaling blocks that are too big during the consensus, and it seems more
-straightforward to provide a single fixed number for this rather than a
-computation of "MaxDataBytes + everything else you need to make room for
-(signatures, evidence, header)". MaxBytes provides a simple bound so we can
-always say "blocks are less than X MB".
+MaxBytes 对块的总大小提供了明确的限制，不需要
+额外的计算，如果你想用它来限制资源使用，还有
+关于优化 1MB 块左右的 Tendermint 的讨论已经相当多。
+无论如何，我们需要一个块大小的最大值，以便我们可以避免
+解组共识期间太大的块，似乎更多
+直接为此提供一个固定的数字而不是一个
+计算“MaxDataBytes + 您需要腾出空间的所有其他内容
+(签名、证据、标题)”。MaxBytes 提供了一个简单的界限，因此我们可以
+总是说“块小于 X MB”。
 
-Having both MaxBytes and MaxDataBytes feels like unnecessary complexity. It's
-not particularly surprising for MaxBytes to imply the maximum size of the
-entire block (not just txs), one just has to know that a block includes header,
-txs, evidence, votes. For more fine grained control over the txs included in the
-block, there is the MaxGas. In practice, the MaxGas may be expected to do most of
-the tx throttling, and the MaxBytes to just serve as an upper bound on the total
-size. Applications can use MaxGas as a MaxDataBytes by just taking the gas for
-every tx to be its size in bytes.
+同时拥有 MaxBytes 和 MaxDataBytes 感觉像是不必要的复杂性。它是
+MaxBytes 暗示最大大小并不特别令人惊讶
+整个区块(不仅仅是 txs)，你只需要知道一个区块包含标题，
+交易，证据，选票。为了更细粒度地控制包含在
+块，有 MaxGas。在实践中，MaxGas 可能会做大部分
+tx 节流和 MaxBytes 只是作为总数的上限
+尺寸。应用程序可以将 MaxGas 用作 MaxDataBytes，只需将 gas 用于
+每个 tx 都是它的大小(以字节为单位)。
 
-## Proposed solution
+## 建议的解决方案
 
-Therefore, we should
+因此，我们应该
 
-1) Get rid of MaxTxs.
-2) Rename MaxTxsBytes to MaxBytes.
+1)摆脱MaxTxs。
+2) 将 MaxTxsBytes 重命名为 MaxBytes。
 
-When we need to ReapMaxBytes from the mempool, we calculate the upper bound as follows:
+当我们需要从内存池中获取 ReapMaxBytes 时，我们计算上限如下:
 
-```
-ExactLastCommitBytes = {number of validators currently enabled} * {MaxVoteBytes}
+``
+ExactLastCommitBytes = {当前启用的验证器数量} * {MaxVoteBytes}
 MaxEvidenceBytesPerBlock = MaxBytes / 10
 ExactEvidenceBytes = cs.evpool.PendingEvidence(MaxEvidenceBytesPerBlock) * MaxEvidenceBytes
 
 mempool.ReapMaxBytes(MaxBytes - MaxAminoOverheadForBlock - ExactLastCommitBytes - ExactEvidenceBytes - MaxHeaderBytes)
-```
+``
 
-where MaxVoteBytes, MaxEvidenceBytes, MaxHeaderBytes and MaxAminoOverheadForBlock
-are constants defined inside the `types` package:
+其中 MaxVoteBytes、MaxEvidenceBytes、MaxHeaderBytes 和 MaxAminoOverheadForBlock
+是在 `types` 包中定义的常量:
 
-- MaxVoteBytes - 170 bytes
-- MaxEvidenceBytes - 364 bytes
-- MaxHeaderBytes - 476 bytes (~276 bytes hashes + 200 bytes - 50 UTF-8 encoded
-  symbols of chain ID 4 bytes each in the worst case + amino overhead)
-- MaxAminoOverheadForBlock - 8 bytes (assuming MaxHeaderBytes includes amino
-  overhead for encoding header, MaxVoteBytes - for encoding vote, etc.)
+- MaxVoteBytes - 170 字节
+- MaxEvidenceBytes - 364 字节
+- MaxHeaderBytes - 476 字节(~276 字节散列 + 200 字节 - 50 UTF-8 编码
+  链 ID 的符号在最坏情况下每个 4 个字节 + 氨基开销)
+- MaxAminoOverheadForBlock - 8 字节(假设 MaxHeaderBytes 包括氨基
+  编码头的开销，MaxVoteBytes - 编码投票等)
 
-ChainID needs to bound to 50 symbols max.
+ChainID 最多需要绑定 50 个符号。
 
-When reaping evidence, we use MaxBytes to calculate the upper bound (e.g. 1/10)
-to save some space for transactions.
+在收割证据时，我们使用 MaxBytes 来计算上限(例如 1/10)
+为交易节省一些空间。
 
-NOTE while reaping the `max int` bytes in mempool, we should account that every
-transaction will take `len(tx)+aminoOverhead`, where aminoOverhead=1-4 bytes.
+注意在获取内存池中的 `max int` 字节时，我们应该考虑到每个
+交易将采用`len(tx)+aminoOverhead`，其中aminoOverhead=1-4 字节。
 
-We should write a test that fails if the underlying structs got changed, but
-MaxXXX stayed the same.
+我们应该编写一个测试，如果底层结构发生变化，它就会失败，但是
+MaxXXX 保持不变。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-* one way to limit the size of a block
-* less variables to configure
+* 一种限制块大小的方法
+* 更少的变量配置
 
-### Negative
+### 消极的
 
-* constants that need to be adjusted if the underlying structs got changed
+* 底层结构改变时需要调整的常量
 
-### Neutral
+### 中性的

@@ -1,3 +1,3 @@
-# Metrics
+# 指标
 
-This file has moved to the [node section](../nodes/metrics.md).
+此文件已移至 [节点部分](../nodes/metrics.md)。

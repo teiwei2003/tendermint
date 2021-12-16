@@ -1,51 +1,51 @@
-# Remote signer
+# 远程签名者
 
-Tendermint provides a remote signer option for validators. A remote signer enables the operator to store the validator key on a different machine minimizing the attack surface if a server were to be compromised.
+Tendermint 为验证者提供了远程签名者选项。远程签名者使操作员能够将验证器密钥存储在不同的机器上，从而在服务器受到威胁时最大限度地减少攻击面。
 
-The remote signer protocol implements a [client and server architecture](https://en.wikipedia.org/wiki/Client%E2%80%93server_model). When Tendermint requires the public key or signature for a proposal or vote it requests it from the remote signer.
+远程签名者协议实现了[客户端和服务器架构](https://en.wikipedia.org/wiki/Client%E2%80%93server_model)。当 Tendermint 需要提案或投票的公钥或签名时，它会从远程签名者那里请求。
 
-To run a secure validator and remote signer system it is recommended to use a VPC (virtual private cloud) or a private connection.
+要运行安全验证器和远程签名器系统，建议使用 VPC(虚拟私有云)或私有连接。
 
-There are two different configurations that can be used: Raw or gRPC.
+可以使用两种不同的配置:Raw 或 gRPC。
 
-## Raw
+## 生的
 
-While both options use tcp or unix sockets the raw option uses tcp or unix sockets without http. The raw protocol sets up Tendermint as the server and the remote signer as the client. This aids in not exposing the remote signer to public network.
+虽然这两个选项都使用 tcp 或 unix 套接字，但原始选项使用没有 http 的 tcp 或 unix 套接字。原始协议将 Tendermint 设置为服务器，将远程签名者设置为客户端。这有助于不将远程签名者暴露给公共网络。
 
-> Warning: Raw will be deprecated in a future major release, we recommend implementing your key management server against the gRPC configuration.
+> 警告:Raw 将在未来的主要版本中弃用，我们建议针对 gRPC 配置实施您的密钥管理服务器。
 
 ## gRPC
 
-[gRPC](https://grpc.io/) is an RPC framework built with [HTTP/2](https://en.wikipedia.org/wiki/HTTP/2), uses [Protocol Buffers](https://developers.google.com/protocol-buffers) to define services and has been standardized within the cloud infrastructure community. gRPC provides a language agnostic way to implement services. This aids developers in the writing key management servers in various different languages.
+[gRPC](https://grpc.io/) 是一个使用 [HTTP/2](https://en.wikipedia.org/wiki/HTTP/2) 构建的 RPC 框架，使用 [Protocol Buffers](https: //developers.google.com/protocol-buffers) 来定义服务并已在云基础设施社区内标准化。 gRPC 提供了一种与语言无关的方式来实现服务。这有助于开发人员以各种不同的语言编写密钥管理服务器。
 
-GRPC utilizes [TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security), another widely standardized protocol, to secure connections. There are two forms of TLS to secure a connection, one-way and two-way. One way is when the client identifies the server but the server allows anyone to connect to it. Two-way is when the client identifies the server and the server identifies the client, prohibiting connections from unknown parties.
+GRPC 利用另一个广泛标准化的协议 [TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) 来保护连接。有两种形式的 TLS 来保护连接，单向和双向。一种方法是当客户端识别服务器但服务器允许任何人连接到它时。两种方式是当客户端识别服务器和服务器识别客户端时，禁止来自未知方的连接。
 
-When using gRPC Tendermint is setup as the client. Tendermint will make calls to the remote signer. We recommend not exposing the remote signer to the public network with the use of virtual private cloud.
+使用 gRPC 时，Tendermint 设置为客户端。 Tendermint 将调用远程签名者。我们建议不要使用虚拟私有云将远程签名者暴露给公共网络。
 
-Securing your remote signers connection is highly recommended, but we provide the option to run it with a insecure connection.
+强烈建议保护您的远程签名者连接，但我们提供了使用不安全连接运行它的选项。
 
-### Generating Certificates
+### 生成证书
 
-To run a secure connection with gRPC we need to generate certificates and keys. We will walkthrough how to self sign certificates for two-way TLS.
+要与 gRPC 运行安全连接，我们需要生成证书和密钥。 我们将演练如何为双向 TLS 自签名证书。
 
-There are two ways to generate certificates, [openssl](https://www.openssl.org/) and [certstarp](https://github.com/square/certstrap). Both of these options can be used but we will be covering `certstrap` because it provides a simpler process then openssl.
+生成证书有两种方式，[openssl](https://www.openssl.org/)和[certstarp](https://github.com/square/certstrap)。 这两个选项都可以使用，但我们将介绍 `certstrap`，因为它提供了一个比 openssl 更简单的过程。
 
-- Install `Certstrap`:
+- 安装`Certstrap`:
 
 ```sh
   go get github.com/square/certstrap@v1.2.0
 ```
 
-- Create certificate authority for self signing.
+- 创建用于自签名的证书颁发机构。
 
 ```sh
  # generate self signing ceritificate authority
  certstrap init --common-name "<name_CA>" --expires "20 years"
 ```
 
-- Request a certificate for the server.
-  - For generalization purposes we set the ip to `127.0.0.1`, but for your node please use the servers IP.
-- Sign the servers certificate with your certificate authority
+- 为服务器申请证书。
+   - 出于通用目的，我们将 IP 设置为“127.0.0.1”，但对于您的节点，请使用服务器 IP。
+- 使用您的证书颁发机构签署服务器证书
 
 ```sh
  # generate server cerificate
@@ -54,9 +54,9 @@ There are two ways to generate certificates, [openssl](https://www.openssl.org/)
  certstrap sign server --CA "<name_CA>" 127.0.0.1
   ```
 
-- Request a certificate for the client.
-  - For generalization purposes we set the ip to `127.0.0.1`, but for your node please use the clients IP.
-- Sign the clients certificate with your certificate authority
+- 为服务器申请证书。
+   - 出于通用目的，我们将 IP 设置为“127.0.0.1”，但对于您的节点，请使用服务器 IP。
+- 使用您的证书颁发机构签署服务器证书
 
 ```sh
 # generate client cerificate

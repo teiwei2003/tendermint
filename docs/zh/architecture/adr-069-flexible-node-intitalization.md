@@ -1,165 +1,165 @@
-# ADR 069: Flexible Node Initialization
+# ADR 069:灵活的节点初始化
 
-## Changlog
+## 长日志
 
-- 2021-06-09: Initial Draft (@tychoish)
+- 2021-06-09:初稿(@tychoish)
 
-- 2021-07-21: Major Revision (@tychoish)
+- 2021-07-21:重大修订(@tychoish)
 
-## Status
+## 状态
 
-Proposed.
+建议的。
 
-## Context
+## 语境
 
-In an effort to support [Go-API-Stability](./adr-060-go-api-stability.md),
-during the 0.35 development cycle, we have attempted to reduce the the API
-surface area by moving most of the interface of the `node` package into
-unexported functions, as well as moving the reactors to an `internal`
-package. Having this coincide with the 0.35 release made a lot of sense
-because these interfaces were _already_ changing as a result of the `p2p`
-[refactor](./adr-061-p2p-refactor-scope.md), so it made sense to think a bit
-more about how tendermint exposes this API.
+为了支持 [Go-API-Stability](./adr-060-go-api-stability.md)，
+在 0.35 开发周期中，我们尝试减少 API
+通过将 `node` 包的大部分界面移动到
+未导出的函数，以及将反应器移至“内部”
+包裹。与 0.35 版本重合非常有意义
+因为这些接口_已经_由于`p2p`而改变了
+[refactor](./adr-061-p2p-refactor-scope.md)，所以思考一下是有道理的
+更多关于tendermint如何公开这个API。
 
-While the interfaces of the P2P layer and most of the node package are already
-internalized, this precludes some operational patterns that are important to
-users who use tendermint as a library. Specifically, introspecting the
-tendermint node service and replacing components is not supported in the latest
-version of the code, and some of these use cases would require maintaining a
-vendor copy of the code. Adding these features requires rather extensive
-(internal/implementation) changes to the `node` and `rpc` packages, and this
-ADR describes a model for changing the way that tendermint nodes initialize, in
-service of providing this kind of functionality.
+而P2P层的接口和大部分节点包已经
+内化，这排除了一些对
+使用tendermint作为库的用户。具体来说，反省
+最新版本不支持tendermint节点服务和更换组件
+版本的代码，其中一些用例需要维护一个
+代码的供应商副本。添加这些功能需要相当广泛的
+(内部/实现)对`node` 和`rpc` 包的更改，以及这个
+ADR 描述了一种用于改变tendermint 节点初始化方式的模型，在
+提供这种功能的服务。
 
-We consider node initialization, because the current implemention
-provides strong connections between all components, as well as between
-the components of the node and the RPC layer, and being able to think
-about the interactions of these components will help enable these
-features and help define the requirements of the node package.
+我们考虑节点初始化，因为当前的实现
+提供所有组件之间的强连接，以及
+节点和RPC层的组件，能够思考
+关于这些组件的交互将有助于实现这些
+功能并帮助定义节点包的要求。
 
-## Alternative Approaches
+## 替代方法
 
-These alternatives are presented to frame the design space and to
-contextualize the decision in terms of product requirements. These
-ideas are not inherently bad, and may even be possible or desireable
-in the (distant) future, and merely provide additional context for how
-we, in the moment came to our decision(s).
+提出这些替代方案以构建设计空间并
+将决策与产品要求相关联。这些
+想法本质上并不坏，甚至可能是可能的或可取的
+在(遥远的)未来，仅提供额外的背景说明
+我们，在那一刻做出了我们的决定。
 
-### Do Nothing
+### 没做什么
 
-The current implementation is functional and sufficient for the vast
-majority of use cases (e.g., all users of the Cosmos-SDK as well as
-anyone who runs tendermint and the ABCI application in separate
-processes). In the current implementation, and even previous versions,
-modifying node initialization or injecting custom components required
-copying most of the `node` package, which required such users
-to maintain a vendored copy of tendermint.
+当前的实现是功能性的，足以满足广大
+大多数用例(例如，Cosmos-SDK 的所有用户以及
+单独运行tendermint和ABCI应用程序的任何人
+过程)。在当前的实现中，甚至以前的版本中，
+需要修改节点初始化或注入自定义组件
+复制大部分`node`包，这需要这样的用户
+维护tendermint的销售副本。
 
-While this is (likely) not tenable in the long term, as users do want
-more modularity, and the current service implementation is brittle and
-difficult to maintain, in the short term it may be possible to delay
-implementation somewhat. Eventually, however, we will need to make the
-`node` package easier to maintain and reason about.
+虽然这(可能)从长远来看是站不住脚的，但正如用户所希望的
+更多的模块化，当前的服务实现是脆弱的
+难以维持，短期内可能会延迟
+执行有点。然而，最终，我们将需要使
+`node` 包更易于维护和推理。
 
-### Generic Service Pluggability
+### 通用服务可插拔性
 
-One possible system design would export interfaces (in the Golang
-sense) for all components of the system, to permit runtime dependency
-injection of all components in the system, so that users can compose
-tendermint nodes of arbitrary user-supplied components.
+一种可能的系统设计是导出接口(在 Golang
+sense) 用于系统的所有组件，以允许运行时依赖
+注入系统中的所有组件，让用户可以编写
+任意用户提供的组件的tendermint节点。
 
-Although this level of customization would provide benefits, it would be a huge
-undertaking (particularly with regards to API design work) that we do not have
-scope for at the moment.  Eventually providing support for some kinds of
-pluggability may be useful, so the current solution does not explicitly
-foreclose the possibility of this alternative.
+虽然这种级别的定制会带来好处，但它会是一个巨大的
+我们没有的承诺(特别是关于 API 设计工作)
+目前的范围。最终为某些类型提供支持
+可插拔性可能很有用，因此当前的解决方案并未明确
+排除这种选择的可能性。
 
-### Abstract Dependency Based Startup and Shutdown
+### 基于抽象依赖的启动和关闭
 
-The main proposal in this document makes tendermint node initialization simpler
-and more abstract, but the system lacks a number of
-features which daemon/service initialization could provide, such as a
-system allowing the authors of services to control initialization and shutdown order
-of components using dependency relationships.
+本文档中的主要提议使tendermint节点初始化更简单
+更抽象，但系统缺乏一些
+守护进程/服务初始化可以提供的功能，例如
+系统允许服务的作者控制初始化和关闭顺序
+使用依赖关系的组件。
 
-Such a system could work by allowing services to declare
-initialization order dependencies to other reactors (by ID, perhaps)
-so that the node could decide the initialization based on the
-dependencies declared by services rather than requiring the node to
-encode this logic directly.
+这样的系统可以通过允许服务声明来工作
+对其他反应器的初始化顺序依赖性(可能通过 ID)
+以便节点可以根据
+服务声明的依赖关系，而不是要求节点
+直接编码这个逻辑。
 
-This level of configuration is probably more complicated than is needed.  Given
-that the authors of components in the current implementation of tendermint
-already *do* need to know about other components, a dependency-based system
-would probably be overly-abstract at this stage.
+这个级别的配置可能比需要的更复杂。给定的
+当前实施的tendermint中组件的作者
+已经*做*需要了解其他组件，一个基于依赖的系统
+在这个阶段可能会过于抽象。
 
-## Decisions
+## 决定
 
-- To the greatest extent possible, factor the code base so that
-  packages are responsible for their own initialization, and minimize
-  the amount of code in the `node` package itself.
+- 最大程度地考虑代码库，以便
+  包负责自己的初始化，并最小化
+  `node` 包本身的代码量。
 
-- As a design goal, reduce direct coupling and dependencies between
-  components in the implementation of `node`.
+- 作为设计目标，减少之间的直接耦合和依赖
+  `node` 实现中的组件。
 
-- Begin iterating on a more-flexible internal framework for
-  initializing tendermint nodes to make the initatilization process
-  less hard-coded by the implementation of the node objects.
+- 开始迭代更灵活的内部框架
+  初始化tendermint节点以进行初始化过程
+  通过节点对象的实现减少硬编码。
 
-  - Reactors should not need to expose their interfaces *within* the
-	implementation of the node type
+  - 反应器不需要在*内*暴露它们的接口
+节点类型的实现
 
-  - This refactoring should be entirely opaque to users.
+  - 这种重构应该对用户完全不透明。
 
-  - These node initialization changes should not require a
-	reevaluation of the `service.Service` or a generic initialization
-	orchestration framework.
+  - 这些节点初始化更改应该不需要
+重新评估“service.Service”或通用初始化
+编排框架。
 
-- Do not proactively provide a system for injecting
-  components/services within a tendtermint node, though make it
-  possible to retrofit this kind of plugability in the future if
-  needed.
+- 不要主动提供注射系统
+  组件/服务
+  如果将来可以改进这种可插拔性
+  需要。
 
-- Prioritize implementation of p2p-based statesync reactor to obviate
-  need for users to inject a custom state-sync provider.
+- 优先实现基于 p2p 的状态同步反应器以避免
+  需要用户注入自定义状态同步提供程序。
 
-## Detailed Design
+## 详细设计
 
-The [current
+[当前
 nodeImpl](https://github.com/tendermint/tendermint/blob/master/node/node.go#L47)
-includes direct references to the implementations of each of the
-reactors, which should be replaced by references to `service.Service`
-objects. This will require moving construction of the [rpc
-service](https://github.com/tendermint/tendermint/blob/master/node/node.go#L771)
-into the constructor of
-[makeNode](https://github.com/tendermint/tendermint/blob/master/node/node.go#L126). One
-possible implementation of this would be to eliminate the current
-`ConfigureRPC` method on the node package and instead [configure it
-here](https://github.com/tendermint/tendermint/pull/6798/files#diff-375d57e386f20eaa5f09f02bb9d28bfc48ac3dca18d0325f59492208219e5618R441).
+包括对每个实现的直接引用
+反应器，应替换为对“service.Service”的引用
+对象。这将需要移动构建 [rpc
+服务](https://github.com/tendermint/tendermint/blob/master/node/node.go#L771)
+进入构造函数
+[makeNode](https://github.com/tendermint/tendermint/blob/master/node/node.go#L126)。一
+可能的实现是消除当前的
+节点包上的`ConfigureRPC`方法，而是[配置它
+这里](https://github.com/tendermint/tendermint/pull/6798/files#diff-375d57e386f20eaa5f09f02bb9d28bfc48ac3dca18d0325f59492208219e5618R441)。
 
-To avoid adding complexity to the `node` package, we will add a
-composite service implementation to the `service` package
-that implements `service.Service` and is composed of a sequence of
-underlying `service.Service` objects and handles their
-startup/shutdown in the specified sequential order.
+为了避免增加`node`包的复杂性，我们将添加一个
+`service` 包的复合服务实现
+实现了`service.Service`并由一系列
+底层`service.Service` 对象并处理它们
+按指定的顺序启动/关闭。
 
-Consensus, blocksync (*née* fast sync), and statesync all depend on
-each other, and have significant initialization dependencies that are
-presently encoded in the `node` package. As part of this change, a
-new package/component (likely named `blocks` located at
-`internal/blocks`) will encapsulate the initialization of these block
-management areas of the code.
+共识、块同步(*née* 快速同步)和状态同步都依赖于
+彼此之间，并且具有显着的初始化依赖项
+目前在`node`包中编码。作为这一变化的一部分，一个
+新包/组件(可能名为“blocks”，位于
+`internal/blocks`) 将封装这些块的初始化
+代码的管理领域。
 
-### Injectable Component Option
+### 可注射组件选项
 
-This section briefly describes a possible implementation for
-user-supplied services running within a node. This should not be
-implemented unless user-supplied components are a hard requirement for
-a user.
+本节简要描述了一个可能的实现
+在节点内运行的用户提供的服务。这不应该
+除非用户提供的组件是一个硬性要求
+一个用户。
 
-In order to allow components to be replaced, a new public function
-will be added to the public interface of `node` with a signature that
-resembles the following:
+为了允许更换组件，一个新的公共功能
+将被添加到 `node` 的公共接口中，并带有一个签名
+类似于以下内容:
 
 ```go
 func NewWithServices(conf *config.Config,
@@ -170,104 +170,104 @@ func NewWithServices(conf *config.Config,
 ) (service.Service, error) {
 ```
 
-The `service.Service` objects will be initialized in the order supplied, after
-all pre-configured/default services have started (and shut down in reverse
-order).  The given services may implement additional interfaces, allowing them
-to replace specific default services. `NewWithServices` will validate input
-service lists with the following rules:
+`service.Service` 对象将按照提供的顺序初始化，之后
+所有预配置/默认服务都已启动(并反向关闭)
+命令)。给定的服务可以实现额外的接口，允许它们
+替换特定的默认服务。 `NewWithServices` 将验证输入
+具有以下规则的服务列表:
 
-- None of the services may already be running.
-- The caller may not supply more than one replacement reactor for a given
-  default service type.
+- 可能没有任何服务正在运行。
+- 调用者不能为一个给定的反应堆提供一个以上的替代反应堆
+  默认服务类型。
 
-If callers violate any of these rules, `NewWithServices` will return
-an error. To retract support for this kind of operation in the future,
-the function can be modified to *always* return an error.
+如果调用者违反任何这些规则，`NewWithServices` 将返回
+一个错误。为了将来撤回对此类操作的支持，
+该函数可以修改为*总是*返回错误。
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- The node package will become easier to maintain.
+- 节点包将变得更容易维护。
 
-- It will become easier to add additional services within tendermint
-  nodes.
+- 在tendermint中添加附加服务将变得更加容易
+  节点。
 
-- It will become possible to replace default components in the node
-  package without vendoring the tendermint repo and modifying internal
-  code.
+- 可以替换节点中的默认组件
+  包而不出售tendermint repo和修改内部
+  代码。
 
-- The current end-to-end (e2e) test suite will be able to prevent any
-  regressions, and the new functionality can be thoroughly unit tested.
+- 当前的端到端 (e2e) 测试套件将能够防止任何
+  回归，并且可以对新功能进行彻底的单元测试。
 
-- The scope of this project is very narrow, which minimizes risk.
+- 这个项目的范围很窄，可以将风险降到最低。
 
-### Negative
+### 消极的
 
-- This increases our reliance on the `service.Service` interface which
-  is probably not an interface that we want to fully commit to.
+- 这增加了我们对`service.Service` 接口的依赖，它
+  可能不是我们想要完全承诺的接口。
 
-- This proposal implements a fairly minimal set of functionality and
-  leaves open the possibility for many additional features which are
-  not included in the scope of this proposal.
+- 该提案实现了相当少的功能集，并且
+  为许多附加功能留下了可能性
+  不包括在本提案的范围内。
 
-### Neutral
+### 中性的
 
-N/A
+不适用
 
-## Open Questions
+## 开放问题
 
-- To what extent does this new initialization framework need to accommodate
-  the legacy p2p stack? Would it be possible to delay a great deal of this
-  work to the 0.36 cycle to avoid this complexity?
+- 这个新的初始化框架需要在多大程度上适应
+  传统的 p2p 堆栈？是否有可能延迟很多
+  工作到 0.36 周期以避免这种复杂性？
 
-  - Answer: _depends on timing_, and the requirement to ship pluggable reactors in 0.35.
+  - 答案:_取决于时间_，以及在 0.35 中运送可插拔反应堆的要求。
 
-- Where should additional public types be exported for the 0.35
-  release?
+- 应该在哪里为 0.35 导出额外的公共类型
+  发布？
 
-  Related to the general project of API stabilization we want to deprecate
-  the `types` package, and move its contents into a new `pkg` hierarchy;
-  however, the design of the `pkg` interface is currently underspecified.
-  If `types` is going to remain for the 0.35 release, then we should consider
-  the impact of using multiple organizing modalities for this code within a
-  single release.
+  与我们要弃用的 API 稳定化通用项目相关
+  `types` 包，并将其内容移动到新的 `pkg` 层次结构中；
+  然而，`pkg` 接口的设计目前没有详细说明。
+  如果在 0.35 版本中要保留 `types`，那么我们应该考虑
+  在一个代码中使用多种组织方式的影响
+  单发行。
 
-## Future Work
+## 未来的工作
 
-- Improve or simplify the `service.Service` interface. There are some
-  pretty clear limitations with this interface as written (there's no
-  way to timeout slow startup or shut down, the cycle between the
-  `service.BaseService` and `service.Service` implementations is
-  troubling, the default panic in `OnReset` seems troubling.)
+- 改进或简化`service.Service` 接口。有一些
+  这个接口的限制非常明显(没有
+  超时的方式慢启动或关闭，之间的循环
+  `service.BaseService` 和 `service.Service` 实现是
+  令人不安，`OnReset` 中的默认恐慌似乎令人不安。)
 
-- As part of the refactor of `service.Service` have all services/nodes
-  respect the lifetime of a `context.Context` object, and avoid the
-  current practice of creating `context.Context` objects in p2p and
-  reactor code. This would be required for in-process multi-tenancy.
+- 作为`service.Service`重构的一部分，拥有所有服务/节点
+  尊重 `context.Context` 对象的生命周期，并避免
+  在 p2p 中创建 `context.Context` 对象的当前做法和
+  反应堆代码。这是进程内多租户所必需的。
 
-- Support explicit dependencies between components and allow for
-  parallel startup, so that different reactors can startup at the same
-  time, where possible.
+- 支持组件之间的显式依赖关系并允许
+  并行启动，使不同的反应器可以同时启动
+  时间，在可能的情况下。
 
-## References
+## 参考
 
-- [this
-  branch](https://github.com/tendermint/tendermint/tree/tychoish/scratch-node-minimize)
-  contains experimental work in the implementation of the node package
-  to unwind some of the hard dependencies between components.
+- [这
+  分支](https://github.com/tendermint/tendermint/tree/tychoish/scratch-node-minimize)
+  包含实现节点包的实验工作
+  解除组件之间的一些硬依赖关系。
 
-- [the component
-  graph](https://peter.bourgon.org/go-for-industrial-programming/#the-component-graph)
-  as a framing for internal service construction.
+- [组件
+  图](https://peter.bourgon.org/go-for-industrial-programming/#the-component-graph)
+  作为内部服务建设的框架。
 
-## Appendix
+## 附录
 
-### Dependencies
+### 依赖
 
-There's a relationship between the blockchain and consensus reactor
-described by the following dependency graph makes replacing some of
-these components more difficult relative to other reactors or
-components.
+区块链和共识反应器之间有关系
+由以下依赖关系图描述使得替换一些
+这些组件相对于其他反应器更难或
+组件。
 
-![consensus blockchain dependency graph](./img/consensus_blockchain.png)
+![共识区块链依赖图](./img/consensus_blockchain.png)

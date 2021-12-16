@@ -1,18 +1,18 @@
-# Metrics
+# 指标
 
-Tendermint can report and serve the Prometheus metrics, which in their turn can
-be consumed by Prometheus collector(s).
+Tendermint 可以报告和提供 Prometheus 指标，而这些指标反过来可以
+被 Prometheus 收集器消耗。
 
-This functionality is disabled by default.
+默认情况下禁用此功能。
 
-To enable the Prometheus metrics, set `instrumentation.prometheus=true` in your
-config file. Metrics will be served under `/metrics` on 26660 port by default.
-Listen address can be changed in the config file (see
-`instrumentation.prometheus\_listen\_addr`).
+要启用 Prometheus 指标，请在您的
+配置文件。 默认情况下，指标将在 26660 端口上的 `/metrics` 下提供。
+可以在配置文件中更改侦听地址(请参阅
+`instrumentation.prometheus\_listen\_addr`)。
 
-## List of available metrics
+## 可用指标列表
 
-The following metrics are available:
+以下指标可用:
 
 | **Name**                               | **Type**  | **Tags**      | **Description**                                                        |
 | -------------------------------------- | --------- | ------------- | ---------------------------------------------------------------------- |
@@ -48,9 +48,9 @@ The following metrics are available:
 | mempool_recheck_times                  | counter   |               | number of transactions rechecked in the mempool                        |
 | state_block_processing_time            | histogram |               | time between BeginBlock and EndBlock in ms                             |
 
-## Useful queries
+## 有用的查询
 
-Percentage of missing + byzantine validators:
+缺少+拜占庭验证器的百分比:
 
 ```prometheus
 ((consensus_byzantine_validators_power + consensus_missing_validators_power) / consensus_validators_power) * 100

@@ -1,22 +1,22 @@
-# Quick Start
+# 快速开始
 
-## Overview
+## 概述
 
-This is a quick start guide. If you have a vague idea about how Tendermint
-works and want to get started right away, continue. Make sure you've installed the binary.
-Check out [install](./install.md) if you haven't.
+这是一个快速入门指南。 如果您对 Tendermint
+有效并想立即开始，请继续。 确保你已经安装了二进制文件。
+如果还没有，请查看 [install](./install.md)。
 
-## Initialization
+## 初始化
 
-Running:
+跑步:
 
 ```sh
 tendermint init validator
 ```
 
-will create the required files for a single, local node.
+将为单个本地节点创建所需的文件。
 
-These files are found in `$HOME/.tendermint`:
+这些文件位于 `$HOME/.tendermin` 中:
 
 ```sh
 $ ls $HOME/.tendermint
@@ -84,22 +84,22 @@ where the value is returned in hex.
 
 ## Cluster of Nodes
 
-First create four Ubuntu cloud machines. The following was tested on Digital
-Ocean Ubuntu 16.04 x64 (3GB/1CPU, 20GB SSD). We'll refer to their respective IP
-addresses below as IP1, IP2, IP3, IP4.
+首先创建四台Ubuntu云机器。 以下是在数字上测试的
+Ocean Ubuntu 16.04 x64(3GB/1CPU，20GB SSD)。 我们会参考他们各自的IP
+以下地址为 IP1、IP2、IP3、IP4。
 
-Then, `ssh` into each machine, and execute [this script](https://git.io/fFfOR):
+然后，`ssh` 进入每台机器，并执行[这个脚本](https://git.io/fFfOR):
 
 ```sh
 curl -L https://git.io/fFfOR | bash
 source ~/.profile
 ```
 
-This will install `go` and other dependencies, get the Tendermint source code, then compile the `tendermint` binary.
+这将安装 `go` 和其他依赖项，获取 Tendermint 源代码，然后编译 `tendermint` 二进制文件。
 
-Next, use the `tendermint testnet` command to create four directories of config files (found in `./mytestnet`) and copy each directory to the relevant machine in the cloud, so that each machine has `$HOME/mytestnet/node[0-3]` directory.
+接下来，使用`tendermint testnet`命令创建配置文件的四个目录(在`./mytestnet`中找到)，并将每个目录复制到云端的相关机器上，这样每台机器都有`$HOME/mytestnet/node[ 0-3]` 目录。
 
-Before you can start the network, you'll need peers identifiers (IPs are not enough and can change). We'll refer to them as ID1, ID2, ID3, ID4.
+在您可以启动网络之前，您需要对等标识符(IP 是不够的，可以更改)。 我们将它们称为 ID1、ID2、ID3、ID4。
 
 ```sh
 tendermint show_node_id --home ./mytestnet/node0
@@ -117,8 +117,8 @@ tendermint start --home ./mytestnet/node2 --proxy-app=kvstore --p2p.persistent-p
 tendermint start --home ./mytestnet/node3 --proxy-app=kvstore --p2p.persistent-peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
 ```
 
-Note that after the third node is started, blocks will start to stream in
-because >2/3 of validators (defined in the `genesis.json`) have come online.
-Persistent peers can also be specified in the `config.toml`. See [here](../tendermint-core/configuration.md) for more information about configuration options.
+注意，在第三个节点启动后，块将开始流入
+因为 >2/3 的验证器(在 `genesis.json` 中定义)已经上线。
+持久对等点也可以在`config.toml` 中指定。 有关配置选项的更多信息，请参见 [此处](../tendermint-core/configuration.md)。
 
-Transactions can then be sent as covered in the single, local node example above.
+然后可以发送交易，如上面单个本地节点示例中所述。

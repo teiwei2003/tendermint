@@ -1,140 +1,140 @@
-# ADR 45 - ABCI Evidence Handling
+# ADR 45 - ABCI 证据处理
 
-## Changelog
-* 21-09-2019: Initial draft
+## 变更日志
+* 21-09-2019:初稿
 
-## Context
+## 语境
 
-Evidence is a distinct component in a Tendermint block and has it's own reactor
-for high priority gossipping. Currently, Tendermint supports only a single form of evidence, an explicit
-equivocation, where a validator signs conflicting blocks at the same
-height/round. It is detected in real-time in the consensus reactor, and gossiped
-through the evidence reactor. Evidence can also be submitted through the RPC.
+证据是 Tendermint 区块中的一个独特组件，并且拥有自己的反应器
+用于高优先级的八卦。目前，Tendermint 只支持单一形式的证据，一个明确的证据
+模棱两可，验证者同时签署冲突块
+高度/圆形。在共识反应器中被实时检测，并被八卦
+通过证据反应堆。证据也可以通过RPC提交。
 
-Currently, Tendermint does not gracefully handle a fork on the main chain.
-If a fork is detected, the node panics. At this point manual intervention and
-social consensus are required to reconfigure. We'd like to do something more
-graceful here, but that's for another day.
+目前，Tendermint 不能优雅地处理主链上的分叉。
+如果检测到分叉，则节点会发生恐慌。此时人工干预和
+社会共识需要重新配置。我们想做更多的事情
+这里很优雅，但那是另一天。
 
-It's possible to fool lite clients without there being a fork on the
-main chain - so called Fork-Lite. See the
-[fork accountability](https://docs.tendermint.com/master/spec/light-client/accountability/)
-document for more details. For a sequential lite client, this can happen via
-equivocation or amnesia attacks. For a skipping lite client this can also happen
-via lunatic validator attacks. There must be some way for applications to punish
-all forms of misbehaviour.
+可以在没有分叉的情况下愚弄 lite 客户
+主链 - 所谓的 Fork-Lite。见
+[分叉问责制](https://docs.tendermint.com/master/spec/light-client/accountability/)
+文档了解更多详情。对于顺序精简版客户端，这可以通过
+模棱两可或健忘症攻击。对于跳过 lite 客户端，这也可能发生
+通过疯狂的验证器攻击。应用程序必须有某种方式来惩罚
+所有形式的不当行为。
 
-The essential question is whether Tendermint should manage the evidence
-verification, or whether it should treat evidence more like a transaction (ie.
-arbitrary bytes) and let the application handle it (including all the signature
-checking).
+关键问题是 Tendermint 是否应该管理证据
+验证，或者是否应该将证据更像交易(即。
+任意字节)并让应用程序处理它(包括所有签名
+检查)。
 
-Currently, evidence verification is handled by Tendermint. Once committed,
-[evidence is passed over
+目前，证据验证由 Tendermint 处理。一旦承诺，
+【证据已过
 ABCI](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto#L354)
-in BeginBlock in a reduced form that includes only
-the type of evidence, its height and timestamp, the validator it's from, and the
-total voting power of the validator set at the height. The app trusts Tendermint
-to perform the evidence verification, as the ABCI evidence does not contain the
-signatures and additional data for the app to verify itself.
+以简化形式在 BeginBlock 中，仅包括
+证据的类型、它的高度和时间戳、它来自的验证器，以及
+验证者的总投票权设置在高度。该应用程序信任 Tendermint
+执行证据验证，因为 ABCI 证据不包含
+应用程序的签名和其他数据以进行自我验证。
 
-Arguments in favor of leaving evidence handling in Tendermint:
+支持在 Tendermint 中处理证据的论据:
 
-1) Attacks on full nodes must be detectable by full nodes in real time, ie. within the consensus reactor.
-  So at the very least, any evidence involved in something that could fool a full
-  node must be handled natively by Tendermint as there would otherwise be no way
-  for the ABCI app to detect it (ie. we don't send all votes we receive during
-  consensus to the app ... ).
+1) 对全节点的攻击必须能够被全节点实时检测到，即。在共识反应堆中。
+  所以至少，任何涉及某事的证据都可以愚弄一个完整的
+  节点必须由 Tendermint 本地处理，否则就没有办法
+  用于 ABCI 应用程序检测它(即我们不会发送我们在此期间收到的所有选票
+  对应用程序的共识......)。
 
-2) Amensia attacks can not be easily detected - they require an interactive
-  protocol among all the validators to submit justification for their past
-  votes. Our best notion of [how to do this
-  currently](https://github.com/tendermint/tendermint/blob/c67154232ca8be8f5c21dff65d154127adc4f7bb/docs/spec/consensus/fork-detection.md)
-  is via a centralized
-  monitor service that is trusted for liveness to aggregate data from
-  current and past validators, but which produces a proof of misbehaviour (ie.
-  via amnesia) that can be verified by anyone, including the blockchain.
-  Validators must submit all the votes they saw for the relevant consensus
-  height to justify their precommits. This is quite specific to the Tendermint
-  protocol and may change if the protocol is upgraded. Hence it would be awkward
-  to co-ordinate this from the app.
+2) Amensia 攻击不容易被检测到——它们需要一个交互式的
+  所有验证者之间的协议，以提交他们过去的理由
+  票。我们关于 [如何做到这一点
+  当前](https://github.com/tendermint/tendermint/blob/c67154232ca8be8f5c21dff65d154127adc4f7bb/docs/spec/consensus/fork-detection.md)
+  是通过一个集中的
+  被信任的活跃度的监控服务来聚合数据
+  当前和过去的验证器，但会产生不当行为的证明(即。
+  通过失忆症)，任何人都可以验证，包括区块链。
+  验证者必须提交他们看到的所有相关共识的投票
+  高度来证明他们的预先承诺是合理的。这是 Tendermint 特有的
+  协议，如果协议升级可能会改变。所以会很尴尬
+  从应用程序协调这一点。
 
-3) Evidence gossipping is similar to tx gossipping, but it should be higher
-  priority. Since the mempool does not support any notion of priority yet,
-  evidence is gossipped through a distinct Evidence reactor. If we just treated
-  evidence like any other transaction, leaving it entirely to the application,
-  Tendermint would have no way to know how to prioritize it, unless/until we
-  significantly upgrade the mempool. Thus we would need to continue to treat evidence
-  distinctly and update the ABCI to either support sending Evidence through
-  CheckTx/DeliverTx, or to introduce new CheckEvidence/DeliverEvidence methods.
-  In either case we'd need to make more changes to ABCI then if Tendermint
-  handled things and we just added support for another evidence type that could be included
-  in BeginBlock.
+3)证据八卦和tx八卦类似，但应该更高
+  优先事项。由于内存池尚不支持任何优先级概念，
+  证据是通过一个独特的证据反应器八卦的。如果我们只是治疗
+  像任何其他交易一样的证据，完全留给应用程序，
+  Tendermint 无法知道如何确定优先级，除非/直到我们
+  显着升级内存池。因此我们需要继续处理证据
+  明确并更新 ABCI 以支持通过以下方式发送证据
+  CheckTx/DeliverTx，或引入新的 CheckEvidence/DeliverEvidence 方法。
+  在任何一种情况下，我们都需要对 ABCI 进行更多更改，然后如果 Tendermint
+  处理的事情，我们刚刚添加了对可以包含的另一种证据类型的支持
+  在开始块中。
 
-4) All ABCI application frameworks will benefit from most of the heavy lifting
-  being handled by Tendermint, rather than each of them needing to re-implement
-  all the evidence verification logic in each language.
+4) 所有 ABCI 应用程序框架都将受益于大部分繁重的工作
+  由 Tendermint 处理，而不是每个人都需要重新实施
+  每种语言的所有证据验证逻辑。
 
-Arguments in favor of moving evidence handling to the application:
+支持将证据处理移至应用程序的论据:
 
-5) Skipping lite clients require us to track the set of all validators that were
-  bonded over some period in case validators that are unbonding but still
-  slashable sign invalid headers to fool lite clients. The Cosmos-SDK
-  staking/slashing modules track this, as it's used for slashing.
-  Tendermint does not currently track this, though it does keep track of the
-  validator set at every height. This leans in favour of managing evidence in
-  the app to avoid redundantly managing the historical validator set data in
-  Tendermint
+5) 跳过 lite 客户端要求我们跟踪所有验证器的集合
+  在一段时间内绑定，以防验证器解除绑定但仍然
+  slashable 标志无效标头以愚弄 lite 客户端。 Cosmos-SDK
+  staking/slashing 模块跟踪这一点，因为它用于 slashing。
+  Tendermint 目前不跟踪这个，尽管它会跟踪
+  验证器设置在每个高度。这倾向于管理证据
+  应用程序避免冗余管理历史验证器集数据
+  嫩肤
 
-6) Applications supporting cross-chain validation will be required to process
-  evidence from other chains. This data will come in the form of a transaction,
-  but it means the app will be required to have all the functionality to process
-  evidence, even if the evidence for its own chain is handled directly by
-  Tendermint.
+6) 需要处理支持跨链验证的申请
+  来自其他连锁店的证据。这些数据将以交易的形式出现，
+  但这意味着该应用程序将需要具有处理的所有功能
+  证据，即使其自身链的证据由直接处理
+  嫩肤。
 
-7) Evidence from lite clients may be large and constitute some form of DoS
-  vector against full nodes. Putting it in transactions allows it to engage the application's fee
-  mechanism to pay for cost of executions in the event the evidence is false.
-  This means the evidence submitter must be able to afford the fees for the
-  submission, but of course it should be refunded if the evidence is valid.
-  That said, the burden is mostly on full nodes, which don't necessarily benefit
-  from fees.
+7) 来自 lite 客户端的证据可能很大并构成某种形式的 DoS
+  针对完整节点的向量。将其放入交易中允许它收取应用程序的费用
+  在证据不实的情况下支付处决费用的机制。
+  这意味着证据提交者必须能够负担
+  提交，但如果证据有效，当然应该退还。
+  也就是说，负担主要在全节点上，这不一定会受益
+  从费用。
 
 
-## Decision
+## 决定
 
-The above mostly seems to suggest that evidence detection belongs in Tendermint.
-(5) does not impose particularly large obligations on Tendermint and (6) just
-means the app can use Tendermint libraries. That said, (7) is potentially
-cause for some concern, though it could still attack full nodes that weren't associated with validators
-(ie. that don't benefit from fees). This could be handled out of band, for instance by
-full nodes offering the light client service via payment channels or via some
-other payment service. This can also be mitigated by banning client IPs if they
-send bad data. Note the burden is on the client to actually send us a lot of
-data in the first place.
+以上似乎大多表明证据检测属于 Tendermint。
+(5) 没有对 Tendermint 施加特别大的义务，并且 (6) 只是
+意味着该应用程序可以使用 Tendermint 库。也就是说，(7) 是潜在的
+引起一些担忧，尽管它仍然可以攻击与验证器无关的完整节点
+(即，不受益于费用)。这可以在带外处理，例如
+全节点通过支付渠道或通过某些渠道提供轻客户端服务
+其他支付服务。这也可以通过禁止客户端 IP 来缓解，如果它们
+发送不良数据。请注意，客户实际上向我们发送了很多
+数据放在首位。
 
-A separate ADR will describe how Tendermint will handle these new forms of
-evidence, in terms of how it will engage the monitoring protocol described in
-the [fork
-detection](https://github.com/tendermint/tendermint/blob/c67154232ca8be8f5c21dff65d154127adc4f7bb/docs/spec/consensus/fork-detection.md) document,
-and how it will track past validators and manage DoS issues.
+一个单独的 ADR 将描述 Tendermint 将如何处理这些新形式的
+证据，关于它将如何参与描述的监测协议
+叉子
+检测](https://github.com/tendermint/tendermint/blob/c67154232ca8be8f5c21dff65d154127adc4f7bb/docs/spec/consensus/fork-detection.md)文档，
+以及它将如何跟踪过去的验证者并管理 DoS 问题。
 
-## Status
+## 状态
 
-Proposed.
+建议的。
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- No real changes to ABCI
-- Tendermint handles evidence for all apps
+- ABCI 没有真正的变化
+- Tendermint 处理所有应用程序的证据
 
-### Neutral
+### 中性的
 
-- Need to be careful about denial of service on the Tendermint RPC
+- 需要注意 Tendermint RPC 上的拒绝服务
 
-### Negative
+### 消极的
 
-- Tendermint duplicates data by tracking all pubkeys that were validators during
-  the unbonding period
+- Tendermint 通过跟踪在此期间作为验证者的所有公钥来复制数据
+  解绑期

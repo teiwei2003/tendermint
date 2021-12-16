@@ -1,52 +1,52 @@
-# ADR 012: ABCI Events
+# ADR 012:ABCI 事件
 
-## Changelog
+## 变更日志
 
-- *2018-09-02* Remove ABCI errors component. Update description for events
-- *2018-07-12* Initial version
+- *2018-09-02* 删除 ABCI 错误组件。更新事件描述
+- *2018-07-12* 初始版本
 
-## Context
+## 语境
 
-ABCI tags were first described in [ADR 002](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-002-event-subscription.md).
-They are key-value pairs that can be used to index transactions.
+ABCI 标签首先在 [ADR 002](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-002-event-subscription.md) 中描述。
+它们是可用于索引交易的键值对。
 
-Currently, ABCI messages return a list of tags to describe an
-"event" that took place during the Check/DeliverTx/Begin/EndBlock,
-where each tag refers to a different property of the event, like the sending and receiving account addresses.
+目前，ABCI 消息返回一个标签列表来描述一个
+在 Check/DeliverTx/Begin/EndBlock 期间发生的“事件”，
+其中每个标签指的是事件的不同属性，例如发送和接收帐户地址。
 
-Since there is only one list of tags, recording data for multiple such events in
-a single Check/DeliverTx/Begin/EndBlock must be done using prefixes in the key
-space.
+由于只有一个标签列表，记录多个此类事件的数据
+必须使用密钥中的前缀完成单个 Check/DeliverTx/Begin/EndBlock
+空间。
 
-Alternatively, groups of tags that constitute an event can be separated by a
-special tag that denotes a break between the events. This would allow
-straightforward encoding of multiple events into a single list of tags without
-prefixing, at the cost of these "special" tags to separate the different events.
+或者，构成事件的标签组可以用
+表示事件之间中断的特殊标记。这将允许
+将多个事件直接编码到单个标签列表中，无需
+前缀，以这些“特殊”标签为代价来分隔不同的事件。
 
-TODO: brief description of how the indexing works
+TODO:索引工作原理的简要说明
 
-## Decision
+## 决定
 
-Instead of returning a list of tags, return a list of events, where
-each event is a list of tags. This way we naturally capture the concept of
-multiple events happening during a single ABCI message.
+不是返回标签列表，而是返回事件列表，其中
+每个事件都是一个标签列表。这样我们自然而然地捕捉到了
+在单个 ABCI 消息期间发生的多个事件。
 
-TODO: describe impact on indexing and querying
+TODO:描述对索引和查询的影响
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Ability to track distinct events separate from ABCI calls (DeliverTx/BeginBlock/EndBlock)
-- More powerful query abilities
+- 能够跟踪与 ABCI 调用分开的不同事件(DeliverTx/BeginBlock/EndBlock)
+- 更强大的查询能力
 
-### Negative
+### 消极的
 
-- More complex query syntax
-- More complex search implementation
+- 更复杂的查询语法
+- 更复杂的搜索实现
 
-### Neutral
+### 中性的

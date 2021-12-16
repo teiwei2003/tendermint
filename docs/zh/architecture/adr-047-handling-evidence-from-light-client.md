@@ -1,47 +1,47 @@
-# ADR 047: Handling evidence from light client
+# ADR 047:处理来自轻客户端的证据
 
-## Changelog
-* 18-02-2020: Initial draft
-* 24-02-2020: Second version
-* 13-04-2020: Add PotentialAmnesiaEvidence and a few remarks
-* 31-07-2020: Remove PhantomValidatorEvidence
-* 14-08-2020: Introduce light traces (listed now as an alternative approach)
-* 20-08-2020: Light client produces evidence when detected instead of passing to full node
-* 16-09-2020: Post-implementation revision
-* 15-03-2020: Ammends for the case of a forward lunatic attack
+## 变更日志
+* 18-02-2020:初稿
+* 24-02-2020:第二版
+* 13-04-2020:添加 PotentialAmnesiaEvidence 和一些备注
+* 31-07-2020:删除 PhantomValidatorEvidence
+* 14-08-2020:引入光迹(现在列为替代方法)
+* 20-08-2020:轻客户端在检测到时产生证据而不是传递给全节点
+* 16-09-2020:实施后修订
+* 15-03-2020:修正前向疯子攻击的情况
 
-### Glossary of Terms
+### 专业术语
 
-- a `LightBlock` is the unit of data that a light client receives, verifies and stores.
-It is composed of a validator set, commit and header all at the same height.
-- a **Trace** is seen as an array of light blocks across a range of heights that were
-created as a result of skipping verification.
-- a **Provider** is a full node that a light client is connected to and serves the light
-client signed headers and validator sets.
-- `VerifySkipping` (sometimes known as bisection or verify non-adjacent) is a method the
-light client uses to verify a target header from a trusted header. The process involves verifying
-intermediate headers in between the two by making sure that 1/3 of the validators that signed
-the trusted header also signed the untrusted one.
-- **Light Bifurcation Point**: If the light client was to run `VerifySkipping` with two providers
-(i.e. a primary and a witness), the bifurcation point is the height that the headers
-from each of these providers are different yet valid. This signals that one of the providers
-may be trying to fool the light client.
+- `LightBlock` 是轻客户端接收、验证和存储的数据单元。
+它由一个高度相同的验证器集、提交和标头组成。
+- **Trace** 被视为一系列高度范围内的光块
+由于跳过验证而创建的。
+- **Provider** 是一个完整的节点，轻客户端连接到并为轻客户端提供服务
+客户端签名的标头和验证器集。
+- `VerifySkipping`(有时称为二等分或验证非相邻)是一种方法
+轻客户端用于从受信任的标头中验证目标标头。该过程包括验证
+通过确保 1/3 的验证者签署了两者之间的中间标头
+受信任的标头也签署了不受信任的标头。
+- **Light Bifurcation Point**:如果轻客户端要使用两个提供程序运行“VerifySkipping”
+(即主要和见证人)，分叉点是标题的高度
+这些提供商中的每一个都不同但有效。这表明其中一个提供者
+可能试图欺骗轻客户端。
 
-## Context
+## 语境
 
-The bisection method of header verification used by the light client exposes
-itself to a potential attack if any block within the light clients trusted period has
-a malicious group of validators with power that exceeds the light clients trust level
-(default is 1/3). To improve light client (and overall network) security, the light
-client has a detector component that compares the verified header provided by the
-primary against witness headers. This ADR outlines the process of mitigating attacks
-on the light client by using witness nodes to cross reference with.
+轻客户端使用的头部校验的二分法暴露
+如果轻客户端信任期内的任何块有
+一群恶意验证者，其权力超过轻客户端信任级别
+(默认为 1/3)。为了提高轻客户端(和整个网络)的安全性，轻
+客户端有一个检测器组件，用于比较由
+主要针对见证标头。此 ADR 概述了减轻攻击的过程
+在轻客户端上通过使用见证节点进行交叉引用。
 
-## Alternative Approaches
+## 替代方法
 
-A previously discussed approach to handling evidence was to pass all the data that the
-light client had witnessed when it had observed diverging headers for the full node to
-process.This was known as a light trace and had the following structure:
+之前讨论的处理证据的方法是传递所有数据
+轻客户端见证了当它观察到完整节点的不同标头时
+过程。这被称为光迹，具有以下结构:
 
 ```go
 type ConflictingHeadersTrace struct {
@@ -49,101 +49,100 @@ type ConflictingHeadersTrace struct {
 }
 ```
 
-This approach has the advantage of not requiring as much processing on the light
-client side in the event that an attack happens. Although, this is not a significant
-difference as the light client would in any case have to validate all the headers
-from both witness and primary. Using traces would consume a large amount of bandwidth
-and adds a DDOS vector to the full node.
+这种方法的优点是不需要对光进行太多处理
+客户端发生攻击时。虽然，这不是一个重要的
+不同之处在于轻客户端在任何情况下都必须验证所有标头
+从见证人和主要。使用trace会消耗大量带宽
+并向全节点添加 DDOS 向量。
 
 
-## Decision
+## 决定
 
-The light client will be divided into two components: a `Verifier` (either sequential or
-skipping) and a `Detector` (see [Informal's Detector](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md))
-. The detector will take the trace of headers from the primary and check it against all
-witnesses. For a witness with a diverging header, the detector will first verify the header
-by bisecting through all the heights defined by the trace that the primary provided. If valid,
-the light client will trawl through both traces and find the point of bifurcation where it
-can proceed to extract any evidence (as is discussed in detail later).
+轻客户端将分为两个组件:一个“验证器”(顺序或
+跳过)和一个`检测器`(见[非正式的检测器](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md))
+.检测器将从主服务器中获取标题的踪迹，并对照所有
+证人。对于具有发散头的见证人，检测器将首先验证头
+通过平分由主要提供的迹线定义的所有高度。如果有效，
+轻客户端将遍历两条痕迹并找到它的分叉点
+可以继续提取任何证据(稍后将详细讨论)。
 
-Upon successfully detecting the evidence, the light client will send it to both primary and
-witness before halting. It will not send evidence to other peers nor continue to verify the
-primary's header against any other header.
+成功检测到证据后，轻客户端会将其发送给主和
+停下来前作证。它不会向其他同行发送证据，也不会继续验证
+主要的标头与任何其他标头。
 
 
-## Detailed Design
+## 详细设计
 
-The verification process of the light client will start from a trusted header and use a bisectional
-algorithm to verify up to a header at a given height. This becomes the verified header (does not
-mean that it is trusted yet). All headers that were verified in between are cached and known as
-intermediary headers and the entire array is sometimes referred to as a trace.
+轻客户端的验证过程将从可信头开始，并使用二分法
+算法来验证给定高度的标题。这将成为经过验证的标头(不
+意味着它是可信的)。在两者之间验证的所有标头都被缓存并称为
+中间标头和整个数组有时称为跟踪。
 
-The light client's detector then takes all the headers and runs the detect function.
+轻客户端的检测器然后获取所有标头并运行检测功能。
 
 ```golang
 func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Time) error
 ```
 
-The function takes the last header it received, the target header and compares it against all the witnesses
-it has through the following function:
+该函数采用它收到的最后一个标头，即目标标头并将其与所有见证人进行比较
+它通过以下功能:
 
 ```golang
 func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHeader,
 	witness provider.Provider, witnessIndex int)
 ```
 
-The err channel is used to send back all the outcomes so that they can be processed in parallel.
-Invalid headers result in dropping the witness, lack of response or not having the headers is ignored
-just as headers that have the same hash. Headers, however,
-of a different hash then trigger the detection process between the primary and that particular witness.
+err 通道用于发回所有结果，以便它们可以并行处理。
+无效的标头导致丢弃见证、缺少响应或没有标头被忽略
+就像具有相同散列的标头一样。 然而，标题，
+不同的散列然后触发主要和该特定见证人之间的检测过程。
 
-This begins with verification of the witness's header via skipping verification which is run in tande
-with locating the Light Bifurcation Point
+这首先通过跳过并行运行的验证来验证见证人的标头
+定位光分岔点
 
 ![](../imgs/light-client-detector.png)
 
-This is done with:
-
+这是通过以下方式完成的:
 ```golang
 func (c *Client) examineConflictingHeaderAgainstTrace(
 	trace []*types.LightBlock,
 	targetBlock *types.LightBlock,
-	source provider.Provider, 
+	source provider.Provider,
 	now time.Time,
 	) ([]*types.LightBlock, *types.LightBlock, error)
 ```
 
-which performs the following
+执行以下操作
 
-1. Checking that the trusted header is the same. Currently, they should not theoretically be different
-because witnesses cannot be added and removed after the client is initialized. But we do this any way
-as a sanity check. If this fails we have to drop the witness.
+1. 检查可信头是否相同。目前，它们在理论上应该没有区别
+因为在客户端初始化后无法添加和删除见证人。但我们以任何方式这样做
+作为健全性检查。如果这失败了，我们必须放弃见证人。
 
-2. Querying and verifying the witness's headers using bisection at the same heights of all the
-intermediary headers of the primary (In the above example this is A, B, C, D, F, H). If bisection fails
-or the witness stops responding then we can call the witness faulty and drop it.
+2. 在所有节点的相同高度使用二分法查询和验证见证人的头部
+主要的中间标头(在上面的例子中是 A、B、C、D、F、H)。如果二分失败
+或者见证人停止响应，那么我们可以称见证人有问题并放弃它。
 
-3. We eventually reach a verified header by the witness which is not the same as the intermediary header 
-(In the above example this is E). This is the point of bifurcation (This could also be the last header).
+3. 我们最终通过见证人获得了一个经过验证的头部，它与中间头部不同
+(在上面的例子中，这是 E)。这是分叉点(这也可能是最后一个标题)。
 
-4. There is a unique case where the trace that is being examined against has blocks that have a greater 
-height than the targetBlock. This can occur as part of a forward lunatic attack where the primary has 
-provided a light block that has a height greater than the head of the chain (see Appendix B). In this 
-case, the light client will verify the sources blocks up to the targetBlock and return the block in the 
-trace that is directly after the targetBlock in height as the `ConflictingBlock`
+4. 有一种独特的情况，正在检查的跟踪具有更大的块
+高度高于目标块。这可以作为前向疯狂攻击的一部分发生，其中主要有
+提供一个高度大于链头的灯块(见附录 B)。在这
+在这种情况下，轻客户端将验证源块直到 targetBlock 并返回块中的
+在高度上紧跟在 targetBlock 之后的跟踪作为 `ConflictingBlock`
 
-This function then returns the trace of blocks from the witness node between the common header and the
-divergent header of the primary as it is likely, as seen in the example to the right, that multiple 
-headers where required in order to verify the divergent one. This trace will
-be used later (as is also described later in this document).
+这个函数然后返回来自共同头和公用头之间的见证节点的块的踪迹。
+主要的发散头，因为它很可能，如右侧示例所示，多个
+需要的标题以验证不同的标题。这条痕迹将
+稍后使用(如本文档后面所述)。
 
 ![](../imgs/bifurcation-point.png)
 
-Now, that an attack has been detected, the light client must form evidence to prove it. There are
-three types of attacks that either the primary or witness could have done to try fool the light client
-into verifying the wrong header: Lunatic, Equivocation and Amnesia. As the consequence is the same and
-the data required to prove it is also very similar, we bundle these attack styles together in a single
-evidence:
+现在，已经检测到攻击，轻客户端必须形成证据来证明它。有
+主要或见证人可能会进行三种类型的攻击来试图欺骗轻客户端
+验证错误的标题:Lunatic、Equivocation 和 Amnesia。因为结果是一样的
+证明它所需的数据也非常相似，我们将这些攻击方式捆绑在一起
+证据:
 
 ```golang
 type LightClientAttackEvidence struct {
@@ -152,103 +151,103 @@ type LightClientAttackEvidence struct {
 }
 ```
 
-The light client takes the stance of first suspecting the primary. Given the bifurcation point found
-above, it takes the two divergent headers and compares whether the one from the primary is valid with
-respect to the one from the witness. This is done by calling `isInvalidHeader()` which looks to see if
-any one of the deterministically derived header fields differ from one another. This could be one of
-`ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`, `AppHash`, and `LastResultsHash`.
-In this case we know it's a Lunatic attack and to help the witness verify it we send the height
-of the common header which is 1 in the example above or C in the example above that. If all these
-hashes are the same then we can infer that it is either Equivocation or Amnesia. In this case we send
-the height of the diverged headers because we know that the validator sets are the same, hence the
-malicious nodes are still bonded at that height. In the example above, this is height 10 and the
-example above that it is the height at E.
+轻客户端采取首先怀疑主客户端的立场。鉴于找到的分岔点
+上面，它采用两个不同的标头并比较来自主要的标头是否有效
+对证人的尊重。这是通过调用 `isInvalidHeader()` 来完成的，它会查看是否
+任何一个确定性派生的报头字段彼此不同。这可能是其中之一
+`ValidatorsHash`、`NextValidatorsHash`、`ConsensusHash`、`AppHash` 和 `LastResultsHash`。
+在这种情况下，我们知道这是一次疯子攻击，为了帮助证人验证我们发送高度
+上例中为 1 或上例中为 C 的公共头。如果这一切
+哈希值相同，那么我们可以推断它是 Equivocation 或 Amnesia。在这种情况下，我们发送
+发散头的高度，因为我们知道验证器集是相同的，因此
+恶意节点仍然绑定在那个高度。在上面的例子中，这是高度 10 和
+上面的例子是 E 处的高度。
 
-The light client now has the evidence and broadcasts it to the witness.
+轻客户端现在拥有证据并将其广播给证人。
 
-However, it could have been that the header the light client used from the witness against the primary
-was forged, so before halting the light client swaps the process and thus suspects the witness and
-uses the primary to create evidence. It calls `examineConflictingHeaderAgainstTrace` this time using
-the witness trace found earlier.
-If the primary was malicious it is likely that it will not respond but if it is innocent then the
-light client will produce the same evidence but this time the conflicting
-block will come from the witness node instead of the primary. The evidence is then formed and sent to
-the primary node.
+但是，可能是轻客户端使用的标头来自见证人针对主要
+是伪造的，所以在停止轻客户端之前交换进程并因此怀疑证人和
+使用主要来创建证据。这次它调用了 `examineConflictingHeaderAgainstTrace` 使用
+较早发现的目击者踪迹。
+如果主要是恶意的，它很可能不会响应，但如果它是无辜的，那么
+轻客户端将提供相同的证据，但这次是相互矛盾的
+区块将来自见证节点而不是主节点。然后形成证据并发送给
+主节点。
 
-This then ends the process and the verify function that was called at the start returns the error to
-the user.
+这然后结束该过程，并且在开始时调用的验证函数将错误返回到
+用户。
 
-For a detailed overview of how each of these three attacks can be conducted please refer to the
-[fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md).
+有关如何进行这三种攻击中的每一种的详细概述，请参阅
+[fork 责任规范](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)。
 
-## Full Node Verification
+## 全节点验证
 
-When a full node receives evidence from the light client it will need to verify
-it for itself before gossiping it to peers and trying to commit it on chain. This process is outlined
- in [ADR-059](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md).
+当全节点从轻客户端收到证据时，它需要验证
+在与同行闲聊并尝试将其提交到链上之前，先为自己考虑。概述了这个过程
+ 在 [ADR-059](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md)。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-* Light client has increased security against Lunatic, Equivocation and Amnesia attacks.
-* Do not need intermediate data structures to encapsulate the malicious behavior
-* Generalized evidence makes the code simpler
+* 轻客户端提高了针对 Lunatic、Equivocation 和 Amnesia 攻击的安全性。
+* 不需要中间数据结构来封装恶意行为
+* 泛化证据使代码更简单
 
-### Negative
+### 消极的
 
-* Breaking change on the light client from versions 0.33.8 and below. Previous
-versions will still send `ConflictingHeadersEvidence` but it won't be recognized
-by the full node. Light clients will however still refuse the header and shut down.
-* Amnesia attacks although detected, will not be able to be punished as it is not
-clear from the current information which nodes behaved maliciously.
-* Evidence module must handle both individual and grouped evidence.
+* 轻客户端上从 0.33.8 及更低版本开始的重大更改。以前的
+版本仍然会发送`ConflictingHeadersEvidence`，但不会被识别
+通过全节点。然而，轻客户端仍将拒绝标头并关闭。
+* 失忆症攻击虽然被发现，但不会受到惩罚，因为它不是
+从当前信息中清除哪些节点是恶意行为。
+* 证据模块必须同时处理个人证据和分组证据。
 
-### Neutral
+### 中性的
 
-## References
+## 参考
 
-* [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
-* [ADR 056: Light client amnesia attacks](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-light-client-amnesia-attacks.md)
-* [ADR-059: Evidence Composition and Lifecycle](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md)
-* [Informal's Light Client Detector](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md)
+* [分叉问责规范](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
+* [ADR 056:轻客户端健忘症攻击](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-light-client-amnesia-attacks.md)
+* [ADR-059:证据组合和生命周期](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md)
+* [Informal 的轻客户端检测器](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md)
 
 
-## Appendix A
+## 附录 A
 
-PhantomValidatorEvidence was used to capture when a validator that was still staked
-(i.e. within the bonded period) but was not in the current validator set had voted for a block.
+PhantomValidatorEvidence 用于捕获仍在质押的验证者
+(即在保税期内)但不在当前验证者集中已投票支持一个区块。
 
-In later discussions it was argued that although possible to keep phantom validator
-evidence, any case a phantom validator that could have the capacity to be involved
-in fooling a light client would have to be aided by 1/3+ lunatic validators.
+在后来的讨论中，有人认为虽然可以保留幻像验证器
+证据，任何情况下都是一个可能有能力参与的幻影验证器
+愚弄轻客户端必须得到 1/3+ 疯狂验证者的帮助。
 
-It would also be very unlikely that the new validators injected by the lunatic attack
-would be validators that currently still have something staked.
+由疯狂攻击注入的新验证器也不太可能
+将是目前仍然持有某些东西的验证者。
 
-Not only this but there was a large degree of extra computation required in storing all
-the currently staked validators that could possibly fall into the group of being
-a phantom validator. Given this, it was removed.
+不仅如此，还需要大量额外的计算来存储所有
+当前质押的验证者可能属于
+一个虚拟验证器。鉴于此，它被删除了。
 
-## Appendix B
+## 附录 B
 
-A unique flavor of lunatic attack is a forward lunatic attack. This is where a malicious
-node provides a header with a height greater than the height of the blockchain. Thus there
-are no witnesses capable of rebutting the malicious header. Such an attack will also 
-require an accomplice, i.e. at least one other witness to also return the same forged header.
-Although such attacks can be any arbitrary height ahead, they must still remain within the
-clock drift of the light clients real time. Therefore, to detect such an attack, a light
-client will wait for a time
+狂攻的一种独特风味是向前狂攻。 这是恶意的地方
+node 提供一个高度大于区块链高度的头部。 因此有
+没有能够反驳恶意标题的证人。 这样的攻击也会
+需要一个共犯，即至少一个其他见证人也返回相同的伪造标题。
+尽管此类攻击可以在任意高度进行，但它们仍必须保持在
+轻客户端实时时钟漂移。 因此，为了检测这种攻击，光
+客户将等待一段时间
 
-```
-2 * MAX_CLOCK_DRIFT + LAG
-```
+``
+2 * MAX_CLOCK_DRIFT + 滞后
+``
 
-for a witness to provide the latest block it has. Given the time constraints, if the witness
-is operating at the head of the blockchain, it will have a header with an earlier height but
-a later timestamp. This can be used to prove that the primary has submitted a lunatic header
-which violates monotonically increasing time. 
+让见证人提供它拥有的最新区块。 鉴于时间限制，如果证人
+在区块链的头部运行，它将有一个具有较早高度的头部，但是
+稍后的时间戳。 这个可以用来证明primary已经提交了一个疯子的header
+这违反了单调增加的时间。

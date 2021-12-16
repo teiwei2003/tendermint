@@ -1,35 +1,35 @@
-# RFC {RFC-NUMBER}: {TITLE}
+# RFC {RFC-NUMBER}:{TITLE}
 
-## Changelog
+## 变更日志
 
-- {date}: {changelog}
+- {日期}:{变更日志}
 
-## Abstract
+## 抽象的
 
-> A brief high-level synopsis of the topic of discussion for this RFC, ideally
-> just a few sentences.  This should help the reader quickly decide whether the
-> rest of the discussion is relevant to their interest.
+> 本 RFC 讨论主题的简要概要，最好是
+> 就几句话。这应该有助于读者快速决定是否
+> 其余的讨论与他们的兴趣相关。
 
-## Background
+## 背景
 
-> Any context or orientation needed for a reader to understand and participate
-> in the substance of the Discussion. If necessary, this section may include
-> links to other documentation or sources rather than restating existing
-> material, but should provide enough detail that the reader can tell what they
-> need to read to be up-to-date.
+> 读者理解和参与所需的任何背景或方向
+> 在讨论的实质内容中。如有必要，本节可能包括
+> 链接到其他文档或来源，而不是重述现有的
+> 材料，但应该提供足够的细节，让读者可以说出他们
+> 需要阅读以保持最新状态。
 
-### References
+### 参考
 
-> Links to external materials needed to follow the discussion may be added here.
+> 可以在此处添加遵循讨论所需的外部材料的链接。
 >
-> In addition, if the discussion in a request for comments leads to any design
-> decisions, it may be helpful to add links to the ADR documents here after the
-> discussion has settled.
+> 此外，如果征求意见中的讨论导致任何设计
+> 决定，在此之后添加指向 ADR 文档的链接可能会有所帮助
+> 讨论结束。
 
-## Discussion
+## 讨论
 
-> This section contains the core of the discussion.
+> 本节包含讨论的核心。
 >
-> There is no fixed format for this section, but ideally changes to this
-> section should be updated before merging to reflect any discussion that took
-> place on the PR that made those changes.
+> 本节没有固定格式，但理想情况下可以更改为
+> 在合并之前应该更新部分以反映任何讨论
+> 放置在进行这些更改的 PR 上。

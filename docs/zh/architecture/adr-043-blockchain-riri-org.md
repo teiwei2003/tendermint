@@ -1,47 +1,47 @@
-# ADR 043: Blockhchain Reactor Riri-Org
+# ADR 043:Blockhchain Reactor Riri-Org
 
-## Changelog
+## 变更日志
 
-- 18-06-2019: Initial draft
-- 08-07-2019: Reviewed
-- 29-11-2019: Implemented
-- 14-02-2020: Updated with the implementation details
+- 18-06-2019:初稿
+- 08-07-2019:审核
+- 29-11-2019:实施
+- 14-02-2020:更新了实施细节
 
-## Context
+## 语境
 
-The blockchain reactor is responsible for two high level processes:sending/receiving blocks from peers and FastSync-ing blocks to catch upnode who is far behind. The goal of [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these two processes by separating business logic currently wrapped up in go-channels into pure `handle*` functions. While the ADR specified what the final form of the reactor might look like it lacked guidance on intermediary steps to get there.
-The following diagram illustrates the state of the [blockchain-reorg](https://github.com/tendermint/tendermint/pull/3561) reactor which will be referred to as `v1`.
+区块链反应器负责两个高级过程:发送/接收来自对等方的块和快速同步块以赶上远远落后的upnode。 [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) 的目标是通过分离业务来重构这两个流程当前包含在 go-channels 中的逻辑到纯 `handle*` 函数中。虽然 ADR 指定了反应堆的最终形式可能是什么样子，但它缺乏关于实现中间步骤的指导。
+下图说明了 [blockchain-reorg](https://github.com/tendermint/tendermint/pull/3561) 反应器的状态，该反应器将被称为“v1”。
 
-![v1 Blockchain Reactor Architecture
-Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v1.png)
+![v1 区块链反应器架构
+图](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689b​​dadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v1.png)
 
-While `v1` of the blockchain reactor has shown significant improvements in terms of simplifying the concurrency model, the current PR has run into few roadblocks.
+虽然区块链反应器的“v1”在简化并发模型方面显示出显着改进，但当前的 PR 遇到了一些障碍。
 
-- The current PR large and difficult to review.
-- Block gossiping and fast sync processes are highly coupled to the shared `Pool` data structure.
-- Peer communication is spread over multiple components creating complex dependency graph which must be mocked out during testing.
-- Timeouts modeled as stateful tickers introduce non-determinism in tests
+- 当前公关大且难以审查。
+- 块八卦和快速同步过程与共享的“池”数据结构高度耦合。
+- 对等通信分布在多个组件上，创建复杂的依赖图，必须在测试期间模拟。
+- 建模为有状态代码的超时在测试中引入了不确定性
 
-This ADR is meant to specify the missing components and control necessary to achieve [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md).
+此 ADR 旨在指定实现 [ADR-40] (https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor. MD)。
 
-## Decision
+## 决定
 
-Partition the responsibilities of the blockchain reactor into a set of components which communicate exclusively with events. Events will contain timestamps allowing each component to track time as internal state. The internal state will be mutated by a set of `handle*` which will produce event(s). The integration between components will happen in the reactor and reactor tests will then become integration tests between components. This design will be known as `v2`.
+将区块链反应器的职责划分为一组专门与事件通信的组件。事件将包含时间戳，允许每个组件将时间作为内部状态进行跟踪。内部状态将被一组将产生事件的`handle*` 改变。组件之间的集成将发生在反应器中，然后反应器测试将成为组件之间的集成测试。这种设计将被称为“v2”。
 
-![v2 Blockchain Reactor Architecture
-Diagram](https://github.com/tendermint/tendermint/blob/584e67ac3fac220c5c3e0652e3582eca8231e814/docs/architecture/img/blockchain-reactor-v2.png)
+![v2 区块链反应器架构
+图](https://github.com/tendermint/tendermint/blob/584e67ac3fac220c5c3e0652e3582eca8231e8​​14/docs/architecture/img/blockchain-reactor-v2.png)
 
-### Fast Sync Related Communication Channels
+### 快速同步相关的通信渠道
 
-The diagram below shows the fast sync routines and the types of channels and queues used to communicate with each other.
-In addition the per reactor channels used by the sendRoutine to send messages over the Peer MConnection are shown.
+下图显示了快速同步例程以及用于相互通信的通道和队列的类型。
+此外，还显示了 sendRoutine 用于通过 Peer MConnection 发送消息的每个反应器通道。
 
-![v2 Blockchain Channels and Queues
-Diagram](https://github.com/tendermint/tendermint/blob/5cf570690f989646fb3b615b734da503f038891f/docs/architecture/img/blockchain-v2-channels.png)
+![v2 区块链通道和队列
+图](https://github.com/tendermint/tendermint/blob/5cf570690f989646fb3b615b734da503f038891f/docs/architecture/img/blockchain-v2-channels.png)
 
-### Reactor changes in detail
+### Reactor 改动详解
 
-The reactor will include a demultiplexing routine which will send each message to each sub routine for independent processing. Each sub routine will then select the messages it's interested in and call the handle specific function specified in [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md). The demuxRoutine acts as "pacemaker" setting the time in which events are expected to be handled.
+反应器将包括一个多路分解程序，它将每个消息发送到每个子程序进行独立处理。然后每个子例程将选择它感兴趣的消息并调用 [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain) 中指定的句柄特定函数-reactor-refactor.md)。 demuxRoutine 充当“起搏器”，设置预期处理事件的时间。
 
 ```go
 func demuxRoutine(msgs, scheduleMsgs, processorMsgs, ioMsgs) {
@@ -97,9 +97,9 @@ func scheduleRoutine(input chan Message, output chan Message) {
 }
 ```
 
-## Lifecycle management
+##生命周期管理
 
-A set of routines for individual processes allow processes to run in parallel with clear lifecycle management. `Start`, `Stop`, and `AddPeer` hooks currently present in the reactor will delegate to the sub-routines allowing them to manage internal state independent without further coupling to the reactor.
+一组用于各个流程的例程允许流程与清晰的生命周期管理并行运行。 当前存在于反应器中的 `Start`、`Stop` 和 `AddPeer` 钩子将委托给子例程，允许它们独立管理内部状态，而无需进一步耦合到反应器。
 
 ```go
 func (r *BlockChainReactor) Start() {
@@ -142,9 +142,9 @@ func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
 
 ```
 
-## IO handling
+## IO 处理
 
-An io handling routine within the reactor will isolate peer communication. Message going through the ioRoutine will usually be one way, using `p2p` APIs. In the case in which the `p2p` API such as `trySend` return errors, the ioRoutine can funnel those message back to the demuxRoutine for distribution to the other routines. For instance errors from the ioRoutine can be consumed by the scheduler to inform better peer selection implementations.
+反应器内的 io 处理例程将隔离对等通信。 通过 ioRoutine 的消息通常是一种方式，使用 `p2p` API。 在诸如“trySend”之类的“p2p”API 返回错误的情况下，ioRoutine 可以将这些消息汇集回 demuxRoutine 以分发给其他例程。 例如，来自 ioRoutine 的错误可以被调度程序消耗以通知更好的对等选择实现。
 
 ```go
 func (r *BlockchainReacor) ioRoutine(ioMesgs chan Message, outMsgs chan Message) {
@@ -171,9 +171,9 @@ func (r *BlockchainReacor) ioRoutine(ioMesgs chan Message, outMsgs chan Message)
 
 ```
 
-### Processor Internals
+### 处理器内部
 
-The processor is responsible for ordering, verifying and executing blocks. The Processor will maintain an internal cursor `height` refering to the last processed block. As a set of blocks arrive unordered, the Processor will check if it has `height+1` necessary to process the next block. The processor also maintains the map `blockPeers` of peers to height, to keep track of which peer provided the block at `height`. `blockPeers` can be used in`handleRemovePeer(...)` to reschedule all unprocessed blocks provided by a peer who has errored.
+处理器负责排序、验证和执行块。 处理器将维护一个内部光标“高度”，指的是最后一个处理的块。 当一组块无序到达时，处理器将检查它是否有处理下一个块所需的“高度+1”。 处理器还维护对等点到高度的映射“blockPeers”，以跟踪哪个对等点在“高度”处提供了块。 `blockPeers` 可以在 `handleRemovePeer(...)` 中使用，以重新安排由出错的对等方提供的所有未处理的块。
 
 ```go
 type Processor struct {
@@ -230,14 +230,14 @@ func handleTimeCheckEv(time) {
 }
 ```
 
-## Schedule
+## 日程
 
-The Schedule maintains the internal state used for scheduling blockRequestMessages based on some scheduling algorithm. The schedule needs to maintain state on:
+Schedule根据一些调度算法维护用于调度blockRequestMessages的内部状态。 日程表需要在以下方面保持状态:
 
-- The state `blockState` of every block seem up to height of maxHeight
-- The set of peers and their peer state `peerState`
-- which peers have which blocks
-- which blocks have been requested from which peers
+- 每个块的状态 `blockState` 似乎达到 maxHeight 的高度
+- 一组对等点及其对等状态`peerState`
+- 哪些对等点有哪些块
+- 从哪些对等方请求了哪些块
 
 ```go
 type blockState int
@@ -310,12 +310,12 @@ type scPeer struct {
 
 ```
 
-# Scheduler
+# 调度器
 
-The scheduler is configured to maintain a target `n` of in flight
-messages and will use feedback from `_blockResponseMessage`,
-`_statusResponseMessage` and `_peerError` produce an optimal assignment
-of scBlockRequestMessage at each `timeCheckEv`.
+调度程序被配置为在飞行中维护目标`n`
+消息并将使用来自`_blockResponseMessage`的反馈，
+`_statusResponseMessage` 和 `_peerError` 产生最佳分配
+在每个 `timeCheckEv` 的 scBlockRequestMessage。
 
 ```
 
@@ -357,9 +357,9 @@ func handleTimeCheckEv(time) {
 }
 ```
 
-## Peer
+## 同行
 
-The Peer Stores per peer state based on messages received by the scheduler.
+Peer 根据调度程序接收到的消息存储每个对等状态。
 
 ```go
 type Peer struct {
@@ -375,30 +375,30 @@ type Peer struct {
 }
 ```
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Test become deterministic
-- Simulation becomes a-termporal: no need wait for a wall-time timeout
-- Peer Selection can be independently tested/simulated
-- Develop a general approach to refactoring reactors
+- 测试变得确定性
+- 模拟变成临时:无需等待挂墙时间超时
+- 对等选择可以独立测试/模拟
+- 开发重构反应堆的通用方法
 
-### Negative
+### 消极的
 
-### Neutral
+### 中性的
 
-### Implementation Path
+### 实现路径
 
-- Implement the scheduler, test the scheduler, review the rescheduler
-- Implement the processor, test the processor, review the processor
-- Implement the demuxer, write integration test, review integration tests
+- 实施调度器，测试调度器，审查重新调度器
+- 实施处理器，测试处理器，审查处理器
+- 实施分路器，编写集成测试，审查集成测试
 
-## References
+## 参考
 
-- [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md): The original blockchain reactor re-org proposal
-- [Blockchain re-org](https://github.com/tendermint/tendermint/pull/3561): The current blockchain reactor re-org implementation (v1)
+- [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md):原始区块链反应堆重组提案
+- [Blockchain re-org](https://github.com/tendermint/tendermint/pull/3561):当前区块链反应堆重组实现(v1)

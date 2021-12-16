@@ -1,24 +1,24 @@
-# ADR 054: Crypto encoding (part 2)
+# ADR 054:加密编码(第 2 部分)
 
-## Changelog
+## 变更日志
 
-2020-2-27: Created
-2020-4-16: Update
+2020-2-27:创建
+2020-4-16:更新
 
-## Context
+## 语境
 
-Amino has been a pain point of many users in the ecosystem. While Tendermint does not suffer greatly from the performance degradation introduced by amino, we are making an effort in moving the encoding format to a widely adopted format, [Protocol Buffers](https://developers.google.com/protocol-buffers). With this migration a new standard is needed for the encoding of keys. This will cause ecosystem wide breaking changes.
+氨基一直是生态系统中许多用户的痛点。虽然 Tendermint 不会受到氨基引入的性能下降的严重影响，但我们正在努力将编码格式转移到一种广泛采用的格式，[Protocol Buffers](https://developers.google.com/protocol-buffers)。通过这次迁移，需要一个新的密钥编码标准。这将导致生态系统范围内的重大变化。
 
-Currently amino encodes keys as `<PrefixBytes> <Length> <ByteArray>`.
+目前，amino 将键编码为 `<PrefixBytes> <Length> <ByteArray>`。
 
-## Decision
+## 决定
 
-Previously Tendermint defined all the key types for use in Tendermint and the Cosmos-SDK. Going forward the Cosmos-SDK will define its own protobuf type for keys. This will allow Tendermint to only define the keys that are being used in the codebase (ed25519).
-There is the the opportunity to only define the usage of ed25519 (`bytes`) and not have it be a `oneof`, but this would mean that the `oneof` work is only being postponed to a later date. When using the `oneof` protobuf type we will have to manually switch over the possible key types and then pass them to the interface which is needed.
+以前，Tendermint 定义了在 Tendermint 和 Cosmos-SDK 中使用的所有关键类型。展望未来，Cosmos-SDK 将为密钥定义自己的 protobuf 类型。这将允许 Tendermint 仅定义在代码库中使用的密钥 (ed25519)。
+有机会仅定义 ed25519 (`bytes`) 的用法而不是将其设为 `oneof`，但这意味着 `oneof` 工作只会被推迟到以后的日期。当使用 `oneof` protobuf 类型时，我们必须手动切换可能的密钥类型，然后将它们传递给需要的接口。
 
-The approach that will be taken to minimize headaches for users is one where all encoding of keys will shift to protobuf and where amino encoding is relied on, there will be custom marshal and unmarshal functions.
+为最大程度地减少用户头痛而采取的方法是，所有密钥编码都将转移到 protobuf，而在依赖氨基编码的情况下，将有自定义编组和解组功能。
 
-Protobuf messages:
+Protobuf 消息:
 
 ```proto
 message PubKey {
@@ -33,39 +33,39 @@ message PrivKey {
 }
 ```
 
-> Note: The places where backwards compatibility is needed is still unclear.
+> 注意:需要向后兼容的地方还不清楚。
 
-All modules currently do not rely on amino encoded bytes and keys are not amino encoded for genesis, therefore a hardfork upgrade is what will be needed to adopt these changes.
+当前所有模块都不依赖于氨基编码的字节，并且密钥不是用于创世的氨基编码，因此需要进行硬分叉升级以采用这些更改。
 
-This work will be broken out into a few PRs, this work will be merged into a proto-breakage branch, all PRs will be reviewed prior to being merged:
+这项工作将分解为几个 PR，这项工作将合并为一个 proto-breakage 分支，所有 PR 将在合并之前进行审查:
 
-1. Encoding of keys to protobuf and protobuf messages
-2. Move Tendermint types to protobuf, mainly the ones that are being encoded.
-3. Go one by one through the reactors and transition amino encoded messages to protobuf.
-4. Test with cosmos-sdk and/or testnets repo.
+1. protobuf 和 protobuf 消息的密钥编码
+2. 将 Tendermint 类型移至 protobuf，主要是正在编码的类型。
+3. 一一通过反应器，将氨基编码的信息转移到 protobuf。
+4. 使用 cosmos-sdk 和/或 testnets repo 进行测试。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-- Move keys to protobuf encoding, where backwards compatibility is needed, amino marshal and unmarshal functions will be used.
+- 将密钥移动到 protobuf 编码，在需要向后兼容的地方，将使用氨基编组和解组功能。
 
-### Positive
+### 积极的
 
-- Protocol Buffer encoding will not change going forward.
-- Removing amino overhead from keys will help with the KSM.
-- Have a large ecosystem of supported languages.
+- 协议缓冲区编码将不会改变。
+- 从密钥中删除氨基开销将有助于 KSM。
+- 拥有庞大的受支持语言生态系统。
 
-### Negative
+### 消极的
 
-- Hardfork is required to integrate this into running chains.
+- 需要硬分叉才能将其集成到正在运行的链中。
 
-### Neutral
+### 中性的
 
-## References
+## 参考
 
-> Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here!
+> 是否有任何相关的 PR 评论、导致此问题的问题，或关于我们为何做出给定设计选择的参考文章？如果是这样，请在此处链接它们！
 
-- {reference link}
+- {参考链接}

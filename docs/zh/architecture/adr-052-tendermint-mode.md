@@ -1,85 +1,85 @@
-# ADR 052: Tendermint Mode
+# ADR 052:Tendermint 模式
 
-## Changelog
+## 变更日志
 
-* 27-11-2019: Initial draft from ADR-051
-* 13-01-2020: Separate ADR Tendermint Mode from ADR-051
-* 29-03-2021: Update info regarding defaults
+* 27-11-2019:来自 ADR-051 的初稿
+* 13-01-2020:将 ADR Tendermint 模式与 ADR-051 分开
+* 29-03-2021:更新有关默认值的信息
 
-## Context
+## 语境
 
-- Full mode: full mode does not have the capability to become a validator.
-- Validator mode : this mode is exactly same as existing state machine behavior. sync without voting on consensus, and participate consensus when fully synced
-- Seed mode : lightweight seed node maintaining an address book, p2p like [TenderSeed](https://gitlab.com/polychainlabs/tenderseed)
+- 完整模式:完整模式没有成为验证者的能力。
+- 验证器模式:此模式与现有状态机行为完全相同。同步不投票共识，完全同步时参与共识
+- 种子模式:轻量级种子节点维护地址簿，p2p 类似于 [TenderSeed](https://gitlab.com/polychainlabs/tenderseed)
 
-## Decision
+## 决定
 
-We would like to suggest a simple Tendermint mode abstraction. These modes will live under one binary, and when initializing a node the user will be able to specify which node they would like to create.
+我们想建议一个简单的 Tendermint 模式抽象。这些模式将存在于一个二进制文件中，并且在初始化节点时，用户将能够指定他们想要创建的节点。
 
-- Which reactor, component to include for each node
-    - full
-        - switch, transport
-        - reactors
-          - mempool
-          - consensus
-          - evidence
-          - blockchain
+- 每个节点包含哪个反应器、组件
+    - 满的
+        - 开关，运输
+        - 反应堆
+          - 内存池
+          - 共识
+          - 证据
+          - 区块链
           - p2p/pex
-          - statesync
-        - rpc (safe connections only)
-        - *~~no privValidator(priv_validator_key.json, priv_validator_state.json)~~*
-    - validator
-        - switch, transport
-        - reactors
-          - mempool
-          - consensus
-          - evidence
-          - blockchain
+          - 状态同步
+        - rpc(仅限安全连接)
+        - *~~没有privValidator(priv_validator_key.json, priv_validator_state.json)~~*
+    - 验证器
+        - 开关，运输
+        - 反应堆
+          - 内存池
+          - 共识
+          - 证据
+          - 区块链
           - p2p/pex
-          - statesync
-        - rpc (safe connections only)
-        - with privValidator(priv_validator_key.json, priv_validator_state.json)
-    - seed
-        - switch, transport
-        - reactor
+          - 状态同步
+        - rpc(仅限安全连接)
+        - 使用 privValidator(priv_validator_key.json, priv_validator_state.json)
+    - 种子
+        - 开关，运输
+        - 反应堆
            - p2p/pex
-- Configuration, cli command
-    - We would like to suggest by introducing `mode` parameter in `config.toml` and cli
+- 配置，cli 命令
+    - 我们建议通过在 `config.toml` 和 cli 中引入 `mode` 参数
     - <span v-pre>`mode = "{{ .BaseConfig.Mode }}"`</span> in `config.toml`
-    - `tendermint start --mode validator`  in cli
-    - full | validator | seednode
-    - There will be no default. Users will need to specify when they run `tendermint init`
-- RPC modification
-    - `host:26657/status`
-        - return empty `validator_info` when in full mode
-    - no rpc server in seednode
-- Where to modify in codebase
-    - Add  switch for `config.Mode` on `node/node.go:DefaultNewNode`
-    - If `config.Mode==validator`, call default `NewNode` (current logic)
-    - If `config.Mode==full`, call `NewNode` with `nil` `privValidator` (do not load or generation)
-        - Need to add exception routine for `nil` `privValidator` to related functions
-    - If `config.Mode==seed`, call `NewSeedNode` (seed node version of `node/node.go:NewNode`)
-        - Need to add exception routine for `nil` `reactor`, `component` to related functions
+    - cli中的`tendermint start --mode验证器`
+    - 全|验证器 |种子节点
+    - 不会有默认值。用户需要指定何时运行 `tendermint init`
+- RPC修改
+    -`主机:26657/状态`
+        - 在完整模式下返回空的`validator_info`
+    - 种子节点中没有 rpc 服务器
+- 在代码库中修改的位置
+    - 在`node/node.go:DefaultNewNode`上为`config.Mode`添加开关
+    - 如果`config.Mode==validator`，调用默认的`NewNode`(当前逻辑)
+    - 如果`config.Mode==full`，调用`NewNode` 和`nil` `privValidator`(不加载或生成)
+        - 需要将`nil``privValidator`的异常例程添加到相关函数中
+    - 如果`config.Mode==seed`，调用`NewSeedNode`(`node/node.go:NewNode` 的种子节点版本)
+        - 需要为`nil` `reactor`, `component` 添加异常例程到相关函数中
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Node operators can choose mode when they run state machine according to the purpose of the node.
-- Mode can prevent mistakes because users have to specify which mode they want to run via flag. (eg. If a user want to run a validator node, she/he should explicitly write down validator as mode)
-- Different mode needs different reactors, resulting in efficient resource usage.
+- 节点操作者可以根据节点的用途选择运行状态机时的模式。
+- 模式可以防止错误，因为用户必须通过标志指定他们想要运行的模式。 (例如，如果用户想要运行验证器节点，她/他应该明确地将验证器写为模式)
+- 不同的模式需要不同的反应器，从而实现高效的资源利用。
 
-### Negative
+### 消极的
 
-- Users need to study how each mode operate and which capability it has.
+- 用户需要研究每种模式如何运作以及它具有哪些能力。
 
-### Neutral
+### 中性的
 
-## References
+## 参考
 
-- Issue [#2237](https://github.com/tendermint/tendermint/issues/2237) : Tendermint "mode"
-- [TenderSeed](https://gitlab.com/polychainlabs/tenderseed) : A lightweight Tendermint Seed Node.
+- 问题 [#2237](https://github.com/tendermint/tendermint/issues/2237):Tendermint“模式”
+- [TenderSeed](https://gitlab.com/polychainlabs/tenderseed):一个轻量级的 Tendermint 种子节点。

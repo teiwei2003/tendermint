@@ -1,14 +1,14 @@
-# Using ABCI-CLI
+# 使用 ABCI-CLI
 
-To facilitate testing and debugging of ABCI servers and simple apps, we
-built a CLI, the `abci-cli`, for sending ABCI messages from the command
-line.
+为了方便 ABCI 服务器和简单应用程序的测试和调试，我们
+构建了一个 CLI，`abci-cli`，用于从命令发送 ABCI 消息
+线。
 
-## Install
+## 安装
 
-Make sure you [have Go installed](https://golang.org/doc/install).
+确保您 [已安装 Go](https://golang.org/doc/install)。
 
-Next, install the `abci-cli` tool and example applications:
+接下来，安装 `abci-cli` 工具和示例应用程序:
 
 ```sh
 git clone https://github.com/tendermint/tendermint.git
@@ -16,7 +16,7 @@ cd tendermint
 make install_abci
 ```
 
-Now run `abci-cli` to see the list of commands:
+现在运行 `abci-cli` 来查看命令列表:
 
 ```sh
 Usage:
@@ -44,22 +44,22 @@ Flags:
 Use "abci-cli [command] --help" for more information about a command.
 ```
 
-## KVStore - First Example
+## KVStore - 第一个例子
 
-The `abci-cli` tool lets us send ABCI messages to our application, to
-help build and debug them.
+`abci-cli` 工具允许我们将 ABCI 消息发送到我们的应用程序，
+帮助构建和调试它们。
 
-The most important messages are `deliver_tx`, `check_tx`, and `commit`,
-but there are others for convenience, configuration, and information
-purposes.
+最重要的消息是`deliver_tx`、`check_tx`和`commit`，
+但还有其他的方便、配置和信息
+目的。
 
-We'll start a kvstore application, which was installed at the same time
-as `abci-cli` above. The kvstore just stores transactions in a merkle
-tree.
+我们将启动一个 kvstore 应用程序，该应用程序同时安装
+如上面的“abci-cli”。 kvstore 只是将交易存储在 merkle 中
+树。
 
-Its code can be found
-[here](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
-and looks like:
+可以找到它的代码
+[这里](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
+看起来像:
 
 ```go
 func cmdKVStore(cmd *cobra.Command, args []string) error {
@@ -101,14 +101,14 @@ Start by running:
 abci-cli kvstore
 ```
 
-And in another terminal, run
+在另一个终端中，运行
 
 ```sh
 abci-cli echo hello
 abci-cli info
 ```
 
-You'll see something like:
+你会看到类似的东西:
 
 ```sh
 -> data: hello
@@ -122,37 +122,37 @@ and:
 -> data.hex: 7B2273697A65223A307D
 ```
 
-An ABCI application must provide two things:
+ABCI 应用程序必须提供两件事:
 
-- a socket server
-- a handler for ABCI messages
+- 一个套接字服务器
+- ABCI 消息的处理程序
 
-When we run the `abci-cli` tool we open a new connection to the
-application's socket server, send the given ABCI message, and wait for a
-response.
+当我们运行 `abci-cli` 工具时，我们会打开一个到
+应用程序的套接字服务器，发送给定的 ABCI 消息，并等待
+回复。
 
-The server may be generic for a particular language, and we provide a
-[reference implementation in
-Golang](https://github.com/tendermint/tendermint/tree/master/abci/server). See the
-[list of other ABCI implementations](https://github.com/tendermint/awesome#ecosystem) for servers in
-other languages.
+服务器对于特定语言可能是通用的，我们提供了一个
+[参考实现在
+Golang](https://github.com/tendermint/tendermint/tree/master/abci/server)。见
+[其他 ABCI 实现列表](https://github.com/tendermint/awesome#ecosystem) 用于服务器
+其他语言。
 
-The handler is specific to the application, and may be arbitrary, so
-long as it is deterministic and conforms to the ABCI interface
-specification.
+处理程序特定于应用程序，并且可能是任意的，因此
+只要它是确定性的并且符合 ABCI 接口
+规格。
 
-So when we run `abci-cli info`, we open a new connection to the ABCI
-server, which calls the `Info()` method on the application, which tells
-us the number of transactions in our Merkle tree.
+因此，当我们运行 `abci-cli info` 时，我们会打开一个到 ABCI 的新连接
+服务器，它调用应用程序上的 `Info()` 方法，它告诉
+我们是 Merkle 树中的交易数量。
 
-Now, since every command opens a new connection, we provide the
-`abci-cli console` and `abci-cli batch` commands, to allow multiple ABCI
-messages to be sent over a single connection.
+现在，由于每个命令都会打开一个新连接，我们提供
+`abci-cli console` 和 `abci-cli batch` 命令，允许多个 ABCI
+要通过单个连接发送的消息。
 
-Running `abci-cli console` should drop you in an interactive console for
-speaking ABCI messages to your application.
+运行 `abci-cli console` 应该会让你进入一个交互式控制台
+向您的应用程序讲述 ABCI 消息。
 
-Try running these commands:
+尝试运行这些命令:
 
 ```sh
 > echo hello
@@ -203,24 +203,24 @@ Try running these commands:
 -> value.hex: 78797A
 ```
 
-Note that if we do `deliver_tx "abc"` it will store `(abc, abc)`, but if
-we do `deliver_tx "abc=efg"` it will store `(abc, efg)`.
+请注意，如果我们执行 `deliver_tx "abc"` 它将存储 `(abc, abc)`，但是如果
+我们做`deliver_tx "abc=efg"`它会存储`(abc, efg)`。
 
-Similarly, you could put the commands in a file and run
-`abci-cli --verbose batch < myfile`.
+同样，您可以将命令放在一个文件中并运行
+`abci-cli --verbose batch < myfile`。
 
-## Bounties
+## 赏金
 
-Want to write an app in your favorite language?! We'd be happy
-to add you to our [ecosystem](https://github.com/tendermint/awesome#ecosystem)!
-See [funding](https://github.com/interchainio/funding) opportunities from the
-[Interchain Foundation](https://interchain.io/) for implementations in new languages and more.
+想用您最喜欢的语言编写应用程序吗？！ 我们会很高兴
+将您添加到我们的 [生态系统](https://github.com/tendermint/awesome#ecosystem)！
+请参阅 [funding](https://github.com/interchainio/funding) 机会来自
+[Interchain Foundation](https://interchain.io/) 用于新语言等的实现。
 
-The `abci-cli` is designed strictly for testing and debugging. In a real
-deployment, the role of sending messages is taken by Tendermint, which
-connects to the app using three separate connections, each with its own
-pattern of messages.
+`abci-cli` 是专为测试和调试而设计的。 在一个真实的
+部署，发送消息的角色由 Tendermint 承担，它
+使用三个独立的连接连接到应用程序，每个连接都有自己的
+消息模式。
 
-For examples of running an ABCI app with
-Tendermint, see the [getting started guide](./getting-started.md).
-Next is the ABCI specification.
+有关运行 ABCI 应用程序的示例
+Tendermint，请参阅[入门指南](./getting-started.md)。
+接下来是 ABCI 规范。

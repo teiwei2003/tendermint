@@ -1,40 +1,40 @@
-# ADR 035: Documentation
+# ADR 035:文档
 
-Author: @zramsay (Zach Ramsay)
+作者:@zramsay(扎克拉姆齐)
 
-## Changelog
+## 变更日志
 
-###  November 2nd 2018
+### 2018 年 11 月 2 日
 
-- initial write-up
+- 初步撰写
 
-## Context
+## 语境
 
-The Tendermint documentation has undergone several changes until settling on the current model. Originally, the documentation was hosted on the website and had to be updated asynchronously from the code. Along with the other repositories requiring documentation, the whole stack moved to using Read The Docs to automatically generate, publish, and host the documentation. This, however, was insufficient; the RTD site had advertisement, it wasn't easily accessible to devs, didn't collect metrics, was another set of external links, etc.
+在确定当前模型之前，Tendermint 文档经历了多次更改。最初，文档托管在网站上，必须从代码异步更新。连同其他需要文档的存储库，整个堆栈都转向使用 Read The Docs 来自动生成、发布和托管文档。然而，这还不够。 RTD 网站有广告，开发人员不容易访问，没有收集指标，是另一组外部链接，等等。
 
-## Decision
+## 决定
 
-For two reasons, the decision was made to use VuePress:
+出于两个原因，决定使用 VuePress:
 
-1) ability to get metrics (implemented on both Tendermint and SDK)
-2) host the documentation on the website as a `/docs` endpoint.
+1) 获取指标的能力(在 Tendermint 和 SDK 上实现)
+2) 将网站上的文档作为`/docs` 端点托管。
 
-This is done while maintaining synchrony between the docs and code, i.e., the website is built whenever the docs are updated.
+这是在保持文档和代码之间同步的同时完成的，即，只要文档更新，就会构建网站。
 
-## Status
+## 状态
 
-The two points above have been implemented; the `config.js` has a Google Analytics identifier and the documentation workflow has been up and running largely without problems for several months. Details about the documentation build & workflow can be found [here](../DOCS_README.md)
+以上两点已经实现； `config.js` 有一个 Google Analytics 标识符，文档工作流已经启动并运行了几个月，基本没有问题。有关文档构建和工作流程的详细信息，请参见 [此处](../DOCS_README.md)
 
-## Consequences
+## 结果
 
-Because of the organizational seperation between Tendermint & Cosmos, there is a challenge of "what goes where" for certain aspects of documentation.
+由于 Tendermint 和 Cosmos 之间的组织分离，文档的某些方面存在“什么去哪里”的挑战。
 
-### Positive
+### 积极的
 
-This architecture is largely positive relative to prior docs arrangements.
+相对于先前的文档安排，这种架构在很大程度上是积极的。
 
-### Negative
+### 消极的
 
-A significant portion of the docs automation / build process is in private repos with limited access/visibility to devs. However, these tasks are handled by the SRE team.
+文档自动化/构建过程的很大一部分位于私人存储库中，对开发人员的访问/可见性有限。但是，这些任务由 SRE 团队处理。
 
-### Neutral
+### 中性的

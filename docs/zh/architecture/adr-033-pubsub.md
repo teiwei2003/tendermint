@@ -1,27 +1,27 @@
-# ADR 033: pubsub 2.0
+# ADR 033:发布订阅 2.0
 
-Author: Anton Kaliaev (@melekes)
+作者:安东·卡利亚耶夫 (@melekes)
 
-## Changelog
+## 变更日志
 
-02-10-2018: Initial draft
+02-10-2018:初稿
 
-16-01-2019: Second version based on our conversation with Jae
+16-01-2019:基于我们与 Jae 对话的第二个版本
 
-17-01-2019: Third version explaining how new design solves current issues
+17-01-2019:第三版解释新设计如何解决当前问题
 
-25-01-2019: Fourth version to treat buffered and unbuffered channels differently
+25-01-2019:第四个版本以区别对待缓冲和非缓冲通道
 
-## Context
+## 语境
 
-Since the initial version of the pubsub, there's been a number of issues
-raised: [#951], [#1879], [#1880]. Some of them are high-level issues questioning the
-core design choices made. Others are minor and mostly about the interface of
-`Subscribe()` / `Publish()` functions.
+自 pubsub 的初始版本以来，出现了许多问题
+提出:[#951]、[#1879]、[#1880]。 其中一些是质疑
+做出的核心设计选择。 其他是次要的，主要是关于
+`订阅()`/`发布()` 函数。
 
-### Sync vs Async
+### 同步与异步
 
-Now, when publishing a message to subscribers, we can do it in a goroutine:
+现在，当向订阅者发布消息时，我们可以在 goroutine 中进行:
 
 _using channels for data transmission_
 ```go
@@ -40,25 +40,25 @@ for each subscriber {
 }
 ```
 
-This gives us greater performance and allows us to avoid "slow client problem"
-(when other subscribers have to wait for a slow subscriber). A pool of
-goroutines can be used to avoid uncontrolled memory growth.
+这为我们提供了更高的性能并允许我们避免“慢客户端问题”
+(当其他订阅者必须等待慢订阅者时)。一池
+goroutines 可用于避免不受控制的内存增长。
 
-In certain cases, this is what you want. But in our case, because we need
-strict ordering of events (if event A was published before B, the guaranteed
-delivery order will be A -> B), we can't publish msg in a new goroutine every time.
+在某些情况下，这就是您想要的。但在我们的例子中，因为我们需要
+事件的严格排序(如果事件 A 在 B 之前发布，则保证
+交付顺序将是 A -> B)，我们不能每次都在新的 goroutine 中发布 msg。
 
-We can also have a goroutine per subscriber, although we'd need to be careful
-with the number of subscribers. It's more difficult to implement as well +
-unclear if we'll benefit from it (cause we'd be forced to create N additional
-channels to distribute msg to these goroutines).
+我们也可以为每个订阅者设置一个 goroutine，尽管我们需要小心
+与订阅者的数量。也更难实施 +
+不清楚我们是否会从中受益(因为我们将被迫创建 N 个额外的
+将 msg 分发给这些 goroutine 的通道)。
 
-### Non-blocking send
+###非阻塞发送
 
-There is also a question whenever we should have a non-blocking send.
-Currently, sends are blocking, so publishing to one client can block on
-publishing to another. This means a slow or unresponsive client can halt the
-system. Instead, we can use a non-blocking send:
+每当我们应该进行非阻塞发送时，还有一个问题。
+目前，发送是阻塞的，所以发布到一个客户端可以阻塞
+发布到另一个。这意味着缓慢或无响应的客户端可以停止
+系统。相反，我们可以使用非阻塞发送:
 
 ```go
 for each subscriber {
@@ -71,37 +71,37 @@ for each subscriber {
 }
 ```
 
-This fixes the "slow client problem", but there is no way for a slow client to
-know if it had missed a message. We could return a second channel and close it
-to indicate subscription termination. On the other hand, if we're going to
-stick with blocking send, **devs must always ensure subscriber's handling code
-does not block**, which is a hard task to put on their shoulders.
+这解决了“慢客户端问题”，但慢客户端无法
+知道它是否错过了一条消息。我们可以返回第二个频道并关闭它
+表示订阅终止。另一方面，如果我们要
+坚持阻塞发送，**开发人员必须始终确保订阅者的处理代码
+不堵**，这是他们肩上的艰巨任务。
 
-The interim option is to run goroutines pool for a single message, wait for all
-goroutines to finish. This will solve "slow client problem", but we'd still
-have to wait `max(goroutine_X_time)` before we can publish the next message.
+临时选项是为单个消息运行 goroutines 池，等待所有
+goroutines 来完成。这将解决“慢客户端问题”，但我们仍然
+必须等待 `max(goroutine_X_time)` 才能发布下一条消息。
 
-### Channels vs Callbacks
+### 通道与回调
 
-Yet another question is whether we should use channels for message transmission or
-call subscriber-defined callback functions. Callback functions give subscribers
-more flexibility - you can use mutexes in there, channels, spawn goroutines,
-anything you really want. But they also carry local scope, which can result in
-memory leaks and/or memory usage increase.
+还有一个问题是我们是否应该使用通道进行消息传输或
+调用订阅者定义的回调函数。回调函数给订阅者
+更大的灵活性——你可以在那里使用互斥锁、通道、生成 goroutines，
+你真正想要的任何东西。但它们也带有局部作用域，这可能导致
+内存泄漏和/或内存使用量增加。
 
-Go channels are de-facto standard for carrying data between goroutines.
+Go 通道是在 goroutine 之间传输数据的事实上的标准。
 
-### Why `Subscribe()` accepts an `out` channel?
+### 为什么`Subscribe()` 接受`out` 频道？
 
-Because in our tests, we create buffered channels (cap: 1). Alternatively, we
-can make capacity an argument and return a channel.
+因为在我们的测试中，我们创建了缓冲通道(上限:1)。或者，我们
+可以将容量作为参数并返回通道。
 
-## Decision
+## 决定
 
 ### MsgAndTags
 
-Use a `MsgAndTags` struct on the subscription channel to indicate what tags the
-msg matched.
+在订阅频道上使用 `MsgAndTags` 结构来指示哪些标记
+msg 匹配。
 
 ```go
 type MsgAndTags struct {
@@ -110,10 +110,10 @@ type MsgAndTags struct {
 }
 ```
 
-### Subscription Struct
+### 订阅结构
 
 
-Change `Subscribe()` function to return a `Subscription` struct:
+更改 `Subscribe()` 函数以返回 `Subscription` 结构:
 
 ```go
 type Subscription struct {
@@ -125,18 +125,18 @@ func (s *Subscription) Canceled() <-chan struct{}
 func (s *Subscription) Err() error
 ```
 
-`Out()` returns a channel onto which messages and tags are published.
-`Unsubscribe`/`UnsubscribeAll` does not close the channel to avoid clients from
-receiving a nil message.
+`Out()` 返回一个发布消息和标签的通道。
+`Unsubscribe`/`UnsubscribeAll` 不会关闭频道以避免客户端
+收到一条 nil 消息。
 
-`Canceled()` returns a channel that's closed when the subscription is terminated
-and supposed to be used in a select statement.
+`Canceled()` 返回订阅终止时关闭的频道
+并且应该在选择语句中使用。
 
-If the channel returned by `Canceled()` is not closed yet, `Err()` returns nil.
-If the channel is closed, `Err()` returns a non-nil error explaining why:
-`ErrUnsubscribed` if the subscriber choose to unsubscribe,
-`ErrOutOfCapacity` if the subscriber is not pulling messages fast enough and the channel returned by `Out()` became full.
-After `Err()` returns a non-nil error, successive calls to `Err() return the same error.
+如果 `Canceled()` 返回的通道尚未关闭，`Err()` 返回 nil。
+如果通道关闭，`Err()` 返回一个非 nil 错误解释原因:
+`ErrUnsubscribed` 如果订阅者选择取消订阅，
+`ErrOutOfCapacity` 如果订阅者没有足够快地拉取消息并且 `Out()` 返回的通道已满。
+在 `Err()` 返回非零错误后，对 `Err() 的连续调用返回相同的错误。
 
 ```go
 subscription, err := pubsub.Subscribe(...)
@@ -152,12 +152,12 @@ select {
 }
 ```
 
-### Capacity and Subscriptions
+### 容量和订阅
 
-Make the `Out()` channel buffered (with capacity 1) by default. In most cases, we want to
-terminate the slow subscriber. Only in rare cases, we want to block the pubsub
-(e.g. when debugging consensus). This should lower the chances of the pubsub
-being frozen.
+默认情况下使 `Out()` 通道缓冲(容量为 1)。 大多数情况下，我们希望
+终止慢速订阅者。 只有在极少数情况下，我们才想要阻止发布订阅
+(例如，在调试共识时)。 这应该会降低发布订阅的机会
+被冻结。
 
 ```go
 // outCap can be used to set capacity of Out channel
@@ -172,14 +172,14 @@ Use a different function for an unbuffered channel:
 SubscribeUnbuffered(ctx context.Context, clientID string, query Query) (Subscription, error) {
 ```
 
-SubscribeUnbuffered should not be exposed to users.
+SubscribeUnbuffered 不应向用户公开。
 
-### Blocking/Nonblocking
+### 阻塞/非阻塞
 
-The publisher should treat these kinds of channels separately.
-It should block on unbuffered channels (for use with internal consensus events
-in the consensus tests) and not block on the buffered ones. If a client is too
-slow to keep up with it's messages, it's subscription is terminated:
+出版商应分别对待这些类型的渠道。
+它应该阻塞无缓冲的通道(用于内部共识事件
+在共识测试中)而不是阻止缓冲的。 如果客户太
+跟上它的消息很慢，它的订阅被终止:
 
 for each subscription {
     out := subscription.outChan
@@ -200,48 +200,48 @@ for each subscription {
     }
 }
 
-### How this new design solves the current issues?
+### 这种新设计如何解决当前的问题？
 
-[#951] ([#1880]):
+【#951】(【#1880】):
 
-Because of non-blocking send, situation where we'll deadlock is not possible
-anymore. If the client stops reading messages, it will be removed.
+由于非阻塞发送，我们不会死锁的情况
+了。如果客户端停止读取消息，它将被删除。
 
-[#1879]:
+【#1879】:
 
-MsgAndTags is used now instead of a plain message.
+现在使用 MsgAndTags 代替普通消息。
 
-### Future problems and their possible solutions
+### 未来的问题及其可能的解决方案
 
-[#2826]
+【#2826】
 
-One question I am still pondering about: how to prevent pubsub from slowing
-down consensus. We can increase the pubsub queue size (which is 0 now). Also,
-it's probably a good idea to limit the total number of subscribers.
+我还在思考的一个问题:如何防止pubsub变慢
+下共识。我们可以增加发布订阅队列的大小(现在是 0)。还，
+限制订阅者总数可能是个好主意。
 
-This can be made automatically. Say we set queue size to 1000 and, when it's >=
-80% full, refuse new subscriptions.
+这可以自动进行。假设我们将队列大小设置为 1000，并且当它 >=
+80% 已满，拒绝新订阅。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- more idiomatic interface
-- subscribers know what tags msg was published with
-- subscribers aware of the reason their subscription was canceled
+- 更惯用的界面
+- 订阅者知道 msg 是用什么标签发布的
+- 订阅者知道他们的订阅被取消的原因
 
-### Negative
+### 消极的
 
-- (since v1) no concurrency when it comes to publishing messages
+-(自 v1 起)在发布消息时没有并发
 
-### Neutral
+### 中性的
 
 
-[#951]: https://github.com/tendermint/tendermint/issues/951
-[#1879]: https://github.com/tendermint/tendermint/issues/1879
-[#1880]: https://github.com/tendermint/tendermint/issues/1880
-[#2826]: https://github.com/tendermint/tendermint/issues/2826
+[#951]:https://github.com/tendermint/tendermint/issues/951
+[#1879]:https://github.com/tendermint/tendermint/issues/1879
+[#1880]:https://github.com/tendermint/tendermint/issues/1880
+[#2826]:https://github.com/tendermint/tendermint/issues/2826

@@ -1,18 +1,18 @@
-# ADR 046: Lite Client Implementation
+# ADR 046:Lite 客户端实现
 
-## Changelog
-* 13-02-2020: Initial draft
-* 26-02-2020: Cross-checking the first header
-* 28-02-2020: Bisection algorithm details
-* 31-03-2020: Verify signature got changed
+## 变更日志
+* 13-02-2020:初稿
+* 26-02-2020:交叉检查第一个标题
+* 28-02-2020:二分算法细节
+* 31-03-2020:验证签名已更改
 
-## Context
+## 语境
 
-A `Client` struct represents a light client, connected to a single blockchain.
+`Client` 结构代表一个轻客户端，连接到单个区块链。
 
-The user has an option to verify headers using `VerifyHeader` or
-`VerifyHeaderAtHeight` or `Update` methods. The latter method downloads the
-latest header from primary and compares it with the currently trusted one.
+用户可以选择使用 `VerifyHeader` 或
+`VerifyHeaderAtHeight` 或 `Update` 方法。 后一种方法下载
+来自主要的最新标头并将其与当前受信任的标头进行比较。
 
 ```go
 type Client interface {
@@ -36,11 +36,11 @@ type Client interface {
 }
 ```
 
-A new light client can either be created from scratch (via `NewClient`) or
-using the trusted store (via `NewClientFromTrustedStore`). When there's some
-data in the trusted store and `NewClient` is called, the light client will a)
-check if stored header is more recent b) optionally ask the user whenever it
-should rollback (no confirmation required by default).
+一个新的轻客户端可以从头开始创建(通过 `NewClient`)或者
+使用受信任的商店(通过`NewClientFromTrustedStore`)。 当有一些
+可信存储中的数据并调用“NewClient”，轻客户端将 a)
+检查存储的标头是否更新 b) 可选地在任何时候询问用户
+应该回滚(默认不需要确认)。
 
 ```go
 func NewClient(
@@ -52,22 +52,22 @@ func NewClient(
 	options ...Option) (*Client, error) {
 ```
 
-`witnesses` as argument (as opposite to `Option`) is an intentional choice,
-made to increase security by default. At least one witness is required,
-although, right now, the light client does not check that primary != witness.
-When cross-checking a new header with witnesses, minimum number of witnesses
-required to respond: 1. Note the very first header (`TrustOptions.Hash`) is
-also cross-checked with witnesses for additional security.
+`witnesses` 作为参数(与 `Option` 相反)是一个有意的选择，
+默认情况下增加安全性。至少需要一名见证人，
+尽管现在，轻客户端不会检查主 != 见证人。
+与见证人交叉检查新标题时，见证人的最小数量
+需要回应: 1. 注意第一个标头(`TrustOptions.Hash`)是
+还与证人交叉核对以增加安全性。
 
-Due to bisection algorithm nature, some headers might be skipped. If the light
-client does not have a header for height `X` and `VerifyHeaderAtHeight(X)` or
-`VerifyHeader(H#X)` methods are called, these will perform either a) backwards
-verification from the latest header back to the header at height `X` or b)
-bisection verification from the first stored header to the header at height `X`.
+由于二分算法的性质，可能会跳过一些标题。如果光
+客户端没有高度“X”和“VerifyHeaderAtHeight(X)”的标头或
+`VerifyHeader(H#X)` 方法被调用，这些方法将执行 a) 向后
+从最新的标头返回到高度为“X”或 b) 的标头的验证
+从第一个存储的标题到高度为“X”的标题的二分验证。
 
-`TrustedHeader`, `TrustedValidatorSet` only communicate with the trusted store.
-If some header is not there, an error will be returned indicating that
-verification is required.
+`TrustedHeader`、`TrustedValidatorSet` 仅与受信任的商店通信。
+如果某个标头不存在，将返回一个错误，表明
+需要验证。
 
 ```go
 type Provider interface {
@@ -78,16 +78,16 @@ type Provider interface {
 }
 ```
 
-Provider is a full node usually, but can be another light client. The above
-interface is thin and can accommodate many implementations.
+Provider 通常是一个完整的节点，但也可以是另一个轻客户端。 以上
+接口很薄，可以容纳许多实现。
 
-If provider (primary or witness) becomes unavailable for a prolonged period of
-time, it will be removed to ensure smooth operation.
+如果提供者(主要或见证人)长时间不可用
+时间，它将被移除以确保顺利运行。
 
-Both `Client` and providers expose chain ID to track if there are on the same
-chain. Note, when chain upgrades or intentionally forks, chain ID changes.
+`Client` 和提供者都公开链 ID 以跟踪是否存在相同的链
+链。 请注意，当链升级或有意分叉时，链 ID 会发生变化。
 
-The light client stores headers & validators in the trusted store:
+轻客户端在可信存储中存储标头和验证器:
 
 ```go
 type Store interface {
@@ -108,9 +108,9 @@ type Store interface {
 }
 ```
 
-At the moment, the only implementation is the `db` store (wrapper around the KV
-database, used in Tendermint). In the future, remote adapters are possible
-(e.g. `Postgresql`).
+目前，唯一的实现是 `db` 存储(围绕 KV
+数据库，在 Tendermint 中使用)。 将来，远程适配器是可能的
+(例如`Postgresql`)。
 
 ```go
 func Verify(
@@ -125,45 +125,45 @@ func Verify(
 	trustLevel tmmath.Fraction) error {
 ```
 
-`Verify` pure function is exposed for a header verification. It handles both
-cases of adjacent and non-adjacent headers. In the former case, it compares the
-hashes directly (2/3+ signed transition). Otherwise, it verifies 1/3+
-(`trustLevel`) of trusted validators are still present in new validators.
+`Verify` 纯函数被公开用于头验证。它同时处理
+相邻和非相邻标头的情况。在前一种情况下，它比较
+直接散列(2/3+ 签名转换)。否则，它验证 1/3+
+(`trustLevel`) 可信验证器仍然存在于新验证器中。
 
-While `Verify` function is certainly handy, `VerifyAdjacent` and
-`VerifyNonAdjacent` should be used most often to avoid logic errors.
+虽然 `Verify` 函数肯定很方便，但 `VerifyAdjacent` 和
+`VerifyNonAdjacent` 应该最常使用以避免逻辑错误。
 
-### Bisection algorithm details
+###二分算法细节
 
-Non-recursive bisection algorithm was implemented despite the spec containing
-the recursive version. There are two major reasons:
+尽管规范包含，但实现了非递归二分算法
+递归版本。有两个主要原因:
 
-1) Constant memory consumption => no risk of getting OOM (Out-Of-Memory) exceptions;
-2) Faster finality (see Fig. 1).
+1) 持续的内存消耗 => 没有出现 OOM(Out-Of-Memory)异常的风险；
+2)更快的终结(见图1)。
 
-_Fig. 1: Differences between recursive and non-recursive bisections_
+_如图。 1:递归和非递归二分的区别_
 
-![Fig. 1](./img/adr-046-fig1.png)
+！[如图。 1](./img/adr-046-fig1.png)
 
-Specification of the non-recursive bisection can be found
-[here](https://github.com/tendermint/spec/blob/zm_non-recursive-verification/spec/consensus/light-client/non-recursive-verification.md).
+可以找到非递归二分的规范
+[这里](https://github.com/tendermint/spec/blob/zm_non-recursive-verification/spec/consensus/light-client/non-recursive-verification.md)。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-* single `Client` struct, which is easy to use
-* flexible interfaces for header providers and trusted storage
+*单个`Client`结构，易于使用
+* 头提供者和可信存储的灵活接口
 
-### Negative
+### 消极的
 
-* `Verify` needs to be aligned with the current spec
+* `Verify` 需要与当前规范保持一致
 
-### Neutral
+### 中性的
 
-* `Verify` function might be misused (called with non-adjacent headers in
-  incorrectly implemented sequential verification)
+* `Verify` 函数可能被误用(在
+  错误地实施顺序验证)

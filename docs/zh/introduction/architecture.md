@@ -1,70 +1,70 @@
-# Tendermint Architectural Overview
+# Tendermint 架构概述
 
 
-> **November 2019**
+> **2019 年 11 月**
 
-Over the next few weeks, @brapse, @marbar3778 and I (@tessr) are having a series of meetings to go over the architecture of Tendermint Core. These are my notes from these meetings, which will either serve as an artifact for onboarding future engineers; or will provide the basis for such a document.
+在接下来的几周里，@brapse、@marbar3778 和我 (@tessr) 将举行一系列会议，讨论 Tendermint Core 的架构。这些是我在这些会议上的笔记，它们将作为未来工程师入职的神器；或将为此类文件提供基础。
 
-## Communication
+## 沟通
 
-There are three forms of communication (e.g., requests, responses, connections) that can happen in Tendermint Core: *internode communication*, *intranode communication*, and *client communication*.
+Tendermint Core 中可以发生三种通信形式(例如，请求、响应、连接):*节点间通信*、*节点内通信*和*客户端通信*。
 
-- Internode communication: Happens between a node and other peers. This kind of communication happens over TCP or HTTP. More on this below.
-- Intranode communication: Happens within the node itself (i.e., between reactors or other components). These are typically function or method calls, or occasionally happen through an event bus.
+- 节点间通信:发生在节点和其他对等点之间。这种通信通过 TCP 或 HTTP 进行。更多关于这个下面。
+- 节点内通信:发生在节点内部(即在反应器或其他组件之间)。这些通常是函数或方法调用，或者偶尔通过事件总线发生。
 
-- Client communication: Happens between a client (like a wallet or a browser) and a node on the network.
+- 客户端通信:发生在客户端(如钱包或浏览器)和网络节点之间。
 
-### Internode Communication
+### 节点间通信
 
-Internode communication can happen in two ways:
+节点间通信可以通过两种方式发生:
 
-1. TCP connections through the p2p package
-    - Most common form of internode communication
-    - Connections between nodes are persisted and shared across reactors, facilitated by the switch. (More on the switch below.)
+1.通过p2p包的TCP连接
+    - 最常见的节点间通信形式
+    - 节点之间的连接在反应器之间保持并共享，由开关促进。 (更多关于下面的开关。)
 2. RPC over HTTP
-    - Reserved for short-lived, one-off requests
-    - Example: reactor-specific state, like height
-    - Also possible: web-sockets connected to channels for notifications (like new transactions)
+    - 保留用于短期、一次性的请求
+    - 示例:特定于反应器的状态，如高度
+    - 也可能:连接到通知通道的网络套接字(如新交易)
 
-### P2P Business (the Switch, the PEX, and the Address Book)
+### P2P 业务(交换机、PEX 和地址簿)
 
-When writing a p2p service, there are two primary responsibilities:
+在编写 p2p 服务时，有两个主要职责:
 
-1. Routing: Who gets which messages?
-2. Peer management: Who can you talk to? What is their state? And how can you do peer discovery?
+1. 路由:谁收到哪些消息？
+2. 同行管理:你可以和谁交谈？他们是什么状态？您如何进行对等发现？
 
-The first responsibility is handled by the Switch:
+第一个职责由 Switch 处理:
 
-- Responsible for routing connections between peers
-- Notably _only handles TCP connections_; RPC/HTTP is separate
-- Is a dependency for every reactor; all reactors expose a function `setSwitch`
-- Holds onto channels (channels on the TCP connection--NOT Go channels) and uses them to route
-- Is a global object, with a global namespace for messages
-- Similar functionality to libp2p
+- 负责对等体之间的连接路由
+- 值得注意的是_仅处理 TCP 连接_； RPC/HTTP 是分开的
+- 是每个反应堆的依赖项；所有的反应器都暴露了一个函数`setSwitch`
+- 保持通道(TCP 连接上的通道——NOT Go 通道)并使用它们来路由
+- 是一个全局对象，具有消息的全局命名空间
+- 类似于 libp2p 的功能
 
-TODO: More information (maybe) on the implementation of the Switch.
+TODO:有关 Switch 实施的更多信息(可能)。
 
-The second responsibility is handled by a combination of the PEX and the Address Book.
+第二个职责由 PEX 和地址簿的组合处理。
 
- TODO: What is the PEX and the Address Book?
+ TODO:PEX 和地址簿是什么？
 
-#### The Nature of TCP, and Introduction to the `mconnection`
+#### TCP 的本质，以及 `mconnection` 的介绍
 
-Here are some relevant facts about TCP:
+以下是有关 TCP 的一些相关事实:
 
-1. All TCP connections have a "frame window size" which represents the packet size to the "confidence;" i.e., if you are sending packets along a new connection, you must start out with small packets. As the packets are received successfully, you can start to send larger and larger packets. (This curve is illustrated below.) This means that TCP connections are slow to spin up.
-2. The syn/ack process also means that there's a high overhead for small, frequent messages
-3. Sockets are represented by file descriptors.
+1.所有的TCP连接都有一个“frame window size”，它代表数据包的大小给“confidence”；即，如果您要沿新连接发送数据包，则必须从小数据包开始。随着数据包被成功接收，您可以开始发送越来越大的数据包。 (这条曲线如下图所示。)这意味着 TCP 连接的启动速度很慢。
+2. syn/ack 过程也意味着小而频繁的消息有很高的开销
+3. 套接字由文件描述符表示。
 
 ![tcp](../imgs/tcp-window.png)
 
-In order to have performant TCP connections under the conditions  created in Tendermint, we've created the `mconnection`, or the multiplexing connection. It is our own protocol built on top of TCP. It lets us reuse TCP connections to minimize overhead, and it keeps the window size high by sending auxiliary messages when necessary.
+为了在 Tendermint 中创建的条件下拥有高性能的 TCP 连接，我们创建了 `mconnection`，或多路复用连接。它是我们自己建立在 TCP 之上的协议。它让我们重用 TCP 连接以最小化开销，并在必要时通过发送辅助消息来保持窗口大小较高。
 
-The `mconnection` is represented by a struct, which contains a batch of messages, read and write buffers, and a map of channel IDs to reactors. It communicates with TCP via file descriptors, which it can write to. There is one `mconnection` per peer connection.
+`mconnection` 由一个结构体表示，其中包含一批消息、读写缓冲区以及通道 ID 到反应器的映射。它通过文件描述符与 TCP 通信，它可以写入。每个对等连接有一个 `mconnection`。
 
-The `mconnection` has two methods: `send`, which takes a raw handle to the socket and writes to it; and `trySend`, which writes to a different buffer. (TODO: which buffer?)
+`mconnection` 有两个方法: `send`，它接受套接字的原始句柄并写入它；和 `trySend`，它写入不同的缓冲区。 (待办事项:哪个缓冲区？)
 
-The `mconnection` is owned by a peer, which is owned (potentially with many other peers) by a (global) transport, which is owned by the (global) switch:
+`mconnection` 由一个对等方拥有，该对等方(可能与许多其他对等方)由(全局)传输拥有，该传输由(全局)交换机拥有:
 
 <!-- markdownlint-disable -->
 ```
@@ -81,52 +81,52 @@ switch
 
 ## node.go
 
-node.go is the entrypoint for running a node. It sets up reactors, sets up the switch, and registers all the RPC endpoints for a node.
+node.go 是运行节点的入口点。它设置反应器，设置开关，并为节点注册所有 RPC 端点。
 
-## Types of Nodes
-
-
-1. Validator Node:
-2. Full Node:
-3. Seed Node:
-
-TODO: Flesh out the differences between the types of nodes and how they're configured.
-
-## Reactors
-
-Here are some Reactor Facts:
-
-- Every reactor holds a pointer to the global switch (set through `SetSwitch()`)
-- The switch holds a pointer to every reactor (`addReactor()`)
-- Every reactor gets set up in node.go (and if you are using custom reactors, this is where you specify that)
-- `addReactor` is called by the switch; `addReactor` calls `setSwitch` for that reactor
-- There's an assumption that all the reactors are added before
-- Sometimes reactors talk to each other by fetching references to one another via the switch (which maintains a pointer to each reactor). **Question: Can reactors talk to each other in any other way?**
-
-Furthermore, all reactors expose:
-
-1. A TCP channel
-2. A `receive` method
-3. An `addReactor` call
-
-The `receive` method can be called many times by the mconnection. It has the same signature across all reactors.
-
-The `addReactor` call does a for loop over all the channels on the reactor and creates a map of channel IDs->reactors. The switch holds onto this map, and passes it to the _transport_, a thin wrapper around TCP connections.
-
-The following is an exhaustive (?) list of reactors:
-
-- Blockchain Reactor
-- Consensus Reactor
-- Evidence Reactor
-- Mempool Reactor
-- PEX Reactor
-
-Each of these will be discussed in more detail later.
+## 节点类型
 
 
-### Blockchain Reactor
+1. 验证节点:
+2.全节点:
+3. 种子节点:
 
-The blockchain reactor has two responsibilities:
+TODO:详细说明节点类型及其配置方式之间的差异。
 
-1. Serve blocks at the request of peers
-2. TODO: learn about the second responsibility of the blockchain reactor
+##反应堆
+
+以下是一些反应堆事实:
+
+- 每个反应器都有一个指向全局开关的指针(通过`SetSwitch()`设置)
+- 开关持有一个指向每个反应器的指针(`addReactor()`)
+- 每个反应器都在 node.go 中设置(如果你使用自定义反应器，这是你指定的地方)
+- `addReactor` 被开关调用； `addReactor` 为该反应器调用 `setSwitch`
+- 假设所有的反应器都是在之前添加的
+- 有时，反应堆通过开关(它维护一个指向每个反应堆的指针)获取彼此的引用来相互交谈。 **问题:反应堆可以以任何其他方式相互交谈吗？**
+
+此外，所有反应器都暴露:
+
+1.一个TCP通道
+2.一个`receive`方法
+3. `addReactor` 调用
+
+`receive` 方法可以被 mconnection 调用多次。它在所有反应堆中具有相同的签名。
+
+`addReactor` 调用在反应器上的所有通道上执行 for 循环，并创建通道 ID->反应器的映射。开关保持这个映射，并将它传递给 _transport_，一个围绕 TCP 连接的薄包装器。
+
+以下是一份详尽的 (?) 反应堆列表:
+
+- 区块链反应器
+- 共识反应堆
+- 证据反应堆
+- 内存池反应器
+- PEX反应器
+
+稍后将更详细地讨论这些中的每一个。
+
+
+### 区块链反应器
+
+区块链反应器有两个职责:
+
+1. 应节点请求提供区块
+2. TODO:了解区块链反应器的第二个职责

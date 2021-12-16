@@ -1,8 +1,8 @@
-# Evidence
+# 证据
 
-Evidence is used to identify validators who have or are acting malicious. There are multiple types of evidence, to read more on the evidence types please see [Evidence Types](https://docs.tendermint.com/master/spec/core/data_structures.html#evidence).
+证据用于识别具有或正在采取恶意行为的验证者。 证据有多种类型，有关证据类型的更多信息，请参阅[证据类型](https://docs.tendermint.com/master/spec/core/data_structures.html#evidence)。
 
-The evidence reactor works similar to the mempool reactor. When evidence is observed, it is sent to all the peers in a repetitive manner. This ensures evidence is sent to as many people as possible to avoid sensoring. After evidence is received by peers and committed in a block it is pruned from the evidence module.
+证据反应器的工作原理类似于内存池反应器。 当观察到证据时，它以重复的方式发送给所有对等点。 这可确保将证据发送给尽可能多的人，以避免感知。 在对等方收到证据并在块中提交后，它会从证据模块中修剪掉。
 
-Sending incorrectly encoded data or data exceeding `maxMsgSize` will result
-in stopping the peer.
+发送错误编码的数据或超过 `maxMsgSize` 的数据将导致
+在停止对等方。

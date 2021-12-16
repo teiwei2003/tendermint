@@ -1,16 +1,16 @@
-# Configuration
+# 配置
 
-Tendermint Core can be configured via a TOML file in
-`$TMHOME/config/config.toml`. Some of these parameters can be overridden by
-command-line flags. For most users, the options in the `##### main base configuration options #####` are intended to be modified while config options
-further below are intended for advance power users.
+Tendermint Core 可以通过 TOML 文件进行配置
+`$TMHOME/config/config.toml`。 其中一些参数可以被覆盖
+命令行标志。 对于大多数用户来说，`##### 主要基本配置选项 #####` 中的选项旨在在配置选项时进行修改
+下文进一步供高级高级用户使用。
 
-## Options
+## 选项
 
-The default configuration file create by `tendermint init` has all
-the parameters set with their default values. It will look something
-like the file below, however, double check by inspecting the
-`config.toml` created with your version of `tendermint` installed:
+`tendermint init` 创建的默认配置文件包含所有
+参数设置为其默认值。 它会看起来有些东西
+就像下面的文件，但是，通过检查
+`config.toml` 使用你安装的 `tendermin` 版本创建:
 
 ```toml# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
@@ -560,86 +560,86 @@ timeout-precommit-delta = "500ms"
 timeout-commit = "1s"
 ```
 
-Note that in a successful round, the only timeout that we absolutely wait no
-matter what is `timeout-commit`.
+请注意，在成功的回合中，我们绝对等待的唯一超时没有
+不管什么是“超时提交”。
 
-Here's a brief summary of the timeouts:
+以下是超时的简要摘要:
 
-- `timeout-propose` = how long we wait for a proposal block before prevoting
-  nil
-- `timeout-propose-delta` = how much timeout-propose increases with each round
-- `timeout-prevote` = how long we wait after receiving +2/3 prevotes for
-  anything (ie. not a single block or nil)
-- `timeout-prevote-delta` = how much the timeout-prevote increases with each
-  round
-- `timeout-precommit` = how long we wait after receiving +2/3 precommits for
-  anything (ie. not a single block or nil)
-- `timeout-precommit-delta` = how much the timeout-precommit increases with
-  each round
-- `timeout-commit` = how long we wait after committing a block, before starting
-  on the new height (this gives us a chance to receive some more precommits,
-  even though we already have +2/3)
+- `timeout-propose` = 在预投票之前我们等待提案块的时间
+  零
+- `timeout-propose-delta` = 每轮超时提议增加多少
+- `timeout-prevote` = 我们在收到 +2/3 prevotes 后等待的时间
+  任何东西(即不是单个块或零)
+- `timeout-prevote-delta` = 每次超时预投票增加多少
+  圆形的
+- `timeout-precommit` = 在收到 +2/3 预提交后我们等待的时间
+  任何东西(即不是单个块或零)
+- `timeout-precommit-delta` = 超时预提交增加多少
+  每轮
+- `timeout-commit` = 提交块后等待多长时间，然后开始
+  在新的高度上(这让我们有机会收到更多的预提交，
+  即使我们已经有 +2/3)
 
-## P2P settings
+## P2P 设置
 
-This section will cover settings within the p2p section of the `config.toml`.
+本节将介绍 `config.toml` 的 p2p 部分中的设置。
 
-- `external-address` = is the address that will be advertised for other nodes to use. We recommend setting this field with your public IP and p2p port.
-  - > We recommend setting an external address. When used in a private network, Tendermint Core currently doesn't advertise the node's public address. There is active and ongoing work to improve the P2P system, but this is a helpful workaround for now.
-- `persistent-peers` = is a list of comma separated peers that you will always want to be connected to. If you're already connected to the maximum number of peers, persistent peers will not be added.
-- `pex` = turns the peer exchange reactor on or off. Validator node will want the `pex` turned off so it would not begin gossiping to unknown peers on the network. PeX can also be turned off for statically configured networks with fixed network connectivity. For full nodes on open, dynamic networks, it should be turned on.
-- `private-peer-ids` = is a comma-separated list of node ids that will _not_ be exposed to other peers (i.e., you will not tell other peers about the ids in this list). This can be filled with a validator's node id.
+- `external-address` = 是将公布给其他节点使用的地址。我们建议使用您的公共 IP 和 p2p 端口设置此字段。
+  - > 我们建议设置一个外部地址。当在专用网络中使用时，Tendermint Core 目前不公布节点的公共地址。有一些积极和持续的工作来改进 P2P 系统，但目前这是一个有用的解决方法。
+- `persistent-peers` = 是一个逗号分隔的对等点列表，您将始终希望连接到这些对等点。如果您已连接到最大数量的对等点，则不会添加持久对等点。
+- `pex` = 打开或关闭对等交换反应器。验证器节点将希望关闭“pex”，这样它就不会开始向网络上的未知对等点闲聊。对于具有固定网络连接的静态配置网络，也可以关闭 PeX。对于开放、动态网络上的完整节点，应该打开它。
+- `private-peer-ids` = 是一个逗号分隔的节点 id 列表，_不会_暴露给其他对等点(即，您不会将这个列表中的 id 告诉其他对等点)。这可以用验证器的节点 ID 填充。
 
-Recently the Tendermint Team conducted a refactor of the p2p layer. This lead to multiple config paramters being deprecated and/or replaced.
+最近，Tendermint 团队对 p2p 层进行了重构。这导致多个配置参数被弃用和/或替换。
 
-We will cover the new and deprecated parameters below.
-### New Parameters
+我们将在下面介绍新的和已弃用的参数。
+### 新参数
 
-There are three new parameters, which are enabled if use-legacy is set to false.
+有三个新参数，如果 use-legacy 设置为 false，则启用这些参数。
 
-- `queue-type` = sets a type of queue to use in the p2p layer. There are three options available `fifo`, `priority` and `wdrr`. The default is priority
-- `bootstrap-peers` = is a list of comma seperated peers which will be used to bootstrap the address book.
-- `max-connections` = is the max amount of allowed inbound and outbound connections.
-### Deprecated Parameters
+- `queue-type` = 设置在 p2p 层使用的队列类型。有三个选项可用`fifo`、`priority`和`wdrr`。默认是优先级
+- `bootstrap-peers` = 是一个逗号分隔的节点列表，用于引导地址簿。
+- `max-connections` = 是允许的入站和出站连接的最大数量。
+### 弃用的参数
 
-> Note: For Tendermint 0.35, there are two p2p implementations. The old version is used by deafult with the deprecated fields. The new implementation uses different config parameters, explained above.
+> 注意:对于 Tendermint 0.35，有两个 p2p 实现。旧版本由 deafult 与已弃用的字段一起使用。新的实现使用不同的配置参数，如上所述。
 
-- `max-num-inbound-peers` = is the maximum number of peers you will accept inbound connections from at one time (where they dial your address and initiate the connection). *This was replaced by `max-connections`*
-- `max-num-outbound-peers` = is the maximum number of peers you will initiate outbound connects to at one time (where you dial their address and initiate the connection).*This was replaced by `max-connections`*
-- `unconditional-peer-ids` = is similar to `persistent-peers` except that these peers will be connected to even if you are already connected to the maximum number of peers. This can be a validator node ID on your sentry node. *Deprecated*
-- `seeds` = is a list of comma separated seed nodes that you will connect upon a start and ask for peers. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks *Deprecated, replaced by bootstrap peers*
+- `max-num-inbound-peers` = 是您一次接受入站连接的最大对等点数(他们拨打您的地址并启动连接)。 *这被替换为`max-connections`*
+- `max-num-outbound-peers` = 是你一次将发起出站连接的最大对等点数(你拨打他们的地址并发起连接)。*这被替换为 `max-connections`*
+- `unconditional-peer-ids` = 类似于 `persistent-peers` 不同之处在于，即使您已经连接到最大数量的对等点，这些对等点也会被连接。这可以是哨兵节点上的验证器节点 ID。 *已弃用*
+- `seeds` = 是一个逗号分隔的种子节点列表，您将在开始时连接并请求对等节点。种子节点是不参与共识的节点，但仅有助于将节点传播到网络中的节点 * 不推荐使用，由引导节点替换 *
 
-## Indexing Settings
+## 索引设置
 
-Operators can configure indexing via the `[tx_index]` section. The `indexer`
-field takes a series of supported indexers. If `null` is included, indexing will
-be turned off regardless of other values provided.
+操作员可以通过 `[tx_index]` 部分配置索引。 `索引器`
+字段采用一系列受支持的索引器。如果包含 `null`，索引将
+无论提供的其他值如何，都将被关闭。
 
-### Supported Indexers
+### 支持的索引器
 
 #### KV
 
-The `kv` indexer type is an embedded key-value store supported by the main
-underlying Tendermint database. Using the `kv` indexer type allows you to query
-for block and transaction events directly against Tendermint's RPC. However, the
-query syntax is limited and so this indexer type might be deprecated or removed
-entirely in the future.
+`kv` 索引器类型是主要支持的嵌入式键值存储
+底层 Tendermint 数据库。使用 `kv` 索引器类型允许您查询
+用于直接针对 Tendermint 的 RPC 的块和交易事件。但是，那
+查询语法有限，因此可能会弃用或删除此索引器类型
+完全在未来。
 
 #### PostgreSQL
 
-The `psql` indexer type allows an operator to enable block and transaction event
-indexing by proxying it to an external PostgreSQL instance allowing for the events
-to be stored in relational models. Since the events are stored in a RDBMS, operators
-can leverage SQL to perform a series of rich and complex queries that are not
-supported by the `kv` indexer type. Since operators can leverage SQL directly,
-searching is not enabled for the `psql` indexer type via Tendermint's RPC -- any
-such query will fail.
+`psql` 索引器类型允许操作员启用块和事务事件
+通过将其代理到允许事件的外部 PostgreSQL 实例进行索引
+存储在关系模型中。由于事件存储在 RDBMS 中，操作员
+可以利用 SQL 来执行一系列丰富而复杂的查询
+`kv` 索引器类型支持。由于运算符可以直接利用 SQL，
+未通过 Tendermint 的 RPC 为 `psql` 索引器类型启用搜索 - 任何
+这样的查询将失败。
 
-Note, the SQL schema is stored in `state/indexer/sink/psql/schema.sql` and operators
-must explicitly create the relations prior to starting Tendermint and enabling
-the `psql` indexer type.
+注意，SQL 模式存储在 `state/indexer/sink/psql/schema.sql` 和操作符中
+必须在启动 Tendermint 和启用之前明确创建关系
+`psql` 索引器类型。
 
-Example:
+例子:
 
 ```shell
 $ psql ... -f state/indexer/sink/psql/schema.sql

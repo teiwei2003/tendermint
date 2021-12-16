@@ -1,36 +1,36 @@
-# State Sync
+# 状态同步
 
 
-State sync allows new nodes to rapidly bootstrap and join the network by discovering, fetching,
-and restoring state machine snapshots. For more information, see the [state sync ABCI section](https://docs.tendermint.com/master/spec/abci/abci.html#state-sync)).
+状态同步允许新节点通过发现、获取、
+并恢复状态机快照。有关更多信息，请参阅 [状态同步 ABCI 部分](https://docs.tendermint.com/master/spec/abci/abci.html#state-sync))。
 
-The state sync reactor has two main responsibilities:
+状态同步反应器有两个主要职责:
 
-* Serving state machine snapshots taken by the local ABCI application to new nodes joining the
-  network.
+* 将本地 ABCI 应用程序拍摄的状态机快照提供给新加入的节点
+  网络。
 
-* Discovering existing snapshots and fetching snapshot chunks for an empty local application
-  being bootstrapped.
+* 发现现有快照并为空的本地应用程序获取快照块
+  被引导。
 
-The state sync process for bootstrapping a new node is described in detail in the section linked
-above. While technically part of the reactor (see `statesync/syncer.go` and related components),
-this document will only cover the P2P reactor component.
+用于引导新节点的状态同步过程在链接的部分中详细描述
+多于。虽然技术上是反应器的一部分(参见 `statesync/syncer.go` 和相关组件)，
+本文档将仅涵盖 P2P 反应器组件。
 
-For details on the ABCI methods and data types, see the [ABCI documentation](https://docs.tendermint.com/master/spec/abci/).
+有关 ABCI 方法和数据类型的详细信息，请参阅 [ABCI 文档](https://docs.tendermint.com/master/spec/abci/)。
 
-Information on how to configure state sync is located in the [nodes section](../../nodes/state-sync.md)
+有关如何配置状态同步的信息位于 [节点部分](../../nodes/state-sync.md)
 
-## State Sync P2P Protocol
+## 状态同步 P2P 协议
 
-When a new node begin state syncing, it will ask all peers it encounters if it has any
-available snapshots:
+当一个新节点开始状态同步时，它会询问它遇到的所有对等点是否有
+可用快照:
 
 ```go
 type snapshotsRequestMessage struct{}
 ```
 
-The receiver will query the local ABCI application via `ListSnapshots`, and send a message
-containing snapshot metadata (limited to 4 MB) for each of the 10 most recent snapshots:
+接收者将通过 ListSnapshots 查询本地 ABCI 应用程序，并发送消息
+包含最近 10 个快照中每一个的快照元数据(限制为 4 MB):
 
 ```go
 type snapshotsResponseMessage struct {
@@ -42,9 +42,9 @@ type snapshotsResponseMessage struct {
 }
 ```
 
-The node running state sync will offer these snapshots to the local ABCI application via
-`OfferSnapshot` ABCI calls, and keep track of which peers contain which snapshots. Once a snapshot
-is accepted, the state syncer will request snapshot chunks from appropriate peers:
+节点运行状态同步将通过以下方式将这些快照提供给本地 ABCI 应用程序
+`OfferSnapshot` ABCI 调用，并跟踪哪些对等点包含哪些快照。 一次快照
+被接受，状态同步器将从适当的对等方请求快照块:
 
 ```go
 type chunkRequestMessage struct {
@@ -54,8 +54,8 @@ type chunkRequestMessage struct {
 }
 ```
 
-The receiver will load the requested chunk from its local application via `LoadSnapshotChunk`,
-and respond with it (limited to 16 MB):
+接收器将通过“LoadSnapshotChunk”从其本地应用程序加载请求的块，
+并响应它(限制为 16 MB):
 
 ```go
 type chunkResponseMessage struct {
@@ -67,14 +67,14 @@ type chunkResponseMessage struct {
 }
 ```
 
-Here, `Missing` is used to signify that the chunk was not found on the peer, since an empty
-chunk is a valid (although unlikely) response.
+这里，“Missing”用于表示在对等方上找不到该块，因为一个空的
+chunk 是一个有效的(虽然不太可能)响应。
 
-The returned chunk is given to the ABCI application via `ApplySnapshotChunk` until the snapshot
-is restored. If a chunk response is not returned within some time, it will be re-requested,
-possibly from a different peer.
+返回的块通过“ApplySnapshotChunk”提供给 ABCI 应用程序，直到快照
+被恢复。 如果在一段时间内没有返回块响应，它将被重新请求，
+可能来自不同的同行。
 
-The ABCI application is able to request peer bans and chunk refetching as part of the ABCI protocol.
+作为 ABCI 协议的一部分，ABCI 应用程序能够请求对等禁止和块重新获取。
 
-If no state sync is in progress (i.e. during normal operation), any unsolicited response messages
-are discarded.
+如果没有状态同步正在进行(即在正常操作期间)，任何未经请求的响应消息
+被丢弃。

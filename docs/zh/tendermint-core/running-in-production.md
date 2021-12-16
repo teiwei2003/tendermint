@@ -1,3 +1,3 @@
-# Running In Production
+# 在生产中运行
 
-This file has moved to the [nodes section](../nodes/running-in-production.md).
+此文件已移至 [节点部分](../nodes/running-in-production.md)。

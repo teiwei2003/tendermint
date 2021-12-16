@@ -1,23 +1,23 @@
-# ADR 034: PrivValidator file structure
+# ADR 034:PrivValidator 文件结构
 
-## Changelog
+## 变更日志
 
-03-11-2018: Initial Draft
+03-11-2018:初稿
 
-## Context
+## 语境
 
-For now, the PrivValidator file `priv_validator.json` contains mutable and immutable parts. 
-Even in an insecure mode which does not encrypt private key on disk, it is reasonable to separate 
-the mutable part and immutable part.
+目前，PrivValidator 文件“priv_validator.json”包含可变和不可变部分。
+即使在不加密磁盘上的私钥的不安全模式下，分离也是合理的
+可变部分和不可变部分。
 
-References:
+参考:
 [#1181](https://github.com/tendermint/tendermint/issues/1181)
 [#2657](https://github.com/tendermint/tendermint/issues/2657)
 [#2313](https://github.com/tendermint/tendermint/issues/2313)
 
-## Proposed Solution
+## 建议的解决方案
 
-We can split mutable and immutable parts with two structs:
+我们可以用两个结构体拆分可变部分和不可变部分:
 ```go
 // FilePVKey stores the immutable part of PrivValidator
 type FilePVKey struct {
@@ -41,7 +41,7 @@ type FilePVLastSignState struct {
 }
 ```
 
-Then we can combine `FilePVKey` with `FilePVLastSignState` and will get the original `FilePV`.
+然后我们可以将`FilePVKey` 和`FilePVLastSignState` 结合起来，就可以得到原来的`FilePV`。
 
 ```go
 type FilePV struct {
@@ -50,23 +50,23 @@ type FilePV struct {
 }
 ```
 
-As discussed, `FilePV` should be located in `config`, and `FilePVLastSignState` should be stored in `data`. The 
-store path of each file should be specified in `config.yml`.
+如前所述，`FilePV` 应该位于`config` 中，而`FilePVLastSignState` 应该存储在`data` 中。 这
+每个文件的存储路径应该在`config.yml`中指定。
 
-What we need to do next is changing the methods of `FilePV`.
+接下来我们需要做的是改变`FilePV`的方法。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- separate the mutable and immutable of PrivValidator
+- 分离 PrivValidator 的可变和不可变
 
-### Negative
+### 消极的
 
-- need to add more config for file path
+- 需要为文件路径添加更多配置
 
-### Neutral
+### 中性的

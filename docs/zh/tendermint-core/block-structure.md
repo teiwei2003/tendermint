@@ -1,12 +1,12 @@
-# Block Structure
+# 块结构
 
-The Tendermint consensus engine records all agreements by a
-supermajority of nodes into a blockchain, which is replicated among all
-nodes. This blockchain is accessible via various RPC endpoints, mainly
-`/block?height=` to get the full block, as well as
-`/blockchain?minHeight=_&maxHeight=_` to get a list of headers. But what
-exactly is stored in these blocks?
+Tendermint 共识引擎记录所有协议
+绝大多数节点进入区块链，在所有节点之间复制
+节点。 该区块链可通过各种 RPC 端点访问，主要是
+`/block?height=` 获取完整的块，以及
+`/blockchain?minHeight=_&maxHeight=_` 获取头部列表。 但是什么
+究竟是存储在这些块？
 
-The [specification](https://github.com/tendermint/spec/blob/8dd2ed4c6fe12459edeb9b783bdaaaeb590ec15c/spec/core/data_structures.md) contains a detailed description of each component - that's the best place to get started.
+[规范](https://github.com/tendermint/spec/blob/8dd2ed4c6fe12459edeb9b783bdaaaeb590ec15c/spec/core/data_structures.md) 包含每个组件的详细描述 - 这是开始的最佳位置。
 
-To dig deeper, check out the [types package documentation](https://godoc.org/github.com/tendermint/tendermint/types).
+要深入挖掘，请查看 [类型包文档](https://godoc.org/github.com/tendermint/tendermint/types)。

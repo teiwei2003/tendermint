@@ -1,73 +1,73 @@
-# ADR 062: P2P Architecture and Abstractions
+# ADR 062:P2P 架构和抽象
 
-## Changelog
+## 变更日志
 
-- 2020-11-09: Initial version (@erikgrinaker)
+- 2020-11-09:初始版本 (@erikgrinaker)
 
-- 2020-11-13: Remove stream IDs, move peer errors onto channel, note on moving PEX into core (@erikgrinaker)
+- 2020 年 11 月 13 日:删除流 ID，将对等错误移至通道，注意将 PEX 移至核心 (@erikgrinaker)
 
-- 2020-11-16: Notes on recommended reactor implementation patterns, approve ADR (@erikgrinaker)
+- 2020-11-16:关于推荐的反应堆实施模式的说明，批准 ADR (@erikgrinaker)
 
-- 2021-02-04: Update with new P2P core and Transport API changes (@erikgrinaker).
+- 2021 年 2 月 4 日:更新了新的 P2P 核心和传输 API 更改 (@erikgrinaker)。
 
-## Context
+## 语境
 
-In [ADR 061](adr-061-p2p-refactor-scope.md) we decided to refactor the peer-to-peer (P2P) networking stack. The first phase is to redesign and refactor the internal P2P architecture, while retaining protocol compatibility as far as possible.
+在 [ADR 061](adr-061-p2p-refactor-scope.md) 中，我们决定重构点对点 (P2P) 网络堆栈。第一阶段是重新设计和重构内部P2P架构，同时尽可能保留协议兼容性。
 
-## Alternative Approaches
+## 替代方法
 
-Several variations of the proposed design were considered, including e.g. calling interface methods instead of passing messages (like the current architecture), merging channels with streams, exposing the internal peer data structure to reactors, being message format-agnostic via arbitrary codecs, and so on. This design was chosen because it has very loose coupling, is simpler to reason about and more convenient to use, avoids race conditions and lock contention for internal data structures, gives reactors better control of message ordering and processing semantics, and allows for QoS scheduling and backpressure in a very natural way.
+考虑了提议设计的几种变体，包括例如调用接口方法而不是传递消息(如当前架构)，将通道与流合并，将内部对等数据结构暴露给反应器，通过任意编解码器与消息格式无关，等等。选择这种设计是因为它具有非常松散的耦合，更易于推理和更方便使用，避免了内部数据结构的竞争条件和锁争用，使反应器更好地控制消息排序和处理语义，并允许 QoS 调度和以非常自然的方式背压。
 
-[multiaddr](https://github.com/multiformats/multiaddr) was considered as a transport-agnostic peer address format over regular URLs, but it does not appear to have very widespread adoption, and advanced features like protocol encapsulation and tunneling do not appear to be immediately useful to us.
+[multiaddr](https://github.com/multiformats/multiaddr) 被认为是一种通过常规 URL 与传输无关的对等地址格式，但它似乎没有被广泛采用，并且协议封装和隧道等高级功能可以似乎对我们没有立即有用。
 
-There were also proposals to use LibP2P instead of maintaining our own P2P stack, which were rejected (for now) in [ADR 061](adr-061-p2p-refactor-scope.md).
+还有一些建议使用 LibP2P 而不是维护我们自己的 P2P 堆栈，这些建议(目前)在 [ADR 061](adr-061-p2p-refactor-scope.md) 中被拒绝。
 
-The initial version of this ADR had a byte-oriented multi-stream transport API, but this had to be abandoned/postponed to maintain backwards-compatibility with the existing MConnection protocol which is message-oriented. See the rejected RFC in [tendermint/spec#227](https://github.com/tendermint/spec/pull/227) for details.
+此 ADR 的初始版本具有面向字节的多流传输 API，但必须放弃/推迟以保持与现有的面向消息的 MConnection 协议的向后兼容性。有关详细信息，请参阅 [tendermint/spec#227](https://github.com/tendermint/spec/pull/227) 中被拒绝的 RFC。
 
-## Decision
+## 决定
 
-The P2P stack will be redesigned as a message-oriented architecture, primarily relying on Go channels for communication and scheduling. It will use a message-oriented transport to binary messages with individual peers, bidirectional peer-addressable channels to send and receive Protobuf messages, a router to route messages between reactors and peers, and a peer manager to manage peer lifecycle information. Message passing is asynchronous with at-most-once delivery.
+P2P 堆栈将被重新设计为面向消息的架构，主要依靠 Go 通道进行通信和调度。它将使用面向消息的传输到具有单个对等点的二进制消息、双向对等可寻址通道来发送和接收 Protobuf 消息、在反应器和对等点之间路由消息的路由器以及管理对等点生命周期信息的对等点管理器。消息传递是 asynchronous with at-most-once delivery.
 
-## Detailed Design
+## 详细设计
 
-This ADR is primarily concerned with the architecture and interfaces of the P2P stack, not implementation details. The interfaces described here should therefore be considered a rough architecture outline, not a complete and final design.
+该 ADR 主要关注 P2P 堆栈的体系结构和接口，而不是实现细节。因此，此处描述的接口应被视为粗略的架构轮廓，而不是完整的最终设计。
 
-Primary design objectives have been:
+主要设计目标是:
 
-* Loose coupling between components, for a simpler, more robust, and test-friendly architecture.
-* Pluggable transports (not necessarily networked).
-* Better scheduling of messages, with improved prioritization, backpressure, and performance.
-* Centralized peer lifecycle and connection management.
-* Better peer address detection, advertisement, and exchange.
-* Wire-level backwards compatibility with current P2P network protocols, except where it proves too obstructive.
+* 组件之间的松散耦合，以获得更简单、更健壮和测试友好的架构。
+* 可插拔传输(不一定联网)。
+* 更好的消息调度，改进优先级、背压和性能。
+* 集中的对等生命周期和连接管理。
+* 更好的对等地址检测、广告和交换。
+* 与当前 P2P 网络协议的线级向后兼容性，除非它被证明具有太大障碍。
 
-The main abstractions in the new stack are:
+新堆栈中的主要抽象是:
 
-* `Transport`: An arbitrary mechanism to exchange binary messages with a peer across a `Connection`.
-* `Channel`: A bidirectional channel to asynchronously exchange Protobuf messages with peers using node ID addressing.
-* `Router`: Maintains transport connections to relevant peers and routes channel messages.
-* `PeerManager`: Manages peer lifecycle information, e.g. deciding which peers to dial and when, using a `peerStore` for storage.
-* Reactor: A design pattern loosely defined as "something which listens on a channel and reacts to messages".
+* `Transport`:一种通过 `Connection` 与对等方交换二进制消息的任意机制。
+* `Channel`:使用节点 ID 寻址与对等方异步交换 Protobuf 消息的双向通道。
+* `Router`:维护与相关对等点的传输连接并路由通道消息。
+* `PeerManager`:管理对等生命周期信息，例如决定拨打哪些对等点以及何时拨打，使用“peerStore”进行存储。
+* Reactor:一种设计模式，松散地定义为“侦听通道并对消息做出反应的东西”。
 
-These abstractions are illustrated in the following diagram (representing the internals of node A) and described in detail below.
+这些抽象在下图(代表节点 A 的内部结构)中进行了说明，并在下面进行了详细描述。
 
-![P2P Architecture Diagram](img/adr-062-architecture.svg)
+![P2P架构图](img/adr-062-architecture.svg)
 
-### Transports
+### 运输
 
-Transports are arbitrary mechanisms for exchanging binary messages with a peer. For example, a gRPC transport would connect to a peer over TCP/IP and send data using the gRPC protocol, while an in-memory transport might communicate with a peer running in another goroutine using internal Go channels. Note that transports don't have a notion of a "peer" or "node" as such - instead, they establish connections between arbitrary endpoint addresses (e.g. IP address and port number), to decouple them from the rest of the P2P stack.
+传输是用于与对等方交换二进制消息的任意机制。例如，gRPC 传输将通过 TCP/IP 连接到对等点并使用 gRPC 协议发送数据，而内存中传输可能使用内部 Go 通道与在另一个 goroutine 中运行的对等点进行通信。请注意，传输本身没有“对等”或“节点”的概念 - 相反，它们在任意端点地址(例如 IP 地址和端口号)之间建立连接，以将它们与 P2P 堆栈的其余部分分离。
 
-Transports must satisfy the following requirements:
+运输必须满足以下要求:
 
-* Be connection-oriented, and support both listening for inbound connections and making outbound connections using endpoint addresses.
+* 面向连接，支持监听入站连接和使用端点地址建立出站连接。
 
-* Support sending binary messages with distinct channel IDs (although channels and channel IDs are a higher-level application protocol concept explained in the Router section, they are threaded through the transport layer as well for backwards compatibilty with the existing MConnection protocol).
+* 支持发送具有不同通道 ID 的二进制消息(尽管通道和通道 ID 是在路由器部分解释的更高级别的应用程序协议概念，但它们通过传输层进行线程化以及与现有 MConnection 协议的向后兼容)。
 
-* Exchange the MConnection `NodeInfo` and public key via a node handshake, and possibly encrypt or sign the traffic as appropriate.
+* 通过节点握手交换 MConnection `NodeInfo` 和公钥，并可能对流量进行适当的加密或签名。
 
-The initial transport is a port of the current MConnection protocol currently used by Tendermint, and should be backwards-compatible at the wire level. An in-memory transport for testing has also been implemented. There are plans to explore a QUIC transport that may replace the MConnection protocol.
+初始传输是 Tendermint 当前使用的当前 MConnection 协议的端口，并且应该在线路级别向后兼容。还实现了用于测试的内存中传输。有计划探索可能取代 MConnection 协议的 QUIC 传输。
 
-The `Transport` interface is as follows:
+`Transport`界面如下:
 
 ```go
 // Transport is a connection-oriented mechanism for exchanging data with a peer.
@@ -94,13 +94,13 @@ type Transport interface {
 }
 ```
 
-How the transport configures listening is transport-dependent, and not covered by the interface. This typically happens during transport construction, where a single instance of the transport is created and set to listen on an appropriate network interface before being passed to the router.
+传输如何配置侦听取决于传输，并且不包含在接口中。 这通常发生在传输构建期间，其中创建了一个传输实例并将其设置为在传递给路由器之前侦听适当的网络接口。
 
-#### Endpoints
+#### 端点
 
-`Endpoint` represents a transport endpoint (e.g. an IP address and port). A connection always has two endpoints: one at the local node and one at the remote peer. Outbound connections to remote endpoints are made via `Dial()`, and inbound connections to listening endpoints are returned via `Accept()`.
+`Endpoint` 表示传输端点(例如 IP 地址和端口)。 一个连接总是有两个端点:一个在本地节点，一个在远程节点。 到远程端点的出站连接通过`Dial()` 建立，到侦听端点的入站连接通过`Accept()` 返回。
 
-The `Endpoint` struct is:
+`Endpoint` 结构是:
 
 ```go
 // Endpoint represents a transport connection endpoint, either local or remote.
@@ -128,17 +128,17 @@ type Endpoint struct {
 type Protocol string
 ```
 
-Endpoints are arbitrary transport-specific addresses, but if they are networked they must use IP addresses and thus rely on IP as a fundamental packet routing protocol. This enables policies for address discovery, advertisement, and exchange - for example, a private `192.168.0.0/24` IP address should only be advertised to peers on that IP network, while the public address `8.8.8.8` may be advertised to all peers. Similarly, any port numbers if given must represent TCP and/or UDP port numbers, in order to use [UPnP](https://en.wikipedia.org/wiki/Universal_Plug_and_Play) to autoconfigure e.g. NAT gateways.
+端点是任意的传输特定地址，但如果它们联网，它们必须使用 IP 地址，因此依赖 IP 作为基本的数据包路由协议。这启用了地址发现、广告和交换的策略——例如，私有“192.168.0.0/24”IP 地址应该只被广告给该 IP 网络上的对等点，而公共地址“8.8.8.8”可以被广告给所有同行。类似地，任何给定的端口号都必须代表 TCP 和/或 UDP 端口号，以便使用 [UPnP](https://en.wikipedia.org/wiki/Universal_Plug_and_Play) 进行自动配置，例如NAT 网关。
 
-Non-networked endpoints (without an IP address) are considered local, and will only be advertised to other peers connecting via the same protocol. For example, the in-memory transport used for testing uses `Endpoint{Protocol: "memory", Path: "foo"}` as an address for the node "foo", and this should only be advertised to other nodes using `Protocol: "memory"`.
+非联网端点(没有 IP 地址)被认为是本地的，并且只会被通告给通过相同协议连接的其他对等点。例如，用于测试的内存传输使用 `Endpoint{Protocol: "memory", Path: "foo"}` 作为节点 "foo" 的地址，并且这应该只使用`Protocol 通告给其他节点:“记忆”`。
 
-#### Connections
+#### 连接
 
-A connection represents an established transport connection between two endpoints (i.e. two nodes), which can be used to exchange binary messages with logical channel IDs (corresponding to the higher-level channel IDs used in the router). Connections are set up either via `Transport.Dial()` (outbound) or `Transport.Accept()` (inbound).
+连接代表两个端点(即两个节点)之间建立的传输连接，可用于交换带有逻辑通道 ID(对应于路由器中使用的更高级别的通道 ID)的二进制消息。通过`Transport.Dial()`(出站)或`Transport.Accept()`(入站)建立连接。
 
-Once a connection is esablished, `Transport.Handshake()` must be called to perform a node handshake, exchanging node info and public keys to verify node identities. Node handshakes should not really be part of the transport layer (it's an application protocol concern), this exists for backwards-compatibility with the existing MConnection protocol which conflates the two. `NodeInfo` is part of the existing MConnection protocol, but does not appear to be documented in the specification -- refer to the Go codebase for details.
+建立连接后，必须调用“Transport.Handshake()”来执行节点握手、交换节点信息和公钥以验证节点身份。节点握手不应该真正成为传输层的一部分(这是一个应用程序协议问题)，这是为了与现有的 MConnection 协议向后兼容，将两者混为一谈。 `NodeInfo` 是现有 MConnection 协议的一部分，但似乎没有记录在规范中——有关详细信息，请参阅 Go 代码库。
 
-The `Connection` interface is shown below. It omits certain additions that are currently implemented for backwards compatibility with the legacy P2P stack and are planned to be removed before the final release.
+`Connection`界面如下所示。它省略了当前为与遗留 P2P 堆栈向后兼容而实施的某些添加内容，并计划在最终版本之前删除。
 
 ```go
 // Connection represents an established connection between two endpoints.
@@ -166,20 +166,20 @@ type Connection interface {
 }
 ```
 
-This ADR initially proposed a byte-oriented multi-stream connection API that follows more typical networking API conventions (using e.g. `io.Reader` and `io.Writer` interfaces which easily compose with other libraries). This would also allow moving the responsibility for message framing, node handshakes, and traffic scheduling to the common router instead of reimplementing this across transports, and would allow making better use of multi-stream protocols such as QUIC. However, this would require minor breaking changes to the MConnection protocol which were rejected, see [tendermint/spec#227](https://github.com/tendermint/spec/pull/227) for details. This should be revisited when starting work on a QUIC transport.
+这个 ADR 最初提出了一个面向字节的多流连接 API，它遵循更典型的网络 API 约定(使用例如 `io.Reader` 和 `io.Writer` 接口，可以轻松地与其他库组合)。这也将允许将消息帧、节点握手和流量调度的责任转移到公共路由器，而不是跨传输重新实现，并允许更好地使用多流协议，如 QUIC。但是，这需要对被拒绝的 MConnection 协议进行细微的重大更改，有关详细信息，请参阅 [tendermint/spec#227](https://github.com/tendermint/spec/pull/227)。当开始在 QUIC 传输上工作时，应该重新考虑这一点。
 
-### Peer Management
+### 对等管理
 
-Peers are other Tendermint nodes. Each peer is identified by a unique `NodeID` (tied to the node's private key).
+对等点是其他 Tendermint 节点。每个对等点都由唯一的“NodeID”(与节点的私钥相关联)标识。
 
-#### Peer Addresses
+#### 对等地址
 
-Nodes have one or more `NodeAddress` addresses expressed as URLs that they can be reached at. Examples of node addresses might be e.g.:
+节点有一个或多个“NodeAddress”地址，表示为它们可以到达的 URL。节点地址的示例可能是例如:
 
 * `mconn://nodeid@host.domain.com:25567/path`
-* `memory:nodeid`
+*`内存:节点ID`
 
-Addresses are resolved into one or more transport endpoints, e.g. by resolving DNS hostnames into IP addresses. Peers should always be expressed as address URLs rather than endpoints (which are a lower-level transport construct).
+地址被解析为一个或多个传输端点，例如通过将 DNS 主机名解析为 IP 地址。对等点应始终表示为地址 URL，而不是端点(这是一种较低级别的传输结构)。
 
 ```go
 // NodeID is a hex-encoded crypto.Address. It must be lowercased
@@ -209,31 +209,31 @@ func ParseNodeAddress(urlString string) (NodeAddress, error)
 func (a NodeAddress) Resolve(ctx context.Context) ([]Endpoint, error)
 ```
 
-#### Peer Manager
+#### 对等经理
 
-The P2P stack needs to track a lot of internal state about peers, such as their addresses, connection state, priorities, availability, failures, retries, and so on. This responsibility has been separated out to a `PeerManager`, which track this state for the `Router` (but does not maintain the actual transport connections themselves, which is the router's responsibility).
+P2P 栈需要跟踪很多关于 peer 的内部状态，比如它们的地址、连接状态、优先级、可用性、失败、重试等。这个责任已经被分离到一个`PeerManager`，它跟踪`Router`的这个状态(但不维护实际的传输连接本身，这是路由器的责任)。
 
-The `PeerManager` is a synchronous state machine, where all state transitions are serialized (implemented as synchronous method calls holding an exclusive mutex lock). Most peer state is intentionally kept internal, stored in a `peerStore` database that persists it as appropriate, and the external interfaces pass the minimum amount of information necessary in order to avoid shared state between router goroutines. This design significantly simplifies the model, making it much easier to reason about and test than if it was baked into the asynchronous ball of concurrency that the P2P networking core must necessarily be. As peer lifecycle events are expected to be relatively infrequent, this should not significantly impact performance either.
+`PeerManager` 是一个同步状态机，其中所有状态转换都是序列化的(实现为同步方法调用，持有排他互斥锁)。大多数对等状态有意保持在内部，存储在适当地持久化它的“peerStore”数据库中，并且外部接口传递必要的最少信息量，以避免路由器 goroutine 之间共享状态。这种设计显着简化了模型，与将其放入 P2P 网络核心必须成为的异步并发球相比，它更容易推理和测试。由于预计对等生命周期事件相对较少，因此这也不会对性能产生显着影响。
 
-The `Router` uses the `PeerManager` to request which peers to dial and evict, and reports in with peer lifecycle events such as connections, disconnections, and failures as they occur. The manager can reject these events (e.g. reject an inbound connection) by returning errors. This happens as follows:
+`Router` 使用 `PeerManager` 请求拨号和驱逐哪些对等点，并报告对等点生命周期事件，例如连接、断开连接和发生的故障。管理器可以通过返回错误来拒绝这些事件(例如拒绝入站连接)。这发生如下:
 
-* Outbound connections, via `Transport.Dial`:
-    * `DialNext()`: returns a peer address to dial, or blocks until one is available.
-    * `DialFailed()`: reports a peer dial failure.
-    * `Dialed()`: reports a peer dial success.
-    * `Ready()`: reports the peer as routed and ready.
-    * `Disconnected()`: reports a peer disconnection.
+* 出站连接，通过`Transport.Dial`:
+    * `DialNext()`:返回一个对等地址进行拨号，或者阻塞直到一个可用。
+    * `DialFailed()`: 报告对端拨号失败。
+    * `Dialed()`:报告对等方拨号成功。
+    * `Ready()`:报告对等体路由和就绪。
+    * `Disconnected()`:报告对端断开连接。
 
-* Inbound connections, via `Transport.Accept`:
-    * `Accepted()`: reports an inbound peer connection.
-    * `Ready()`: reports the peer as routed and ready.
-    * `Disconnected()`: reports a peer disconnection.
+* 入站连接，通过`Transport.Accept`:
+    * `Accepted()`:报告入站对等连接。
+    * `Ready()`:报告对等体路由和就绪。
+    * `Disconnected()`:报告对端断开连接。
 
-* Evictions, via `Connection.Close`:
-    * `EvictNext()`: returns a peer to disconnect, or blocks until one is available.
-    * `Disconnected()`: reports a peer disconnection.
+* 驱逐，通过`Connection.Close`:
+    * `EvictNext()`:返回一个要断开连接的对等体，或者阻塞直到一个可用。
+    * `Disconnected()`:报告对端断开连接。
 
-These calls have the following interface:
+这些调用具有以下接口:
 
 ```go
 // DialNext returns a peer address to dial, blocking until one is available.
@@ -258,11 +258,11 @@ func (m *PeerManager) EvictNext(ctx context.Context) (NodeID, error)
 func (m *PeerManager) Disconnected(peerID NodeID) error
 ```
 
-Internally, the `PeerManager` uses a numeric peer score to prioritize peers, e.g. when deciding which peers to dial next. The scoring policy has not yet been implemented, but should take into account e.g. node configuration such a `persistent_peers`, uptime and connection failures, performance, and so on. The manager will also attempt to automatically upgrade to better-scored peers by evicting lower-scored peers when a better one becomes available (e.g. when a persistent peer comes back online after an outage).
+在内部，“PeerManager”使用数字对等分数来确定对等节点的优先级，例如在决定接下来要拨打哪些对等方时。评分政策尚未实施，但应考虑到例如节点配置，例如“persistent_peers”、正常运行时间和连接故障、性能等。当有更好的节点可用时(例如，当一个持久节点在中断后重新上线时)，管理器还将尝试通过驱逐较低得分的节点来自动升级到更高的节点。
 
-The `PeerManager` should also have an API for reporting peer behavior from reactors that affects its score (e.g. signing a block increases the score, double-voting decreases it or even bans the peer), but this has not yet been designed and implemented.
+`PeerManager` 还应该有一个 API 来报告来自反应堆的影响其分数的对等行为(例如，签署一个块会增加分数，双重投票会降低分数甚至禁止对等点)，但这还没有被设计和实现。
 
-Additionally, the `PeerManager` provides `PeerUpdates` subscriptions that will receive `PeerUpdate` events whenever significant peer state changes happen. Reactors can use these e.g. to know when peers are connected or disconnected, and take appropriate action. This is currently fairly minimal:
+此外，`PeerManager` 提供了`PeerUpdates` 订阅，每当发生重大对等状态更改时，该订阅将接收`PeerUpdate` 事件。反应器可以使用这些，例如了解对等体何时连接或断开，并采取适当的措施。这是目前相当小的:
 
 ```go
 // Subscribe subscribes to peer updates. The caller must consume the peer updates
@@ -294,15 +294,15 @@ func (pu *PeerUpdates) Updates() <-chan PeerUpdate
 func (pu *PeerUpdates) Close()
 ```
 
-The `PeerManager` will also be responsible for providing peer information to the PEX reactor that can be gossipped to other nodes. This requires an improved system for peer address detection and advertisement, that e.g. reliably detects peer and self addresses and only gossips private network addresses to other peers on the same network, but this system has not yet been fully designed and implemented.
+`PeerManager` 还将负责向 PEX 反应器提供对等信息，这些信息可以被其他节点八卦。这需要改进的对等地址检测和广告系统，例如可靠地检测peer和self地址，并且只向同一网络上的其他peer发送私网地址，但是这个系统还没有完全设计和实现。
 
-### Channels
+###频道
 
-While low-level data exchange happens via the `Transport`, the high-level API is based on a bidirectional `Channel` that can send and receive Protobuf messages addressed by `NodeID`. A channel is identified by an arbitrary `ChannelID` identifier, and can exchange Protobuf messages of one specific type (since the type to unmarshal into must be predefined). Message delivery is asynchronous and at-most-once.
+虽然低级数据交换通过“传输”发生，但高级 API 基于双向“通道”，可以发送和接收由“NodeID”寻址的 Protobuf 消息。通道由任意的“ChannelID”标识符标识，并且可以交换一种特定类型的 Protobuf 消息(因为必须预定义要解组的类型)。消息传递是异步的并且最多一次。
 
-The channel can also be used to report peer errors, e.g. when receiving an invalid or malignant message. This may cause the peer to be disconnected or banned depending on `PeerManager` policy, but should probably be replaced by a broader peer behavior API that can also report good behavior.
+该通道还可用于报告对等错误，例如当收到无效或恶意的信息时。根据“PeerManager”策略，这可能会导致对等点断开连接或禁止，但可能应该由更广泛的对等点行为 API 替代，该 API 也可以报告良好的行为。
 
-A `Channel` has this interface:
+`Channel` 有这个接口:
 
 ```go
 // ChannelID is an arbitrary channel ID.
@@ -335,9 +335,9 @@ type PeerError struct {
 }
 ```
 
-A channel can reach any connected peer, and will automatically (un)marshal the Protobuf messages. Message scheduling and queueing is a `Router` implementation concern, and can use any number of algorithms such as FIFO, round-robin, priority queues, etc. Since message delivery is not guaranteed, both inbound and outbound messages may be dropped, buffered, reordered, or blocked as appropriate.
+通道可以到达任何连接的对等点，并将自动(取消)编组 Protobuf 消息。 消息调度和排队是一个“路由器”实现问题，可以使用任意数量的算法，例如 FIFO、循环、优先级队列等。 由于无法保证消息传递，入站和出站消息都可能被丢弃、缓冲、 根据需要重新排序或阻止。
 
-Since a channel can only exchange messages of a single type, it is often useful to use a wrapper message type with e.g. a Protobuf `oneof` field that specifies a set of inner message types that it can contain. The channel can automatically perform this (un)wrapping if the outer message type implements the `Wrapper` interface (see [Reactor Example](#reactor-example) for an example):
+由于通道只能交换单一类型的消息，因此使用包装器消息类型通常很有用，例如 一个 Protobuf `oneof` 字段，指定它可以包含的一组内部消息类型。 如果外部消息类型实现了 `Wrapper` 接口(参见 [Reactor Example](#reactor-example) 示例)，则通道可以自动执行此(解)包装:
 
 ```go
 // Wrapper is a Protobuf message that can contain a variety of inner messages.
@@ -355,13 +355,13 @@ type Wrapper interface {
 }
 ```
 
-### Routers
+### 路由器
 
-The router exeutes P2P networking for a node, taking instructions from and reporting events to the `PeerManager`, maintaining transport connections to peers, and routing messages between channels and peers.
+路由器为节点执行 P2P 网络，从“PeerManager”获取指令并将事件报告给“PeerManager”，维护与对等方的传输连接，并在通道和对等方之间路由消息。
 
-Practically all concurrency in the P2P stack has been moved into the router and reactors, while as many other responsibilities as possible have been moved into separate components such as the `Transport` and `PeerManager` that can remain largely synchronous. Limiting concurrency to a single core component makes it much easier to reason about since there is only a single concurrency structure, while the remaining components can be serial, simple, and easily testable.
+实际上，P2P 堆栈中的所有并发都已移至路由器和反应器中，而尽可能多的其他职责已移至单独的组件中，例如可以在很大程度上保持同步的“Transport”和“PeerManager”。 将并发限制在单个核心组件上会更容易推理，因为只有一个并发结构，而其余组件可以串行、简单且易于测试。
 
-The `Router` has a very minimal API, since it is mostly driven by `PeerManager` and `Transport` events:
+`Router` 有一个非常小的 API，因为它主要由 `PeerManager` 和 `Transport` 事件驱动:
 
 ```go
 // Router maintains peer transport connections and routes messages between
@@ -395,7 +395,7 @@ func (r *Router) Start() error
 func (r *Router) Stop() error
 ```
 
-All Go channel sends in the `Router` and reactors are blocking (the router also selects on signal channels for closure and shutdown). The responsibility for message scheduling, prioritization, backpressure, and load shedding is centralized in a core `queue` interface that is used at contention points (i.e. from all peers to a single channel, and from all channels to a single peer):
+所有 Go 通道在 `Router` 中发送并且反应器被阻塞(路由器还选择关闭和关闭信号通道)。 消息调度、优先级划分、背压和减载的责任集中在一个核心的“队列”接口中，该接口用于争用点(即从所有对等点到单个通道，以及从所有通道到单个对等点):
 
 ```go
 // queue does QoS scheduling for Envelopes, enqueueing and dequeueing according
@@ -419,9 +419,9 @@ type queue interface {
 }
 ```
 
-The current implementation is `fifoQueue`, which is a simple unbuffered lossless queue that passes messages in the order they were received and blocks until the message is delivered (i.e. it is a Go channel). The router will need a more sophisticated queueing policy, but this has not yet been implemented.
+当前的实现是“fifoQueue”，它是一个简单的无缓冲无损队列，它按照接收到的顺序传递消息并阻塞直到消息被传递(即它是一个 Go 通道)。 路由器将需要更复杂的排队策略，但这尚未实现。
 
-The internal `Router` goroutine structure and design is described in the `Router` GoDoc, which is included below for reference:
+内部`Router` goroutine的结构和设计在`Router` GoDoc中有描述，下面包含以供参考:
 
 ```go
 // On startup, three main goroutines are spawned to maintain peer connections:
@@ -460,13 +460,13 @@ The internal `Router` goroutine structure and design is described in the `Router
 // quality of service.
 ```
 
-### Reactor Example
+### 反应器示例
 
-While reactors are a first-class concept in the current P2P stack (i.e. there is an explicit `p2p.Reactor` interface), they will simply be a design pattern in the new stack, loosely defined as "something which listens on a channel and reacts to messages".
+虽然反应堆是当前 P2P 堆栈中的一流概念(即有一个明确的 `p2p.Reactor` 接口)，但它们只是新堆栈中的一种设计模式，松散地定义为“在通道上侦听的东西，并且 对消息做出反应”。
 
-Since reactors have very few formal constraints, they can be implemented in a variety of ways. There is currently no recommended pattern for implementing reactors, to avoid overspecification and scope creep in this ADR. However, prototyping and developing a reactor pattern should be done early during implementation, to make sure reactors built using the `Channel` interface can satisfy the needs for convenience, deterministic tests, and reliability.
+由于反应堆很少有正式的约束，它们可以通过多种方式实现。 目前没有推荐的反应堆实施模式，以避免此 ADR 中的过度规范和范围蔓延。 但是，应该在实施过程中尽早完成原型设计和开发反应器模式，以确保使用“Channel”接口构建的反应器能够满足对便利性、确定性测试和可靠性的需求。
 
-Below is a trivial example of a simple echo reactor implemented as a function. The reactor will exchange the following Protobuf messages:
+下面是一个作为函数实现的简单回声反应器的简单示例。 反应器将交换以下 Protobuf 消息:
 
 ```protobuf
 message EchoMessage {
@@ -485,7 +485,7 @@ message PongMessage {
 }
 ```
 
-Implementing the `Wrapper` interface for `EchoMessage` allows transparently passing `PingMessage` and `PongMessage` through the channel, where it will automatically be (un)wrapped in an `EchoMessage`:
+为 `EchoMessage` 实现 `Wrapper` 接口允许通过通道透明地传递 `PingMessage` 和 `PongMessage`，它会自动(取消)包装在一个 `EchoMessage` 中:
 
 ```go
 func (m *EchoMessage) Wrap(inner proto.Message) error {
@@ -512,7 +512,7 @@ func (m *EchoMessage) Unwrap() (proto.Message, error) {
 }
 ```
 
-The reactor itself would be implemented e.g. like this:
+反应器本身将被实现，例如 像这样:
 
 ```go
 // RunEchoReactor wires up an echo reactor to a router and runs it.
@@ -575,41 +575,41 @@ func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates *p2p.Pee
 }
 ```
 
-## Status
+## 状态
 
-Partially implemented ([#5670](https://github.com/tendermint/tendermint/issues/5670))
+部分实现 ([#5670](https://github.com/tendermint/tendermint/issues/5670))
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-* Reduced coupling and simplified interfaces should lead to better understandability, increased reliability, and more testing.
+* 减少耦合和简化接口应该会导致更好的可理解性、更高的可靠性和更多的测试。
 
-* Using message passing via Go channels gives better control of backpressure and quality-of-service scheduling.
+* 使用通过 Go 通道传递的消息可以更好地控制背压和服务质量调度。
 
-* Peer lifecycle and connection management is centralized in a single entity, making it easier to reason about.
+* 对等生命周期和连接管理集中在单个实体中，使其更易于推理。
 
-* Detection, advertisement, and exchange of node addresses will be improved.
+* 将改进节点地址的检测、通告和交换。
 
-* Additional transports (e.g. QUIC) can be implemented and used in parallel with the existing MConn protocol.
+* 额外的传输(例如 QUIC)可以与现有的 MConn 协议并行实现和使用。
 
-* The P2P protocol will not be broken in the initial version, if possible.
+* 如果可能的话，P2P 协议不会在初始版本中被破坏。
 
-### Negative
+### 消极的
 
-* Fully implementing the new design as indended is likely to require breaking changes to the P2P protocol at some point, although the initial implementation shouldn't.
+* 按照预期完全实现新设计可能需要在某个时候对 P2P 协议进行重大更改，尽管最初的实现不应该。
 
-* Gradually migrating the existing stack and maintaining backwards-compatibility will be more labor-intensive than simply replacing the entire stack.
+* 逐步迁移现有堆栈并保持向后兼容性将比简单地更换整个堆栈更费力。
 
-* A complete overhaul of P2P internals is likely to cause temporary performance regressions and bugs as the implementation matures.
+* 随着实现的成熟，对 P2P 内部结构的彻底检查可能会导致暂时的性能回归和错误。
 
-* Hiding peer management information inside the `PeerManager` may prevent certain functionality or require additional deliberate interfaces for information exchange, as a tradeoff to simplify the design, reduce coupling, and avoid race conditions and lock contention.
+* 在“PeerManager”中隐藏对等管理信息可能会阻止某些功能或需要额外的故意接口来进行信息交换，作为简化设计、减少耦合和避免竞争条件和锁争用的权衡。
 
-### Neutral
+### 中性的
 
-* Implementation details around e.g. peer management, message scheduling, and peer and endpoint advertisement are not yet determined.
+* 实现细节，例如对等管理、消息调度以及对等和端点广告尚未确定。
 
-## References
+## 参考
 
-* [ADR 061: P2P Refactor Scope](adr-061-p2p-refactor-scope.md)
-* [#5670 p2p: internal refactor and architecture redesign](https://github.com/tendermint/tendermint/issues/5670)
+* [ADR 061:P2P 重构范围](adr-061-p2p-refactor-scope.md)
+* [#5670 p2p:内部重构和架构重新设计](https://github.com/tendermint/tendermint/issues/5670)

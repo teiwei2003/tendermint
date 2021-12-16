@@ -60,7 +60,7 @@ Tendermint Core 的文档托管在:
 
 - 适用于 GitHub，不适用于 VuePress 构建
 - 这更好:`/docs/hereitis/myfile.md`
-- 如果你移动那个文件，里面的链接会被保留（当然不是它的链接）
+- 如果你移动那个文件，里面的链接会被保留(当然不是它的链接)
 
 ### 满的
 
@@ -89,7 +89,7 @@ npm run serve
 
 <!-- markdown-link-check-disable -->
 
-运行 `pre` 和 `post` 钩子并启动热重载网络服务器。请参阅此命令的输出以获取 URL（通常为 <https://localhost:8080>）。
+运行 `pre` 和 `post` 钩子并启动热重载网络服务器。请参阅此命令的输出以获取 URL(通常为 <https://localhost:8080>)。
 
 <!-- markdown-link-check-enable -->
 
@@ -101,5 +101,5 @@ npm run serve
 
 ## 一致性
 
-因为构建过程是相同的（正如这里包含的信息），这个文件应该保持同步，因为
+因为构建过程是相同的(正如这里包含的信息)，这个文件应该保持同步，因为
 尽可能使用它的 [Cosmos SDK 存储库中的对应物](https://github.com/cosmos/cosmos-sdk/blob/master/docs/DOCS_README.md)。

@@ -1,20 +1,20 @@
-# Docker Compose
+# Docker 撰写
 
-With Docker Compose, you can spin up local testnets with a single command.
+使用 Docker Compose，您可以使用单个命令启动本地测试网。
 
-## Requirements
+## 要求
 
-1. [Install tendermint](../introduction/install.md)
-2. [Install docker](https://docs.docker.com/engine/installation/)
-3. [Install docker-compose](https://docs.docker.com/compose/install/)
+1.【安装tendermint】(../introduction/install.md)
+2.【安装docker】(https://docs.docker.com/engine/installation/)
+3.【安装docker-compose】(https://docs.docker.com/compose/install/)
 
-## Build
+## 建造
 
-Build the `tendermint` binary and, optionally, the `tendermint/localnode`
-docker image.
+构建 `tendermint` 二进制文件和可选的 `tendermint/localnode`
+码头工人形象。
 
-Note the binary will be mounted into the container so it can be updated without
-rebuilding the image.
+请注意，二进制文件将挂载到容器中，因此无需进行更新即可
+重建图像。
 
 ```sh
 # Build the linux binary in ./build
@@ -32,35 +32,35 @@ To start a 4 node testnet run:
 make localnet-start
 ```
 
-The nodes bind their RPC servers to ports 26657, 26660, 26662, and 26664 on the
-host.
+节点将它们的 RPC 服务器绑定到端口 26657、26660、26662 和 26664 上
+主持人。
 
-This file creates a 4-node network using the localnode image.
+此文件使用 localnode 映像创建一个 4 节点网络。
 
-The nodes of the network expose their P2P and RPC endpoints to the host machine
-on ports 26656-26657, 26659-26660, 26661-26662, and 26663-26664 respectively.
+网络节点将其 P2P 和 RPC 端点暴露给主机
+分别在端口 26656-26657、26659-26660、26661-26662 和 26663-26664 上。
 
-The first node (`node0`) exposes two additional ports: 6060 for profiling using
-[`pprof`](https://golang.org/pkg/net/http/pprof), and `9090` - for Prometheus
-server (if you don't know how to start one check out ["First steps |
-Prometheus"](https://prometheus.io/docs/introduction/first_steps/)).
+第一个节点(`node0`)公开了两个额外的端口:6060 用于分析使用
+[`pprof`](https://golang.org/pkg/net/http/pprof) 和 `9090` - 用于普罗米修斯
+服务器(如果您不知道如何开始结帐 ["第一步 |
+普罗米修斯"](https://prometheus.io/docs/introduction/first_steps/))。
 
-To update the binary, just rebuild it and restart the nodes:
+要更新二进制文件，只需重建它并重新启动节点:
 
 ```sh
 make build-linux
 make localnet-start
 ```
 
-## Configuration
+## 配置
 
-The `make localnet-start` creates files for a 4-node testnet in `./build` by
-calling the `tendermint testnet` command.
+`make localnet-start` 为 `./build` 中的 4 节点测试网创建文件
+调用 `tendermint testnet` 命令。
 
-The `./build` directory is mounted to the `/tendermint` mount point to attach
-the binary and config files to the container.
+将`./build`目录挂载到`/tendermint`挂载点进行attach
+二进制文件和配置文件到容器。
 
-To change the number of validators / non-validators change the `localnet-start` Makefile target [here](../../Makefile):
+要更改验证器/非验证器的数量，请更改 `localnet-start` Makefile 目标 [此处](../../Makefile):
 
 ```makefile
 localnet-start: localnet-stop
@@ -68,9 +68,9 @@ localnet-start: localnet-stop
   docker-compose up
 ```
 
-The command now will generate config files for 5 validators and 3
-non-validators. Along with generating new config files the docker-compose file needs to be edited.
-Adding 4 more nodes is required in order to fully utilize the config files that were generated.
+该命令现在将为 5 个验证器和 3 个生成配置文件
+非验证者。 除了生成新的配置文件，还需要编辑 docker-compose 文件。
+需要再添加 4 个节点才能充分利用生成的配置文件。
 
 ```yml
   node3: # bump by 1 for every node
@@ -95,9 +95,9 @@ Before running it, don't forget to cleanup the old files:
 rm -rf ./build/node*
 ```
 
-## Configuring ABCI containers
+## 配置 ABCI 容器
 
-To use your own ABCI applications with 4-node setup edit the [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml) file and add image to your ABCI application.
+要在 4 节点设置中使用您自己的 ABCI 应用程序，请编辑 [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml) 文件并将图像添加到您的 ABCI 应用。
 
 ```yml
  abci0:
@@ -146,7 +146,7 @@ To use your own ABCI applications with 4-node setup edit the [docker-compose.yam
 
 ```
 
-Override the [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) in each node to connect to it's ABCI.
+覆盖每个节点中的 [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) 以连接到它的 ABCI。
 
 ```yml
   node0:
@@ -165,16 +165,16 @@ Override the [command](https://github.com/tendermint/tendermint/blob/master/netw
         ipv4_address: 192.167.10.2
 ```
 
-Similarly do for node1, node2 and node3 then [run testnet](https://github.com/tendermint/tendermint/blob/master/docs/networks/docker-compose.md#run-a-testnet)
+同样对 node1、node2 和 node3 做然后 [run testnet](https://github.com/tendermint/tendermint/blob/master/docs/networks/docker-compose.md#run-a-testnet)
 
-## Logging
+## 记录
 
-Log is saved under the attached volume, in the `tendermint.log` file. If the
-`LOG` environment variable is set to `stdout` at start, the log is not saved,
-but printed on the screen.
+日志保存在附加卷下的“tendermint.log”文件中。 如果
+`LOG` 环境变量在启动时设置为 `stdout`，不保存日志，
+但印在屏幕上。
 
-## Special binaries
+## 特殊二进制文件
 
-If you have multiple binaries with different names, you can specify which one
-to run with the `BINARY` environment variable. The path of the binary is relative
-to the attached volume.
+如果您有多个名称不同的二进制文件，您可以指定哪一个
+使用 `BINARY` 环境变量运行。 二进制的路径是相对的
+到附加的卷。

@@ -1,84 +1,84 @@
-# ADR 015: Crypto encoding
+# ADR 015:加密编码
 
-## Context
+## 语境
 
-We must standardize our method for encoding public keys and signatures on chain.
-Currently we amino encode the public keys and signatures.
-The reason we are using amino here is primarily due to ease of support in
-parsing for other languages.
-We don't need its upgradability properties in cryptosystems, as a change in
-the crypto that requires adapting the encoding, likely warrants being deemed
-a new cryptosystem.
-(I.e. using new public parameters)
+我们必须标准化我们在链上编码公钥和签名的方法。
+目前我们对公钥和签名进行氨基编码。
+我们在这里使用氨基的原因主要是因为易于支持
+解析其他语言。
+我们不需要它在密码系统中的可升级性属性，因为
+需要调整编码的加密货币，可能需要被视为
+一个新的密码系统。
+(即使用新的公共参数)
 
-## Decision
+## 决定
 
-### Public keys
+### 公钥
 
-For public keys, we will continue to use amino encoding on the canonical
-representation of the pubkey.
-(Canonical as defined by the cryptosystem itself)
-This has two significant drawbacks.
-Amino encoding is less space-efficient, due to requiring support for upgradability.
-Amino encoding support requires forking protobuf and adding this new interface support
-option in the language of choice.
+对于公钥，我们将继续在规范上使用氨基编码
+公钥的表示。
+(由密码系统本身定义的规范)
+这有两个明显的缺点。
+由于需要支持可升级性，氨基编码的空间效率较低。
+氨基编码支持需要 fork protobuf 并添加这个新的接口支持
+选择的语言中的选项。
 
-The reason for continuing to use amino however is that people can create code
-more easily in languages that already have an up to date amino library.
-It is possible that this will change in the future, if it is deemed that
-requiring amino for interacting with Tendermint cryptography is unnecessary.
+然而，继续使用氨基的原因是人们可以创建代码
+在已经拥有最新氨基库的语言中更容易。
+这可能会在未来发生变化，如果它被认为是
+不需要氨基来与 Tendermint 加密进行交互。
 
-The arguments for space efficiency here are refuted on the basis that there are
-far more egregious wastages of space in the SDK.
-The space requirement of the public keys doesn't cause many problems beyond
-increasing the space attached to each validator / account.
+这里的空间效率论据被驳斥，理由是有
+SDK 中的空间浪费严重得多。
+公钥的空间要求不会引起很多问题
+增加附加到每个验证器/帐户的空间。
 
-The alternative to using amino here would be for us to create an enum type.
-Switching to just an enum type is worthy of investigation post-launch.
-For reference, part of amino encoding interfaces is basically a 4 byte enum
-type definition.
-Enum types would just change that 4 bytes to be a variant, and it would remove
-the protobuf overhead, but it would be hard to integrate into the existing API.
+在这里使用氨基的替代方法是我们创建一个枚举类型。
+切换到枚举类型值得在发布后进行调查。
+作为参考，部分氨基编码接口基本上是一个4字节的枚举
+类型定义。
+枚举类型只会将那 4 个字节更改为变体，并且会删除
+protobuf 开销，但很难集成到现有 API 中。
 
-### Signatures
+### 签名
 
-Signatures should be switched to be `[]byte`.
-Spatial efficiency in the signatures is quite important,
-as it directly affects the gas cost of every transaction,
-and the throughput of the chain.
-Signatures don't need to encode what type they are for (unlike public keys)
-since public keys must already be known.
-Therefore we can validate the signature without needing to encode its type.
+签名应该切换为`[]byte`。
+签名中的空间效率非常重要，
+因为它直接影响每笔交易的gas成本，
+和链的吞吐量。
+签名不需要对它们的类​​型进行编码(与公钥不同)
+因为公钥必须是已知的。
+因此，我们可以验证签名而无需对其类型进行编码。
 
-When placed in state, signatures will still be amino encoded, but it will be the
-primitive type `[]byte` getting encoded.
+当置于 state 中时，签名仍将是氨基编码的，但它将是
+原始类型`[]byte` 被编码。
 
 #### Ed25519
 
-Use the canonical representation for signatures.
+使用签名的规范表示。
 
 #### Secp256k1
 
-There isn't a clear canonical representation here.
-Signatures have two elements `r,s`.
-These bytes are encoded as `r || s`, where `r` and `s` are both exactly
-32 bytes long, encoded big-endian.
-This is basically Ethereum's encoding, but without the leading recovery bit.
+这里没有明确的规范表示。
+签名有两个元素`r,s`。
+这些字节被编码为`r || s`，其中 `r` 和 `s` 都是
+32 字节长，大端编码。
+这基本上是以太坊的编码，但没有领先的恢复位。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- More space efficient signatures
+- 更节省空间的签名
 
-### Negative
+### 消极的
 
-- We have an amino dependency for cryptography.
+- 我们对密码学有氨基依赖。
 
-### Neutral
+### 中性的
 
-- No change to public keys
+- 没有更改公钥

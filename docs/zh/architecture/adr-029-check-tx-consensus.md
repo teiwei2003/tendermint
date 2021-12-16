@@ -1,25 +1,25 @@
-# ADR 029: Check block txs before prevote
+# ADR 029:在投票前检查区块交易
 
-## Changelog
+## 变更日志
 
-04-10-2018: Update with link to issue
-[#2384](https://github.com/tendermint/tendermint/issues/2384) and reason for rejection
-19-09-2018: Initial Draft
+2018 年 4 月 10 日:更新并提供问题链接
+[#2384](https://github.com/tendermint/tendermint/issues/2384) 和拒绝原因
+19-09-2018:初稿
 
-## Context
+## 语境
 
-We currently check a tx's validity through 2 ways.
+我们目前通过 2 种方式检查 tx 的有效性。
 
-1. Through checkTx in mempool connection.
-2. Through deliverTx in consensus connection.
+1.通过mempool连接中的checkTx。
+2. 通过deliverTx 共识连接。
 
-The 1st is called when external tx comes in, so the node should be a proposer this time. The 2nd is called when external block comes in and reach the commit phase, the node doesn't need to be the proposer of the block, however it should check the txs in that block.
+第一个是在外部 tx 进来时调用，所以这次节点应该是一个提议者。当外部块进入并到达提交阶段时调用第二个，节点不需要是块的提议者，但是它应该检查该块中的 txs。
 
-In the 2nd situation, if there are many invalid txs in the block, it would be too late for all nodes to discover that most txs in the block are invalid, and we'd better not record invalid txs in the blockchain too.
+第二种情况，如果区块中有很多无效的交易，那么所有节点发现区块中的大部分交易都是无效的就为时已晚，我们最好也不要在区块链中记录无效的交易。
 
-## Proposed solution
+## 建议的解决方案
 
-Therefore, we should find a way to check the txs' validity before send out a prevote. Currently we have cs.isProposalComplete() to judge whether a block is complete. We can have
+因此，我们应该在发出预投票之前找到一种方法来检查 txs 的有效性。目前我们有 cs.isProposalComplete() 来判断一个区块是否完整。我们可以有
 
 ```
 func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
@@ -35,9 +35,9 @@ func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
 }
 ```
 
-such a method in BlockExecutor to check all txs' validity in that block.
+BlockExecutor 中的这种方法来检查该块中所有交易的有效性。
 
-However, this method should not be implemented like that, because checkTx will share the same state used in mempool in the app.  So we should define a new interface method checkBlock in Application to indicate it to use the same state as deliverTx.
+但是，这种方法不应该这样实现，因为 checkTx 将共享应用程序内存池中使用的相同状态。 所以我们应该在Application中定义一个新的接口方法checkBlock来指示它使用与deliverTx相同的状态。
 
 ```
 type Application interface {
@@ -58,7 +58,7 @@ type Application interface {
 }
 ```
 
-All app should implement that method. For example, counter:
+所有应用程序都应该实现该方法。 例如，计数器:
 
 ```
 func (app *CounterApplication) CheckBlock(block types.Request_CheckBlock) types.ResponseCheckBlock {
@@ -85,7 +85,7 @@ func (app *CounterApplication) CheckBlock(block types.Request_CheckBlock) types.
 }
 ```
 
-In BeginBlock, the app should restore the state to the orignal state before checking the block:
+在 Begin Block 中，应用应在检查块之前将状态恢复到原始状态:
 
 ```
 func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
@@ -97,31 +97,31 @@ func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 }
 ```
 
-The txCount is like the nonce in ethermint, it should be restored when entering the deliverTx phase. While some operation like checking the tx signature needs not to be done again. So the deliverTx can focus on how a tx can be applied, ignoring the checking of the tx, because all the checking has already been done in the checkBlock phase before.
+txCount 就像ethermint 中的nonce，在进入deliverTx 阶段时应该恢复。而一些操作，如检查 tx 签名不需要再次执行。所以deliverTx可以专注于如何应用一个tx，而忽略对tx的检查，因为之前所有的检查都已经在checkBlock阶段完成了。
 
-An optional optimization is alter the deliverTx to deliverBlock. For the block has already been checked by checkBlock, so all the txs in it are valid. So the app can cache the block, and in the deliverBlock phase, it just needs to apply the block in the cache. This optimization can save network current in deliverTx.
+一个可选的优化是将 deliveryTx 更改为 deliveryBlock。因为块已经被checkBlock检查过，所以里面的所有交易都是有效的。所以app可以缓存block，在deliverBlock阶段，只需要在缓存中应用block即可。这种优化可以节省deliverTx 中的网络电流。
 
 
 
-## Status
+## 状态
 
-Rejected
+拒绝
 
-## Decision
+## 决定
 
-Performance impact is considered too great. See [#2384](https://github.com/tendermint/tendermint/issues/2384)
+性能影响被认为太大。见[#2384](https://github.com/tendermint/tendermint/issues/2384)
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- more robust to defend the adversary to propose a block full of invalid txs.
+- 更稳健地保护对手提出一个充满无效交易的区块。
 
-### Negative
+### 消极的
 
-- add a new interface method. app logic needs to adjust to appeal to it.
-- sending all the tx data over the ABCI twice
-- potentially redundant validations (eg. signature checks in both CheckBlock and
+- 添加新的接口方法。应用程序逻辑需要调整以吸引它。
+- 通过 ABCI 发送所有 tx 数据两次
+- 潜在的冗余验证(例如 CheckBlock 和
   DeliverTx)
 
-### Neutral
+### 中性的

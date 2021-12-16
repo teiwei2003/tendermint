@@ -1,11 +1,11 @@
-# Configuration
+# 配置
 
-Here we describe configuration options around mempool.
-For the purposes of this document, they are described
-in a toml file, but some of them can also be passed in as
-environmental variables.
+这里我们描述了围绕内存池的配置选项。
+出于本文档的目的，它们被描述为
+在 toml 文件中，但其中一些也可以作为
+环境变量。
 
-Config:
+配置:
 
 ```toml
 [mempool]
@@ -44,58 +44,58 @@ max-batch-bytes = 0
 
 Environment: `TM_MEMPOOL_RECHECK=false` -->
 
-## Recheck
+##复查
 
-Recheck determines if the mempool rechecks all pending
-transactions after a block was committed. Once a block
-is committed, the mempool removes all valid transactions
-that were successfully included in the block.
+重新检查确定内存池是否重新检查所有挂起
+区块提交后的交易。一次块
+已提交，内存池将删除所有有效交易
+已成功包含在块中。
 
-If `recheck` is true, then it will rerun CheckTx on
-all remaining transactions with the new block state.
+如果 `recheck` 为真，那么它将重新运行 CheckTx
+具有新区块状态的所有剩余交易。
 
-## Broadcast
+## 播送
 
-Determines whether this node gossips any valid transactions
-that arrive in mempool. Default is to gossip anything that
-passes checktx. If this is disabled, transactions are not
-gossiped, but instead stored locally and added to the next
-block this node is the proposer.
+确定此节点是否闲聊任何有效交易
+到达内存池。默认是八卦任何事情
+通过 checktx。如果禁用此选项，则事务不会
+八卦，而是存储在本地并添加到下一个
+阻止这个节点是提议者。
 
 ## WalDir
 
-This defines the directory where mempool writes the write-ahead
-logs. These files can be used to reload unbroadcasted
-transactions if the node crashes.
+这定义了内存池写入预写的目录
+日志。这些文件可用于重新加载未广播的
+节点崩溃时的交易。
 
-If the directory passed in is an absolute path, the wal file is
-created there. If the directory is a relative path, the path is
-appended to home directory of the tendermint process to
-generate an absolute path to the wal directory
-(default `$HOME/.tendermint` or set via `TM_HOME` or `--home`)
+如果传入的目录是绝对路径，则wal文件为
+在那里创建。如果目录是相对路径，则路径为
+附加到tendermint进程的主目录到
+生成wal目录的绝对路径
+(默认`$HOME/.tendermint` 或通过`TM_HOME` 或`--home` 设置)
 
-## Size
+## 尺寸
 
-Size defines the total amount of transactions stored in the mempool. Default is `5_000` but can be adjusted to any number you would like. The higher the size the more strain on the node.
+大小定义了存储在内存池中的交易总量。默认值为“5_000”，但可以调整为您想要的任何数字。尺寸越大，节点上的应变越大。
 
-## Max Transactions Bytes
+## 最大交易字节数
 
-Max transactions bytes defines the total size of all the transactions in the mempool. Default is 1 GB.
+最大交易字节数定义了内存池中所有交易的总大小。默认值为 1 GB。
 
-## Cache size
+## 缓存大小
 
-Cache size determines the size of the cache holding transactions we have already seen. The cache exists to avoid running `checktx` each time we receive a transaction.
+缓存大小决定了我们已经看到的缓存保存事务的大小。缓存的存在是为了避免每次收到交易时都运行 `checktx`。
 
-## Keep Invalid Transactions In Cache
+## 在缓存中保留无效事务
 
-Keep invalid transactions in cache determines wether a transaction in the cache, which is invalid, should be evicted. An invalid transaction here may mean that the transaction may rely on a different tx that has not been included in a block.
+将无效事务保留在缓存中确定是否应该驱逐缓存中无效的事务。此处的无效交易可能意味着该交易可能依赖于未包含在区块中的不同 tx。
 
-## Max Transaction Bytes
+## 最大交易字节数
 
-Max transaction bytes defines the max size a transaction can be for your node. If you would like your node to only keep track of smaller transactions this field would need to be changed. Default is 1MB.
+最大交易字节数定义了一个交易可以用于您的节点的最大大小。如果您希望您的节点仅跟踪较小的交易，则需要更改此字段。默认为 1MB。
 
-## Max Batch Bytes
+## 最大批处理字节
 
-Max batch bytes defines the amount of bytes the node will send to a peer. Default is 0.
+最大批处理字节数定义了节点将发送到对等方的字节数。默认值为 0。
 
-> Note: Unused due to https://github.com/tendermint/tendermint/issues/5796
+> 注意:由于 https://github.com/tendermint/tendermint/issues/5796 未使用

@@ -1,24 +1,24 @@
-# Getting Started
+# 入门
 
-## First Tendermint App
+## 第一个 Tendermint 应用程序
 
-As a general purpose blockchain engine, Tendermint is agnostic to the
-application you want to run. So, to run a complete blockchain that does
-something useful, you must start two programs: one is Tendermint Core,
-the other is your application, which can be written in any programming
-language. Recall from [the intro to
-ABCI](../introduction/what-is-tendermint.md#abci-overview) that Tendermint Core handles all the p2p and consensus stuff, and just forwards transactions to the
-application when they need to be validated, or when they're ready to be
-committed to a block.
+作为一个通用的区块链引擎，Tendermint 是不可知的
+要运行的应用程序。 所以，要运行一个完整的区块链，
+一些有用的东西，你必须启动两个程序:一个是 Tendermint Core，
+另一个是你的应用程序，它可以用任何程序编写
+语。 回忆起[介绍到
+ABCI](../introduction/what-is-tendermint.md#abci-overview) Tendermint Core 处理所有 p2p 和共识的东西，只是将交易转发到
+应用程序需要验证时，或者当他们准备好时
+提交到一个块。
 
-In this guide, we show you some examples of how to run an application
-using Tendermint.
+在本指南中，我们向您展示了一些如何运行应用程序的示例
+使用 Tendermint。
 
-### Install
+### 安装
 
-The first apps we will work with are written in Go. To install them, you
-need to [install Go](https://golang.org/doc/install), put
-`$GOPATH/bin` in your `$PATH` and enable go modules with these instructions:
+我们将使用的第一个应用程序是用 Go 编写的。 要安装它们，您
+需要[安装Go](https://golang.org/doc/install)，把
+在你的 `$PATH` 中添加 `$GOPATH/bin` 并使用以下说明启用 go 模块:
 
 ```bash
 echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
@@ -33,62 +33,62 @@ cd $GOPATH/src/github.com/tendermint/tendermint
 make install_abci
 ```
 
-Now you should have the `abci-cli` installed; you'll notice the `kvstore`
-command, an example application written
-in Go. See below for an application written in JavaScript.
+现在你应该已经安装了 `abci-cli`； 你会注意到`kvstore`
+命令，编写的示例应用程序
+在去。 有关用 JavaScript 编写的应用程序，请参见下文。
 
-Now, let's run some apps!
+现在，让我们运行一些应用程序！
 
-## KVStore - A First Example
+## KVStore - 第一个例子
 
-The kvstore app is a [Merkle
-tree](https://en.wikipedia.org/wiki/Merkle_tree) that just stores all
-transactions. If the transaction contains an `=`, e.g. `key=value`, then
-the `value` is stored under the `key` in the Merkle tree. Otherwise, the
-full transaction bytes are stored as the key and the value.
+kvstore 应用程序是一个 [Merkle
+tree](https://en.wikipedia.org/wiki/Merkle_tree) 只存储所有
+交易。 如果交易包含`=`，例如 `key=value`，然后
+`value` 存储在 Merkle 树的 `key` 下。 否则，
+完整的交易字节存储为键和值。
 
-Let's start a kvstore application.
+让我们启动一个 kvstore 应用程序。
 
 ```sh
 abci-cli kvstore
 ```
 
-In another terminal, we can start Tendermint. You should already have the
-Tendermint binary installed. If not, follow the steps from
-[here](../introduction/install.md). If you have never run Tendermint
-before, use:
+在另一个终端中，我们可以启动 Tendermint。 你应该已经有了
+已安装 Tendermint 二进制文件。 如果没有，请按照以下步骤操作
+[这里](../introduction/install.md)。 如果您从未运行过 Tendermint
+使用前:
 
 ```sh
 tendermint init validator
 tendermint start
 ```
 
-If you have used Tendermint, you may want to reset the data for a new
-blockchain by running `tendermint unsafe_reset_all`. Then you can run
-`tendermint start` to start Tendermint, and connect to the app. For more
-details, see [the guide on using Tendermint](../tendermint-core/using-tendermint.md).
+如果您使用过 Tendermint，您可能需要为新的数据重置数据
+通过运行“tendermint unsafe_reset_all”来实现区块链。 然后你可以运行
+`tendermint start` 启动 Tendermint，并连接到应用程序。 更多
+详细信息，请参阅[使用 Tendermint 的指南](../tendermint-core/using-tendermint.md)。
 
-You should see Tendermint making blocks! We can get the status of our
-Tendermint node as follows:
+你应该看到 Tendermint 制作积木块！ 我们可以得到我们的状态
+Tendermint节点如下:
 
 ```sh
 curl -s localhost:26657/status
 ```
 
-The `-s` just silences `curl`. For nicer output, pipe the result into a
-tool like [jq](https://stedolan.github.io/jq/) or `json_pp`.
+`-s` 只是让 `curl` 静音。 为了更好的输出，将结果通过管道传输到一个
+像 [jq](https://stedolan.github.io/jq/) 或 `json_pp` 这样的工具。
 
-Now let's send some transactions to the kvstore.
+现在让我们向 kvstore 发送一些交易。
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
 ```
 
-Note the single quote (`'`) around the url, which ensures that the
-double quotes (`"`) are not escaped by bash. This command sent a
-transaction with bytes `abcd`, so `abcd` will be stored as both the key
-and the value in the Merkle tree. The response should look something
-like:
+注意 url 周围的单引号 (`'`)，它确保
+双引号 (`"`) 不会被 bash 转义。这个命令发送了一个
+带有字节 `abcd` 的事务，因此 `abcd` 将被存储为两个键
+以及 Merkle 树中的值。 响应应该看起来有些东西
+喜欢:
 
 ```json
 {
@@ -114,8 +114,8 @@ like:
 }
 ```
 
-We can confirm that our transaction worked and the value got stored by
-querying the app:
+我们可以确认我们的交易有效并且价值被存储
+查询应用程序:
 
 ```sh
 curl -s 'localhost:26657/abci_query?data="abcd"'
@@ -138,38 +138,38 @@ The result should look like:
 }
 ```
 
-Note the `value` in the result (`YWJjZA==`); this is the base64-encoding
-of the ASCII of `abcd`. You can verify this in a python 2 shell by
-running `"YWJjZA==".decode('base64')` or in python 3 shell by running
-`import codecs; codecs.decode(b"YWJjZA==", 'base64').decode('ascii')`.
-Stay tuned for a future release that [makes this output more
-human-readable](https://github.com/tendermint/tendermint/issues/1794).
+注意结果中的`value`(`YWJjZA==`)； 这是 base64 编码
+`abcd` 的 ASCII 码。 您可以通过以下方式在 python 2 shell 中验证这一点
+运行 `"YWJjZA==".decode('base64')` 或在 python 3 shell 中运行
+`导入编解码器； codecs.decode(b"YWJjZA==", 'base64').decode('ascii')`。
+请继续关注[使此输出更多
+人类可读](https://github.com/tendermint/tendermint/issues/1794)。
 
-Now let's try setting a different key and value:
+现在让我们尝试设置不同的键和值:
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
 ```
 
-Now if we query for `name`, we should get `satoshi`, or `c2F0b3NoaQ==`
-in base64:
+现在如果我们查询`name`，我们应该得到`satoshi`，或者`c2F0b3NoaQ==`
+在 base64 中:
 
 ```sh
 curl -s 'localhost:26657/abci_query?data="name"'
 ```
 
-Try some other transactions and queries to make sure everything is
-working!
+尝试一些其他事务和查询以确保一切正常
+在职的！
 
 
-## CounterJS - Example in Another Language
+## CounterJS - 另一种语言的示例
 
-We also want to run applications in another language - in this case,
-we'll run a Javascript version of the `counter`. To run it, you'll need
-to [install node](https://nodejs.org/en/download/).
+我们还想以另一种语言运行应用程序 - 在这种情况下，
+我们将运行 `counter` 的 Javascript 版本。 要运行它，你需要
+[安装节点](https://nodejs.org/en/download/)。
 
-You'll also need to fetch the relevant repository, from
-[here](https://github.com/tendermint/js-abci), then install it:
+您还需要从
+[这里](https://github.com/tendermint/js-abci)，然后安装:
 
 ```sh
 git clone https://github.com/tendermint/js-abci.git
@@ -177,22 +177,22 @@ cd js-abci
 npm install abci
 ```
 
-Kill the previous `counter` and `tendermint` processes. Now run the app:
+杀死之前的 `counter` 和 `tendermint` 进程。 现在运行应用程序:
 
 ```sh
 node example/counter.js
 ```
 
-In another window, reset and start `tendermint`:
+在另一个窗口中，重置并启动“tendermint”:
 
 ```sh
 tendermint unsafe_reset_all
 tendermint start
 ```
 
-Once again, you should see blocks streaming by - but now, our
-application is written in Javascript! Try sending some transactions, and
-like before - the results should be the same:
+再一次，你应该看到块流过——但现在，我们的
+应用程序是用 Javascript 编写的！ 尝试发送一些交易，然后
+像以前一样 - 结果应该是一样的:
 
 ```sh
 # ok

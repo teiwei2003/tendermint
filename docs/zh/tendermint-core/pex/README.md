@@ -1,167 +1,167 @@
-# Peer Strategy and Exchange
+# 对等策略与交流
 
-Here we outline the design of the PeerStore
-and how it used by the Peer Exchange Reactor (PEX) to ensure we are connected
-to good peers and to gossip peers to others.
+这里我们概述了 PeerStore 的设计
+以及 Peer Exchange Reactor (PEX) 如何使用它来确保我们连接
+对好同伴和对他人八卦的同伴。
 
-## Peer Types
+## 对等类型
 
-Certain peers are special in that they are specified by the user as `persistent`,
-which means we auto-redial them if the connection fails, or if we fail to dial
-them.
-Some peers can be marked as `private`, which means
-we will not put them in the peer store or gossip them to others.
+某些对等点的特殊性在于它们由用户指定为“持久性”，
+这意味着如果连接失败，或者我们拨号失败，我们会自动重拨它们
+他们。
+一些对等点可以标记为“私有”，这意味着
+我们不会将它们放在同行商店中或将它们八卦给其他人。
 
-All peers except private peers and peers coming from them are tracked using the
-peer store.
+除了私有对等点和来自它们的对等点之外的所有对等点都使用
+同行商店。
 
-The rest of our peers are only distinguished by being either
-inbound (they dialed our public address) or outbound (we dialed them).
+我们其他同行的唯一区别在于:
+入站(他们拨打我们的公共地址)或出站(我们拨打他们)。
 
-## Discovery
+##发现
 
-Peer discovery begins with a list of seeds.
+对等发现从种子列表开始。
 
-When we don't have enough peers, we
+当我们没有足够的同伴时，我们
 
-1. ask existing peers
-2. dial seeds if we're not dialing anyone currently
+1.询问现有同行
+2. 如果我们目前没有拨打任何人，请拨打种子
 
-On startup, we will also immediately dial the given list of `persistent_peers`,
-and will attempt to maintain persistent connections with them. If the
-connections die, or we fail to dial, we will redial every 5s for a few minutes,
-then switch to an exponential backoff schedule, and after about a day of
-trying, stop dialing the peer. This behavior is when `persistent_peers_max_dial_period` is configured to zero.
+在启动时，我们也会立即拨打给定的“persistent_peers”列表，
+并将尝试与他们保持持久的连接。如果
+连接中断，或者我们拨号失败，我们将每隔 5s 重拨几分钟，
+然后切换到指数退避计划，大约一天后
+尝试，停止拨号对等体。这种行为是当 `persistent_peers_max_dial_period` 配置为零时。
 
-But If `persistent_peers_max_dial_period` is set greater than zero, terms between each dial to each persistent peer
-will not exceed `persistent_peers_max_dial_period` during exponential backoff.
-Therefore, `dial_period` = min(`persistent_peers_max_dial_period`, `exponential_backoff_dial_period`)
-and we keep trying again regardless of `maxAttemptsToDial`
+但是如果 `persistent_peers_max_dial_period` 设置为大于零，则每次拨号到每个持久对等方之间的条款
+在指数退避期间不会超过“persistent_peers_max_dial_period”。
+因此，`dial_period` = min(`persistent_peers_max_dial_period`, `exponential_backoff_dial_period`)
+不管`maxAttemptsToDial`如何，我们都会继续尝试
 
-As long as we have less than `MaxNumOutboundPeers`, we periodically request
-additional peers from each of our own and try seeds.
+只要我们少于 `MaxNumOutboundPeers`，我们就会定期请求
+来自我们每个人的其他同行并尝试种子。
 
-## Listening
+## 聆听
 
-Peers listen on a configurable ListenAddr that they self-report in their
-NodeInfo during handshakes with other peers. Peers accept up to
-`MaxNumInboundPeers` incoming peers.
+Peers 监听一个可配置的 ListenAddr，他们在他们的
+与其他对等方握手期间的 NodeInfo。同行最多接受
+`MaxNumInboundPeers` 传入对等点。
 
-## Address Book
+## 地址簿
 
-Peers are tracked via their ID (their PubKey.Address()).
-Peers are added to the peer store from the PEX when they first connect to us or
-when we hear about them from other peers.
+对等点通过它们的 ID(它们的 PubKey.Address())进行跟踪。
+对等点第一次连接到我们时会从 PEX 添加到对等存储中，或者
+当我们从其他同行那里听说他们时。
 
-The peer store is arranged in sets of buckets, and distinguishes between
-vetted (old) and unvetted (new) peers. It keeps different sets of buckets for
-vetted and unvetted peers. Buckets provide randomization over peer selection.
-Peers are put in buckets according to their IP groups.
+peer store 是按照bucket的集合排列的，并且区分
+经过审查的(旧)和未经审查的(新)同行。它保留不同的桶组
+经过审查和未经审查的同行。存储桶提供对等方选择的随机化。
+对等点根据其 IP 组放入桶中。
 
-IP group can be a masked IP (e.g. `1.2.0.0` or `2602:100::`) or `local` for
-local addresses or `unroutable` for unroutable addresses. The mask which
-corresponds to the `/16` subnet is used for IPv4, `/32` subnet - for IPv6.
-Each group has a limited number of buckets to prevent DoS attacks coming from
-that group (e.g. an attacker buying a `/16` block of IPs and launching a DoS
-attack).
+IP 组可以是掩码 IP(例如`1.2.0.0` 或`2602:100::`)或`local`，用于
+本地地址或不可路由地址的“不可路由”。那个面具
+对应于`/16` 子网用于IPv4，`/32​​` 子网-用于IPv6。
+每个组都有有限数量的桶，以防止来自
+该组(例如，攻击者购买了一个“/16”IP 块并启动了 DoS
+攻击)。
 
-[highwayhash](https://arxiv.org/abs/1612.06257) is used as a hashing function
-when calculating a bucket.
+[highwayhash](https://arxiv.org/abs/1612.06257) 用作散列函数
+计算桶时。
 
-When placing a peer into a new bucket:
+将节点放入新存储桶时:
 
 ```md
 hash(key + sourcegroup + int64(hash(key + group + sourcegroup)) % bucket_per_group) % num_new_buckets
 ```
 
-When placing a peer into an old bucket:
+将 peer 放入旧桶时:
 
 ```md
 hash(key + group + int64(hash(key + addr)) % buckets_per_group) % num_old_buckets
 ```
 
-where `key` - random 24 HEX string, `group` - IP group of the peer (e.g. `1.2.0.0`),
-`sourcegroup` - IP group of the sender (peer who sent us this address) (e.g. `174.11.0.0`),
-`addr` - string representation of the peer's address (e.g. `174.11.10.2:26656`).
+其中`key` - 随机的24 HEX 字符串，`group` - 对等端的IP 组(例如`1.2.0.0`)，
+`sourcegroup` - 发件人的 IP 组(向我们发送此地址的对等方)(例如 `174.11.0.0`)，
+`addr` - 对等地址的字符串表示(例如 `174.11.10.2:26656`)。
 
-A vetted peer can only be in one bucket. An unvetted peer can be in multiple buckets, and
-each instance of the peer can have a different IP:PORT.
+经过审查的同行只能在一个桶中。未经审查的对等点可以位于多个存储桶中，并且
+对等方的每个实例都可以有不同的 IP:PORT。
 
-If we're trying to add a new peer but there's no space in its bucket, we'll
-remove the worst peer from that bucket to make room.
+如果我们试图添加一个新的对等点，但它的存储桶中没有空间，我们将
+从该桶中删除最差的对等点以腾出空间。
 
-## Vetting
+## 审核
 
-When a peer is first added, it is unvetted.
-Marking a peer as vetted is outside the scope of the `p2p` package.
-For Tendermint, a Peer becomes vetted once it has contributed sufficiently
-at the consensus layer; ie. once it has sent us valid and not-yet-known
-votes and/or block parts for `NumBlocksForVetted` blocks.
-Other users of the p2p package can determine their own conditions for when a peer is marked vetted.
+当第一次添加对等点时，它是未经审查的。
+将 peer 标记为已审查超出了 p2p 包的范围。
+对于 Tendermint，一旦 Peer 做出了足够的贡献，它就会被审查
+在共识层； IE。一旦它向我们发送了有效且未知的信息
+“NumBlocksForVetted”块的投票和/或块部分。
+p2p 包的其他用户可以确定他们自己的条件，以便对等方标记为审查。
 
-If a peer becomes vetted but there are already too many vetted peers,
-a randomly selected one of the vetted peers becomes unvetted.
+如果一个同行被审查但已经有太多审查的同行，
+随机选择的经过审查的同行之一变得未经审查。
 
-If a peer becomes unvetted (either a new peer, or one that was previously vetted),
-a randomly selected one of the unvetted peers is removed from the peer store.
+如果同行变得未经审查(新的同行，或之前经过审查的同行)，
+从对等存储中删除随机选择的未经审查的对等节点之一。
 
-More fine-grained tracking of peer behaviour can be done using
-a trust metric (see below), but it's best to start with something simple.
+可以使用更细粒度的对等行为跟踪
+信任指标(见下文)，但最好从简单的事情开始。
 
-## Select Peers to Dial
+## 选择要拨号的对等方
 
-When we need more peers, we pick addresses randomly from the addrbook with some
-configurable bias for unvetted peers. The bias should be lower when we have
-fewer peers and can increase as we obtain more, ensuring that our first peers
-are more trustworthy, but always giving us the chance to discover new good
-peers.
+当我们需要更多对等点时，我们会从 addrbook 中随机选择一些地址
+未经审查的同行的可配置偏差。当我们有时，偏差应该更低
+更少的同行，并且可以随着我们获得更多而增加，确保我们的第一批同行
+更值得信赖，但总是让我们有机会发现新的好东西
+同行。
 
-We track the last time we dialed a peer and the number of unsuccessful attempts
-we've made. If too many attempts are made, we mark the peer as bad.
+我们跟踪上次拨打对等方的时间以及尝试失败的次数
+我们已经做了。如果进行了过多的尝试，我们会将对等点标记为坏的。
 
-Connection attempts are made with exponential backoff (plus jitter). Because
-the selection process happens every `ensurePeersPeriod`, we might not end up
-dialing a peer for much longer than the backoff duration.
+连接尝试是通过指数退避(加上抖动)进行的。因为
+选择过程发生在每个 `ensurePeersPeriod`，我们可能不会结束
+拨打对等方的时间比退避持续时间长得多。
 
-If we fail to connect to the peer after 16 tries (with exponential backoff), we
-remove from peer store completely. But for persistent peers, we indefinitely try to
-dial all persistent peers unless `persistent_peers_max_dial_period` is configured to zero
+如果我们在 16 次尝试后未能连接到对等点(使用指数退避)，我们
+完全从对等商店中删除。但对于坚持不懈的同行，我们无限期地尝试
+拨打所有持久对等点，除非 `persistent_peers_max_dial_period` 配置为零
 
-## Select Peers to Exchange
+## 选择要交换的对等点
 
-When we’re asked for peers, we select them as follows:
+当我们被要求提供同行时，我们按如下方式选择它们:
 
-- select at most `maxGetSelection` peers
-- try to select at least `minGetSelection` peers - if we have less than that, select them all.
-- select a random, unbiased `getSelectionPercent` of the peers
+- 最多选择 `maxGetSelection` 对等节点
+- 尝试至少选择 `minGetSelection` 对等节点 - 如果少于该值，则全部选择。
+- 选择一个随机的、无偏见的“getSelectionPercent”对等点
 
-Send the selected peers. Note we select peers for sending without bias for vetted/unvetted.
+发送选定的对等点。请注意，我们选择对等点进行无偏见的审查/未审查。
 
-## Preventing Spam
+## 防止垃圾邮件
 
-There are various cases where we decide a peer has misbehaved and we disconnect from them.
-When this happens, the peer is removed from the peer store and black listed for
-some amount of time. We call this "Disconnect and Mark".
-Note that the bad behaviour may be detected outside the PEX reactor itself
-(for instance, in the mconnection, or another reactor), but it must be communicated to the PEX reactor
-so it can remove and mark the peer.
+在各种情况下，我们认为对等方行为不端，并与他们断开连接。
+发生这种情况时，对等点将从对等点存储中删除并列入黑名单
+一些时间。我们称之为“断开连接并标记”。
+请注意，可能会在 PEX 反应器本身之外检测到不良行为
+(例如，在 mconnection 或另一个反应器中)，但它必须与 PEX 反应器通信
+所以它可以删除和标记对等点。
 
-In the PEX, if a peer sends us an unsolicited list of peers,
-or if the peer sends a request too soon after another one,
-we Disconnect and MarkBad.
+在 PEX 中，如果一个对等点向我们发送了一份未经请求的对等点列表，
+或者如果对等方在另一个请求之后太快地发送请求，
+我们断开连接和 MarkBad。
 
-## Trust Metric
+## 信任指标
 
-The quality of peers can be tracked in more fine-grained detail using a
-Proportional-Integral-Derivative (PID) controller that incorporates
-current, past, and rate-of-change data to inform peer quality.
+可以使用更细粒度的细节跟踪对等点的质量
+比例积分微分 (PID) 控制器包含
+当前、过去和变化率数据，以告知同行质量。
 
-While a PID trust metric has been implemented, it remains for future work
-to use it in the PEX.
+虽然已经实施了 PID 信任度量，但它仍待未来工作
+在 PEX 中使用它。
 
-See the [trustmetric](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-006-trust-metric.md)
-and [trustmetric useage](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-007-trust-metric-usage.md)
-architecture docs for more details.
+请参阅 [trustmetric](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-006-trust-metric.md)
+和 [trustmetric useage](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-007-trust-metric-usage.md)
+有关更多详细信息，请参阅架构文档。
 
 
 

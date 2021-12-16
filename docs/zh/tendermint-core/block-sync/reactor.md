@@ -1,31 +1,31 @@
-# Reactor
+# 反应堆
 
-The Blocksync Reactor's high level responsibility is to enable peers who are
-far behind the current state of the consensus to quickly catch up by downloading
-many blocks in parallel, verifying their commits, and executing them against the
-ABCI application.
+Blocksync Reactor 的高层职责是让那些
+远远落后于当前的共识状态，通过下载快速赶上
+许多块并行，验证它们的提交，并针对它们执行它们
+ABCI 申请。
 
-Tendermint full nodes run the Blocksync Reactor as a service to provide blocks
-to new nodes. New nodes run the Blocksync Reactor in "fast_sync" mode,
-where they actively make requests for more blocks until they sync up.
-Once caught up, "fast_sync" mode is disabled and the node switches to
-using (and turns on) the Consensus Reactor.
+Tendermint 全节点运行 Blocksync Reactor 作为提供区块的服务
+到新节点。新节点以“fast_sync”模式运行 Blocksync Reactor，
+他们主动请求更多块，直到它们同步。
+一旦赶上，“fast_sync”模式被禁用，节点切换到
+使用(并打开)Consensus Reactor。
 
-## Architecture and algorithm
+##架构和算法
 
-The Blocksync reactor is organised as a set of concurrent tasks:
+Blocksync 反应器被组织为一组并发任务:
 
-- Receive routine of Blocksync Reactor
-- Task for creating Requesters
-- Set of Requesters tasks and - Controller task.
+- Blocksync Reactor的接收例程
+- 创建请求者的任务
+- 一组请求者任务和 - 控制器任务。
 
-![Blocksync Reactor Architecture Diagram](img/bc-reactor.png)
+![Blocksync Reactor 架构图](img/bc-reactor.png)
 
-### Data structures
+### 数据结构
 
-These are the core data structures necessarily to provide the Blocksync Reactor logic.
+这些是提供 Blocksync Reactor 逻辑所必需的核心数据结构。
 
-Requester data structure is used to track assignment of request for `block` at position `height` to a peer with id equals to `peerID`.
+请求者数据结构用于跟踪对位置“height”处的“block”的请求分配给 id 等于“peerID”的对等方。
 
 ```go
 type Requester {
@@ -37,7 +37,7 @@ type Requester {
 }
 ```
 
-Pool is a core data structure that stores last executed block (`height`), assignment of requests to peers (`requesters`), current height for each peer and number of pending requests for each peer (`peers`), maximum peer height, etc.
+Pool 是一个核心数据结构，它存储最后执行的块(`height`)、对peer的请求分配(`requesters`)、每个peer的当前高度和每个peer的待处理请求数(`peers`)、最大peer高度 ， 等等。
 
 ```go
 type Pool {
@@ -53,7 +53,7 @@ type Pool {
 }
 ```
 
-Peer data structure stores for each peer current `height` and number of pending requests sent to the peer (`numPending`), etc.
+Peer 数据结构存储每个 Peer 当前的“高度”和发送到对等点的待处理请求数(“numPending”)等。
 
 ```go
 type Peer struct {
@@ -65,7 +65,7 @@ type Peer struct {
 }
 ```
 
-BlockRequest is internal data structure used to denote current mapping of request for a block at some `height` to a peer (`PeerID`).
+BlockRequest 是内部数据结构，用于表示当前对某个“高度”的块的请求到对等方(“PeerID”)的映射。
 
 ```go
 type BlockRequest {
@@ -76,7 +76,7 @@ type BlockRequest {
 
 ### Receive routine of Blocksync Reactor
 
-It is executed upon message reception on the BlocksyncChannel inside p2p receive routine. There is a separate p2p receive routine (and therefore receive routine of the Blocksync Reactor) executed for each peer. Note that try to send will not block (returns immediately) if outgoing buffer is full.
+它在 p2p 接收例程内的 BlocksyncChannel 上接收消息时执行。 有一个单独的 p2p 接收例程(因此是 Blocksync Reactor 的接收例程)为每个对等点执行。 请注意，如果传出缓冲区已满，则尝试发送不会阻塞(立即返回)。
 
 ```go
 handleMsg(pool, m):
@@ -130,9 +130,9 @@ onTimeout(p):
   peer.didTimeout = true
 ```
 
-### Requester tasks
+### 请求者任务
 
-Requester task is responsible for fetching a single block at position `height`.
+请求者任务负责在“height”位置获取单个块。
 
 ```go
 fetchBlock(height, pool):
@@ -175,11 +175,11 @@ pickAvailablePeer(height):
   return selectedPeer
 ```
 
-sleep for requestIntervalMS
+为 requestIntervalMS 睡眠
 
-### Task for creating Requesters
+### 创建请求者的任务
 
-This task is responsible for continuously creating and starting Requester tasks.
+此任务负责不断创建和启动请求者任务。
 
 ```go
 createRequesters(pool):
@@ -208,7 +208,7 @@ createRequesters(pool):
       pool.mtx.Unlock()
 ```
 
-### Main blocksync reactor controller task
+### 主块同步反应器控制器任务
 
 ```go
 main(pool):
@@ -264,12 +264,12 @@ redoRequestsForPeer(pool, peerId):
      enqueue msg on redoChannel for requester
 ```
 
-## Channels
+## 频道
 
-Defines `maxMsgSize` for the maximum size of incoming messages,
-`SendQueueCapacity` and `RecvBufferCapacity` for maximum sending and
-receiving buffers respectively. These are supposed to prevent amplification
-attacks by setting up the upper limit on how much data we can receive & send to
-a peer.
+为传入消息的最大大小定义 `maxMsgSize`，
+`SendQueueCapacity` 和 `RecvBufferCapacity` 用于最大发送和
+分别接收缓冲区。 这些应该是为了防止放大
+通过设置我们可以接收和发送多少数据的上限来进行攻击
+一个梨。
 
-Sending incorrectly encoded data will result in stopping the peer.
+发送错误编码的数据将导致停止对等点。

@@ -1,48 +1,48 @@
-# ADR 006: Trust Metric Design
+# ADR 006:信任度量设计
 
-## Context
+## 语境
 
-The proposed trust metric will allow Tendermint to maintain local trust rankings for peers it has directly interacted with, which can then be used to implement soft security controls. The calculations were obtained from the [TrustGuard](https://dl.acm.org/citation.cfm?id=1060808) project.
+提议的信任指标将允许 Tendermint 为其直接与之交互的同行维护本地信任排名，然后可用于实施软安全控制。计算来自 [TrustGuard](https://dl.acm.org/citation.cfm?id=1060808) 项目。
 
-### Background
+### 背景
 
-The Tendermint Core project developers would like to improve Tendermint security and reliability by keeping track of the level of trustworthiness peers have demonstrated within the peer-to-peer network. This way, undesirable outcomes from peers will not immediately result in them being dropped from the network (potentially causing drastic changes to take place). Instead, peers behavior can be monitored with appropriate metrics and be removed from the network once Tendermint Core is certain the peer is a threat. For example, when the PEXReactor makes a request for peers network addresses from a already known peer, and the returned network addresses are unreachable, this untrustworthy behavior should be tracked. Returning a few bad network addresses probably shouldn’t cause a peer to be dropped, while excessive amounts of this behavior does qualify the peer being dropped.
+Tendermint 核心项目开发人员希望通过跟踪对等网络中对等方展示的可信度级别来提高 Tendermint 的安全性和可靠性。这样，来自对等方的不良结果不会立即导致它们从网络中删除(可能导致发生剧烈变化)。相反，可以使用适当的指标监控对等点的行为，并在 Tendermint Core 确定对等点构成威胁后将其从网络中删除。例如，当 PEXReactor 向已知对等方请求对等方网络地址，而返回的网络地址不可达时，应跟踪这种不可信行为。返回一些错误的网络地址可能不应该导致对等点被丢弃，而过多的这种行为确实会使对等点被丢弃。
 
-Trust metrics can be circumvented by malicious nodes through the use of strategic oscillation techniques, which adapts the malicious node’s behavior pattern in order to maximize its goals. For instance, if the malicious node learns that the time interval of the Tendermint trust metric is _X_ hours, then it could wait _X_ hours in-between malicious activities. We could try to combat this issue by increasing the interval length, yet this will make the system less adaptive to recent events.
+恶意节点可以通过使用策略振荡技术来规避信任指标，该技术会调整恶意节点的行为模式以最大化其目标。例如，如果恶意节点获悉 Tendermint 信任度量的时间间隔为 _X_ 小时，则它可以在恶意活动之间等待 _X_ 小时。我们可以尝试通过增加间隔长度来解决这个问题，但这会降低系统对最近事件的适应性。
 
-Instead, having shorter intervals, but keeping a history of interval values, will give our metric the flexibility needed in order to keep the network stable, while also making it resilient against a strategic malicious node in the Tendermint peer-to-peer network. Also, the metric can access trust data over a rather long period of time while not greatly increasing its history size by aggregating older history values over a larger number of intervals, and at the same time, maintain great precision for the recent intervals. This approach is referred to as fading memories, and closely resembles the way human beings remember their experiences. The trade-off to using history data is that the interval values should be preserved in-between executions of the node.
+相反，具有更短的间隔，但保留间隔值的历史记录，将为我们的指标提供保持网络稳定所需的灵活性，同时还使其能够抵御 Tendermint 对等网络中的战略恶意节点。此外，该指标可以在相当长的时间段内访问信任数据，同时不会通过在大量时间间隔内聚合较旧的历史值来大幅增加其历史记录大小，同时保持最近时间间隔的高精度。这种方法被称为褪色记忆，与人类记住他们的经历的方式非常相似。使用历史数据的权衡是应该在节点的执行之间保留间隔值。
 
-### References
+### 参考
 
-S. Mudhakar, L. Xiong, and L. Liu, “TrustGuard: Countering Vulnerabilities in Reputation Management for Decentralized Overlay Networks,” in _Proceedings of the 14th international conference on World Wide Web, pp. 422-431_, May 2005.
+S. Mudhakar、L. Xiong 和 L. Liu，“TrustGuard:应对去中心化覆盖网络声誉管理中的漏洞”，_Proceedings of the 14th International Conference on World Wide Web，第 422-431 页，2005 年 5 月。
 
-## Decision
+## 决定
 
-The proposed trust metric will allow a developer to inform the trust metric store of all good and bad events relevant to a peer's behavior, and at any time, the metric can be queried for a peer's current trust ranking.
+建议的信任度量将允许开发人员将与对等行为相关的所有好坏事件通知信任度量存储，并且可以随时查询该度量以获取对等当前的信任排名。
 
-The three subsections below will cover the process being considered for calculating the trust ranking, the concept of the trust metric store, and the interface for the trust metric.
+下面的三个小节将涵盖计算信任等级所考虑的过程、信任度量存储的概念以及信任度量的接口。
 
-### Proposed Process
+### 拟议流程
 
-The proposed trust metric will count good and bad events relevant to the object, and calculate the percent of counters that are good over an interval with a predefined duration. This is the procedure that will continue for the life of the trust metric. When the trust metric is queried for the current **trust value**, a resilient equation will be utilized to perform the calculation.
+建议的信任度量将计算与对象相关的好和坏事件，并计算在具有预定义持续时间的间隔内良好计数器的百分比。这是将在信任度量的生命周期中持续的过程。当查询当前**信任值**的信任度量时，将使用弹性方程来执行计算。
 
-The equation being proposed resembles a Proportional-Integral-Derivative (PID) controller used in control systems. The proportional component allows us to be sensitive to the value of the most recent interval, while the integral component allows us to incorporate trust values stored in the history data, and the derivative component allows us to give weight to sudden changes in the behavior of a peer. We compute the trust value of a peer in interval i based on its current trust ranking, its trust rating history prior to interval _i_ (over the past _maxH_ number of intervals) and its trust ranking fluctuation. We will break up the equation into the three components.
+所提出的方程类似于控制系统中使用的比例积分微分 (PID) 控制器。比例组件允许我们对最近间隔的值敏感，而积分组件允许我们合并存储在历史数据中的信任值，而导数组件允许我们对一个行为的突然变化给予权重。同行。我们根据当前信任等级、区间 _i_ 之前的信任评级历史(过去 _maxH_ 个区间)及其信任等级波动来计算区间 i 中对等点的信任值。我们将把方程分解为三个部分。
 
 ```math
 (1) Proportional Value = a * R[i]
 ```
 
-where _R_[*i*] denotes the raw trust value at time interval _i_ (where _i_ == 0 being current time) and _a_ is the weight applied to the contribution of the current reports. The next component of our equation uses a weighted sum over the last _maxH_ intervals to calculate the history value for time _i_:
+其中 _R_[*i*] 表示时间间隔 _i_ 的原始信任值(其中 _i_ == 0 是当前时间)，_a_ 是应用于当前报告贡献的权重。 我们等式的下一个组件使用最后 _maxH_ 间隔的加权和来计算时间 _i_ 的历史值:
 
-`H[i] =` ![formula1](img/formula1.png "Weighted Sum Formula")
+`H[i] =` ![formula1](img/formula1.png "加权求和公式")
 
-The weights can be chosen either optimistically or pessimistically. An optimistic weight creates larger weights for newer history data values, while the the pessimistic weight creates larger weights for time intervals with lower scores. The default weights used during the calculation of the history value are optimistic and calculated as _Wk_ = 0.8^_k_, for time interval _k_. With the history value available, we can now finish calculating the integral value:
+可以乐观或悲观地选择权重。 乐观权重为较新的历史数据值创建更大的权重，而悲观权重为分数较低的时间间隔创建更大的权重。 历史值计算过程中使用的默认权重是乐观的，计算为 _Wk_ = 0.8^_k_，时间间隔为 _k_。 有了历史值，我们现在可以完成积分值的计算:
 
 ```math
 (2) Integral Value = b * H[i]
 ```
 
-Where _H_[*i*] denotes the history value at time interval _i_ and _b_ is the weight applied to the contribution of past performance for the object being measured. The derivative component will be calculated as follows:
+其中 _H_[*i*] 表示时间间隔 _i_ 的历史值，_b_ 是应用于被测对象过去性能贡献的权重。 微分分量的计算如下:
 
 ```math
 D[i] = R[i] – H[i]
@@ -50,13 +50,13 @@ D[i] = R[i] – H[i]
 (3) Derivative Value = c(D[i]) * D[i]
 ```
 
-Where the value of _c_ is selected based on the _D_[*i*] value relative to zero. The default selection process makes _c_ equal to 0 unless _D_[*i*] is a negative value, in which case c is equal to 1. The result is that the maximum penalty is applied when current behavior is lower than previously experienced behavior. If the current behavior is better than the previously experienced behavior, then the Derivative Value has no impact on the trust value. With the three components brought together, our trust value equation is calculated as follows:
+其中 _c_ 的值是根据相对于零的 _D_[*i*] 值选择的。 默认选择过程使 _c_ 等于 0，除非 _D_[*i*] 是负值，在这种情况下 c 等于 1。结果是当当前行为低于以前经历的行为时应用最大惩罚。 如果当前行为比之前经历的行为好，则衍生值对信任值没有影响。 将三个组件放在一起，我们的信任值方程计算如下:
 
 ```math
 TrustValue[i] = a * R[i] + b * H[i] + c(D[i]) * D[i]
 ```
 
-As a performance optimization that will keep the amount of raw interval data being saved to a reasonable size of _m_, while allowing us to represent 2^_m_ - 1 history intervals, we can employ the fading memories technique that will trade space and time complexity for the precision of the history data values by summarizing larger quantities of less recent values. While our equation above attempts to access up to _maxH_ (which can be 2^_m_ - 1), we will map those requests down to _m_ values using equation 4 below:
+作为将保存的原始间隔数据量保持在合理大小 _m_ 的性能优化，同时允许我们表示 2^_m_ - 1 个历史间隔，我们可以使用衰落记忆技术，该技术将交换空间和时间复杂度 通过汇总大量较新的值来提高历史数据值的精度。 虽然我们上面的等式尝试访问最多 _maxH_(可以是 2^_m_ - 1)，但我们将使用下面的等式 4 将这些请求映射到 _m_ 值:
 
 ```math
 (4) j = index, where index > 0
@@ -70,17 +70,17 @@ R[0] = raw data for current time interval
 
 `R[j] =` ![formula2](img/formula2.png "Fading Memories Formula")
 
-### Trust Metric Store
+### 信任指标存储
 
-Similar to the P2P subsystem AddrBook, the trust metric store will maintain information relevant to Tendermint peers. Additionally, the trust metric store will ensure that trust metrics will only be active for peers that a node is currently and directly engaged with.
+与 P2P 子系统 AddrBook 类似，信任度量存储将维护与 Tendermint 节点相关的信息。此外，信任度量存储将确保信任度量仅对节点当前直接参与的对等方有效。
 
-Reactors will provide a peer key to the trust metric store in order to retrieve the associated trust metric. The trust metric can then record new positive and negative events experienced by the reactor, as well as provided the current trust score calculated by the metric.
+Reactor 将向信任度量存储提供对等密钥，以便检索关联的信任度量。信任度量然后可以记录反应器经历的新的正面和负面事件，以及提供由度量计算的当前信任分数。
 
-When the node is shutting down, the trust metric store will save history data for trust metrics associated with all known peers. This saved information allows experiences with a peer to be preserved across node executions, which can span a tracking windows of days or weeks. The trust history data is loaded automatically during OnStart.
+当节点关闭时，信任度量存储将保存与所有已知对等点关联的信任度量的历史数据。这种保存的信息允许跨节点执行保存与对等方的体验，这可以跨越数天或数周的跟踪窗口。信任历史数据在 OnStart 期间自动加载。
 
-### Interface Detailed Design
+### 界面详细设计
 
-Each trust metric allows for the recording of positive/negative events, querying the current trust value/score, and the stopping/pausing of tracking over time intervals. This can be seen below:
+每个信任指标都允许记录正面/负面事件、查询当前信任值/分数以及停止/暂停随时间间隔的跟踪。这可以在下面看到:
 
 ```go
 // TrustMetric - keeps track of peer reliability
@@ -121,7 +121,7 @@ score := tm.TrustScore()
 tm.Stop()
 ```
 
-Some of the trust metric parameters can be configured. The weight values should probably be left alone in more cases, yet the time durations for the tracking window and individual time interval should be considered.
+可以配置一些信任度量参数。 在更多情况下可能应该单独保留权重值，但应考虑跟踪窗口的持续时间和单独的时间间隔。
 
 ```go
 // TrustMetricConfig - Configures the weight functions and time intervals for the metric
@@ -163,11 +163,11 @@ tm.Pause()
 tm.GoodEvents(1) // becomes active again
 ```
 
-A trust metric store should be created with a DB that has persistent storage so it can save history data across node executions. All trust metrics instantiated by the store will be created with the provided TrustMetricConfig configuration.
+应该使用具有持久存储的数据库创建信任度量存储，以便它可以跨节点执行保存历史数据。 商店实例化的所有信任指标都将使用提供的 TrustMetricConfig 配置创建。
 
-When you attempt to fetch the trust metric for a peer, and an entry does not exist in the trust metric store, a new metric is automatically created and the entry made within the store.
+当您尝试获取对等方的信任度量，并且信任度量存储中不存在条目时，将自动创建一个新度量并在存储中创建该条目。
 
-In additional to the fetching method, GetPeerTrustMetric, the trust metric store provides a method to call when a peer has disconnected from the node. This is so the metric can be paused (history data will not be saved) for periods of time when the node is not having direct experiences with the peer.
+除了获取方法 GetPeerTrustMetric 之外，信任度量标准存储还提供了一种在对等方与节点断开连接时调用的方法。 这样，当节点没有与对等方的直接体验时，指标可以暂停(不会保存历史数据)一段时间。
 
 ```go
 // TrustMetricStore - Manages all trust metrics for peers
@@ -208,22 +208,22 @@ tm.BadEvents(1)
 tms.PeerDisconnected(key)
 ```
 
-## Status
+## 状态
 
-Approved.
+得到正式认可的。
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- The trust metric will allow Tendermint to make non-binary security and reliability decisions
-- Will help Tendermint implement deterrents that provide soft security controls, yet avoids disruption on the network
-- Will provide useful profiling information when analyzing performance over time related to peer interaction
+- 信任度量将允许 Tendermint 做出非二进制的安全性和可靠性决策
+- 将帮助 Tendermint 实施提供软安全控制的威慑，同时避免网络中断
+- 在分析与对等交互相关的一段时间内的性能时，将提供有用的分析信息
 
-### Negative
+### 消极的
 
-- Requires saving the trust metric history data across node executions
+- 需要跨节点执行保存信任度量历史数据
 
-### Neutral
+### 中性的
 
-- Keep in mind that, good events need to be recorded just as bad events do using this implementation
+- 请记住，好的事件需要像使用此实现的坏事件一样被记录

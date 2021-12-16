@@ -1,22 +1,21 @@
-# ADR 023: ABCI `ProposeTx` Method
+# ADR 023:ABCI `ProposeTx` 方法
 
-## Changelog
+## 变更日志
 
-25-06-2018: Initial draft based on [#1776](https://github.com/tendermint/tendermint/issues/1776)
+25-06-2018:初稿基于 [#1776](https://github.com/tendermint/tendermint/issues/1776)
 
-## Context
+## 语境
 
-[#1776](https://github.com/tendermint/tendermint/issues/1776) was
-opened in relation to implementation of a Plasma child chain using Tendermint
-Core as consensus/replication engine.
+[#1776](https://github.com/tendermint/tendermint/issues/1776) 是
+关于使用 Tendermint 实施 Plasma 子链的开放
+核心作为共识/复制引擎。
 
-Due to the requirements of [Minimal Viable Plasma (MVP)](https://ethresear.ch/t/minimal-viable-plasma/426) and [Plasma Cash](https://ethresear.ch/t/plasma-cash-plasma-with-much-less-per-user-data-checking/1298), it is necessary for ABCI apps to have a mechanism to handle the following cases (more may emerge in the near future):
+由于 [Minimal Viable Plasma (MVP)](https://ethresear.ch/t/minimal-viable-plasma/426) 和 [Plasma Cash](https://ethresear.ch/t/plasma- cash-plasma-with-much-less-per-user-data-checking/1298)，ABCI 应用程序需要有一种机制来处理以下情况(在不久的将来可能会出现更多):
 
-1. `deposit` transactions on the Root Chain, which must consist of a block
-   with a single transaction, where there are no inputs and only one output
-   made in favour of the depositor. In this case, a `block` consists of
-   a transaction with the following shape:
-
+1. 根链上的`deposit`交易，必须由一个区块组成
+    单笔交易，没有输入，只有一个输出
+    有利于存款人。 在这种情况下，一个“块”由
+    具有以下形状的交易:
    ```
    [0, 0, 0, 0, #input1 - zeroed out
     0, 0, 0, 0, #input2 - zeroed out
@@ -26,158 +25,158 @@ Due to the requirements of [Minimal Viable Plasma (MVP)](https://ethresear.ch/t/
    ]
    ```
 
-   `exit` transactions may also be treated in a similar manner, wherein the
-   input is the UTXO being exited on the Root Chain, and the output belongs to
-   a reserved "burn" address, e.g., `0x0`. In such cases, it is favourable for
-   the containing block to only hold a single transaction that may receive
-   special treatment.
+“退出”交易也可以用类似的方式处理，其中
+   输入是根链上退出的UTXO，输出属于
+   保留的“刻录”地址，例如，‘0x0’。在这种情况下，有利于
+   包含块只保存一个可能收到的交易
+   特殊待遇。
 
-2. Other "internal" transactions on the child chain, which may be initiated
-   unilaterally. The most basic example of is a coinbase transaction
-   implementing validator node incentives, but may also be app-specific. In
-   these cases, it may be favourable for such transactions to
-   be ordered in a specific manner, e.g., coinbase transactions will always be
-   at index 0. In general, such strategies increase the determinism and
-   predictability of blockchain applications.
+2. 子链上的其他“内部”交易，可能发起
+   单方面。最基本的例子是coinbase交易
+   实施验证者节点激励，但也可能是特定于应用程序的。在
+   在这些情况下，可能有利于此类交易
+   以特定方式排序，例如，coinbase 交易将始终是
+   在索引 0 处。一般而言，此类策略增加了确定性和
+   区块链应用的可预测性。
 
-While it is possible to deal with the cases enumerated above using the
-existing ABCI, currently available result in suboptimal workarounds. Two are
-explained in greater detail below.
+虽然可以使用
+现有的 ABCI，当前可用导致次优的解决方法。两个是
+下面更详细地解释。
 
-### Solution 1: App state-based Plasma chain
+### 解决方案 1:基于应用状态的 Plasma 链
 
-In this work around, the app maintains a `PlasmaStore` with a corresponding
-`Keeper`. The PlasmaStore is responsible for maintaing a second, separate
-blockchain that complies with the MVP specification, including `deposit`
-blocks and other "internal" transactions. These "virtual" blocks are then broadcasted
-to the Root Chain.
+在这个工作中，应用程序维护了一个带有相应的“PlasmaStore”
+`守门员`。 PlasmaStore 负责维护第二个独立的
+符合MVP规范的区块链，包括`deposit`
+块和其他“内部”交易。然后广播这些“虚拟”块
+到根链。
 
-This naive approach is, however, fundamentally flawed, as it by definition
-diverges from the canonical chain maintained by Tendermint. This is further
-exacerbated if the business logic for generating such transactions is
-potentially non-deterministic, as this should not even be done in
-`Begin/EndBlock`, which may, as a result, break consensus guarantees.
+然而，这种幼稚的方法从根本上是有缺陷的，因为它根据定义
+与 Tendermint 维护的规范链不同。这是进一步
+如果生成此类交易的业务逻辑是
+潜在的不确定性，因为这甚至不应该在
+`Begin/EndBlock`，因此可能会破坏共识保证。
 
-Additinoally, this has serious implications for "watchers" - independent third parties,
-or even an auxilliary blockchain, responsible for ensuring that blocks recorded
-on the Root Chain are consistent with the Plasma chain's. Since, in this case,
-the Plasma chain is inconsistent with the canonical one maintained by Tendermint
-Core, it seems that there exists no compact means of verifying the legitimacy of
-the Plasma chain without replaying every state transition from genesis (!).
+此外，这对“观察者”——独立第三方，有着严重的影响，
+甚至是辅助区块链，负责确保记录的区块
+根链上的与 Plasma 链的一致。因为，在这种情况下，
+Plasma 链与 Tendermint 维护的规范链不一致
+核心，似乎不存在验证合法性的紧凑方法
+Plasma 链，而无需重放从创世开始的每个状态转换(！)。
 
-### Solution 2: Broadcast to Tendermint Core from ABCI app
+### 解决方案 2:从 ABCI 应用程序广播到 Tendermint Core
 
-This approach is inspired by `tendermint`, in which Ethereum transactions are
-relayed to Tendermint Core. It requires the app to maintain a client connection
-to the consensus engine.
+这种方法受到“tendermint”的启发，其中以太坊交易是
+转发到 Tendermint 核心。它需要应用程序来维护客户端连接
+到共识引擎。
 
-Whenever an "internal" transaction needs to be created, the proposer of the
-current block broadcasts the transaction or transactions to Tendermint as
-needed in order to ensure that the Tendermint chain and Plasma chain are
-completely consistent.
+每当需要创建“内部”交易时，该交易的提议者
+当前块将交易或交易广播到 Tendermint 作为
+需要以确保 Tendermint 链和 Plasma 链是
+完全一致。
 
-This allows "internal" transactions to pass through the full consensus
-process, and can be validated in methods like `CheckTx`, i.e., signed by the
-proposer, is the semantically correct, etc. Note that this involves informing
-the ABCI app of the block proposer, which was temporarily hacked in as a means
-of conducting this experiment, although this should not be necessary when the
-current proposer is passed to `BeginBlock`.
+这允许“内部”交易通过完全共识
+过程，并且可以在诸如“CheckTx”之类的方法中进行验证，即由
+提议者，在语义上是否正确等。请注意，这涉及通知
+区块提议者的 ABCI 应用程序，暂时被黑客入侵作为一种手段
+进行这个实验，虽然这不应该是必要的
+当前提议者被传递给“BeginBlock”。
 
-It is much easier to relay these transactions directly to the Root
-Chain smart contract and/or maintain a "compressed" auxiliary chain comprised
-of Plasma-friendly blocks that 100% reflect the canonical (Tendermint)
-blockchain. Unfortunately, this approach not idiomatic (i.e., utilises the
-Tendermint consensus engine in unintended ways). Additionally, it does not
-allow the application developer to:
+将这些交易直接中继到根要容易得多
+链智能合约和/或维护一个“压缩”的辅助链
+100% 反映规范 (Tendermint) 的 Plasma 友好块
+区块链。不幸的是，这种方法不是惯用的(即，利用
+Tendermint 共识引擎以意想不到的方式)。此外，它不
+允许应用程序开发人员:
 
-- Control the _ordering_ of transactions in the proposed block (e.g., index 0,
-  or 0 to `n` for coinbase transactions)
-- Control the _number_ of transactions in the block (e.g., when a `deposit`
-  block is required)
+- 控制提议区块中交易的 _ordering_(例如，索引 0，
+  或 0 到 `n` 用于 coinbase 交易)
+- 控制区块中交易的_数量_(例如，当“存款”
+  块是必需的)
 
-Since determinism is of utmost importance in blockchain engineering, this approach,
-while more viable, should also not be considered as fit for production.
+由于确定性在区块链工程中至关重要，因此这种方法，
+虽然更可行，但也不应被视为适合生产。
 
-## Decision
+## 决定
 
-### `ProposeTx`
+###`ProposeTx`
 
-In order to address the difficulties described above, the ABCI interface must
-expose an additional method, tentatively named `ProposeTx`.
+为了解决上述困难，ABCI 接口必须
+公开一个额外的方法，暂定名为“ProposeTx”。
 
-It should have the following signature:
+它应该具有以下签名:
 
-```
+``
 ProposeTx(RequestProposeTx) ResponseProposeTx
-```
+``
 
-Where `RequestProposeTx` and `ResponseProposeTx` are `message`s with the
-following shapes:
+其中 `RequestProposeTx` 和 `ResponseProposeTx` 是带有
+以下形状:
 
-```
-message RequestProposeTx {
-  int64 next_block_height = 1; // height of the block the proposed tx would be part of
-  Validator proposer = 2; // the proposer details
+``
+消息 RequestProposeTx {
+  int64 next_block_height = 1; // 提议的 tx 将属于的块的高度
+  验证者提议者 = 2; // 提议者详细信息
 }
 
-message ResponseProposeTx {
-  int64 num_tx = 1; // the number of tx to include in proposed block
-  repeated bytes txs = 2; // ordered transaction data to include in block
-  bool exclusive = 3; // whether the block should include other transactions (from `mempool`)
+消息 ResponseProposeTx {
+  int64 num_tx = 1; // 要包含在提议块中的 tx 数量
+  重复字节 txs = 2; // 包含在区块中的有序交易数据
+  布尔独占 = 3; // 区块是否应该包含其他交易(来自`mempool`)
 }
-```
+``
 
-`ProposeTx` would be called by before `mempool.Reap` at this
-[line](https://github.com/tendermint/tendermint/blob/9cd9f3338bc80a12590631632c23c8dbe3ff5c34/consensus/state.go#L935).
-Depending on whether `exclusive` is `true` or `false`, the proposed
-transactions are then pushed on top of the transactions received from
-`mempool.Reap`.
+`ProposeTx` 将在 `mempool.Reap` 之前被调用
+[行](https://github.com/tendermint/tendermint/blob/9cd9f3338bc80a12590631632c23c8dbe3ff5c34/consensus/state.go#L935)。
+根据 `exclusive` 是 `true` 还是 `false`，建议的
+然后将交易推送到从
+`mempool.Reap`。
 
-### `DeliverTx`
+###`DeliverTx`
 
-Since the list of `tx` received from `ProposeTx` are _not_ passed through `CheckTx`,
-it is probably a good idea to provide a means of differentiatiating "internal" transactions
-from user-generated ones, in case the app developer needs/wants to take extra measures to
-ensure validity of the proposed transactions.
+由于从 `ProposeTx` 接收到的 `tx` 列表 _not_ 通过 `CheckTx`，
+提供一种区分“内部”交易的方法可能是个好主意
+来自用户生成的，以防应用程序开发人员需要/想要采取额外措施
+确保拟议交易的有效性。
 
-Therefore, the `RequestDeliverTx` message should be changed to provide an additional flag, like so:
+因此，应该更改“RequestDeliverTx”消息以提供额外的标志，如下所示:
 
-```
-message RequestDeliverTx {
-	bytes tx = 1;
-	bool internal = 2;
+``
+消息 RequestDeliverTx {
+字节 tx = 1;
+布尔内部 = 2;
 }
-```
+``
 
-Alternatively, an additional method `DeliverProposeTx` may be added as an accompanient to
-`ProposeTx`. However, it is not clear at this stage if this additional overhead is necessary
-to preserve consensus guarantees given that a simple flag may suffice for now.
+或者，可以添加一个额外的方法“DeliverProposeTx”作为伴随
+`ProposeTx`。但是，目前尚不清楚是否需要额外的开销
+鉴于现在一个简单的标志可能就足够了，以保持共识保证。
 
-## Status
+## 状态
 
-Pending
+待办的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Tendermint ABCI apps will be able to function as minimally viable Plasma chains.
-- It will thereby become possible to add an extension to `cosmos-sdk` to enable
-  ABCI apps to support both IBC and Plasma, maximising interop.
-- ABCI apps will have great control and flexibility in managing blockchain state,
-  without having to resort to non-deterministic hacks and/or unsafe workarounds
+- Tendermint ABCI 应用程序将能够作为最低限度可行的 Plasma 链运行。
+- 从而可以向 `cosmos-sdk` 添加扩展以启用
+  ABCI 应用程序支持 IBC 和 Plasma，最大限度地提高互操作性。
+- ABCI 应用程序将在管理区块链状态方面具有极大的控制力和灵活性，
+  不必求助于非确定性黑客和/或不安全的解决方法
 
-### Negative
+### 消极的
 
-- Maintenance overhead of exposing additional ABCI method
-- Potential security issues that may have been overlooked and must now be tested extensively
+- 暴露额外 ABCI 方法的维护开销
+- 可能被忽视但现在必须进行广泛测试的潜在安全问题
 
-### Neutral
+### 中性的
 
-- ABCI developers must deal with increased (albeit nominal) API surface area.
+- ABCI 开发人员必须处理增加的(尽管是名义上的)API 表面积。
 
-## References
+## 参考
 
-- [#1776 Plasma and "Internal" Transactions in ABCI Apps](https://github.com/tendermint/tendermint/issues/1776)
-- [Minimal Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426)
-- [Plasma Cash: Plasma with much less per-user data checking](https://ethresear.ch/t/plasma-cash-plasma-with-much-less-per-user-data-checking/1298)
+- [#1776 Plasma 和 ABCI 应用程序中的“内部”交易](https://github.com/tendermint/tendermint/issues/1776)
+- [最小活血浆](https://ethresear.ch/t/minimal-viable-plasma/426)
+- [Plasma Cash:Plasma 每用户数据检查少得多](https://ethresear.ch/t/plasma-cash-plasma-with-much-less-per-user-data-checking/1298)

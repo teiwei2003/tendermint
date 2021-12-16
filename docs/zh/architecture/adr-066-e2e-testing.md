@@ -1,140 +1,140 @@
-# ADR 66: End-to-End Testing
+# ADR 66:端到端测试
 
-## Changelog
+## 变更日志
 
-- 2020-09-07: Initial draft (@erikgrinaker)
-- 2020-09-08: Minor improvements (@erikgrinaker)
-- 2021-04-12: Renamed from RFC 001 (@tessr)
+- 2020 年 9 月 7 日:初稿(@erikgrinaker)
+- 2020-09-08:小改进(@erikgrinaker)
+- 2021-04-12:从 RFC 001 (@tessr) 重命名
 
-## Authors
+##作者
 
-- Erik Grinaker (@erikgrinaker)
+- 埃里克·格里纳克 (@erikgrinaker)
 
-## Context
+## 语境
 
-The current set of end-to-end tests under `test/` are very limited, mostly focusing on P2P testing in a standard configuration. They do not test various configurations (e.g. fast sync reactor versions, state sync, block pruning, genesis vs InitChain setup), nor do they test various network topologies (e.g. sentry node architecture). This leads to poor test coverage, which has caused several serious bugs to go unnoticed.
+“test/”下的当前端到端测试集非常有限，主要集中在标准配置中的 P2P 测试。他们不测试各种配置(例如快速同步反应器版本、状态同步、块修剪、创世 vs InitChain 设置)，也不测试各种网络拓扑(例如哨兵节点架构)。这会导致测试覆盖率低下，从而导致一些严重的错误被忽视。
 
-We need an end-to-end test suite that can run a large number of combinations of configuration options, genesis settings, network topologies, ABCI interactions, and failure scenarios and check that the network is still functional. This ADR outlines the basic requirements and design for such a system.
+我们需要一个端到端的测试套件，它可以运行配置选项、创世设置、网络拓扑、ABCI 交互和故障场景的大量组合，并检查网络是否仍然有效。本 ADR 概述了此类系统的基本要求和设计。
 
-This ADR will not cover comprehensive chaos testing, only a few simple scenarios (e.g. abrupt process termination and network partitioning). Chaos testing of the core consensus algorithm should be implemented e.g. via Jepsen tests or a similar framework, or alternatively be added to these end-to-end tests at a later time. Similarly, malicious or adversarial behavior is out of scope for the first implementation, but may be added later.
+此 ADR 不会涵盖全面的混沌测试，只会涵盖一些简单的场景(例如，突然的进程终止和网络分区)。应实施核心共识算法的混沌测试，例如通过 Jepsen 测试或类似框架，或者稍后添加到这些端到端测试中。同样，恶意或对抗性行为超出了第一次实施的范围，但可能会在以后添加。
 
-## Proposal
+## 提议
 
-### Functional Coverage
+### 功能覆盖
 
-The following lists the functionality we would like to test:
+下面列出了我们要测试的功能:
 
-#### Environments
+#### 环境
 
-- **Topology:** single node, 4 nodes (seeds and persistent), sentry architecture, NAT (UPnP)
-- **Networking:** IPv4, IPv6
-- **ABCI connection:** UNIX socket, TCP, gRPC
-- **PrivVal:** file, UNIX socket, TCP
+- **拓扑:** 单节点，4 个节点(种子和持久)，哨兵架构，NAT (UPnP)
+- **网络:** IPv4、IPv6
+- **ABCI 连接:** UNIX 套接字、TCP、gRPC
+- **PrivVal:** 文件、UNIX 套接字、TCP
 
-#### Node/App Configurations
+#### 节点/应用程序配置
 
-- **Database:** goleveldb, cleveldb, boltdb, rocksdb, badgerdb
-- **Fast sync:** disabled, v0, v2
-- **State sync:** disabled, enabled
-- **Block pruning:** none, keep 20, keep 1, keep random
-- **Role:** validator, full node
-- **App persistence:** enabled, disabled
-- **Node modes:** validator, full, light, seed
+- **数据库:** goleveldb、cleveldb、boltdb、rocksdb、badgerdb
+- **快速同步:**禁用，v0，v2
+- **状态同步:** 禁用，启用
+- **块修剪:** 无，保持 20，保持 1，保持随机
+- **角色:**验证者，全节点
+- **应用程序持久性:** 启用、禁用
+- **节点模式:** 验证器、完整、光照、种子
 
-#### Geneses
+#### 基因
 
-- **Validators:** none (InitChain), given
-- **Initial height:** 1, 1000
-- **App state:** none, given
+- **验证器:** 无(InitChain)，给定
+- **初始高度:** 1, 1000
+- **应用程序状态:** 无，给定
 
-#### Behaviors
+#### 行为
 
-- **Recovery:** stop/start, power cycling, validator outage, network partition, total network loss
-- **Validators:** add, remove, change power
-- **Evidence:** injection of DuplicateVoteEvidence and LightClientAttackEvidence
+- **恢复:**停止/启动、电源循环、验证器中断、网络分区、总网络丢失
+- **验证器:** 添加、删除、更改电源
+- **Evidence:** 注入 DuplicateVoteEvidence 和 LightClientAttackEvidence
 
-### Functional Combinations
+### 功能组合
 
-Running separate tests for all combinations of the above functionality is not feasible, as there are millions of them. However, the functionality can be grouped into three broad classes:
+对上述功能的所有组合运行单独的测试是不可行的，因为它们有数百万个。但是，功能可以分为三大类:
 
-- **Global:** affects the entire network, needing a separate testnet for each combination (e.g. topology, network protocol, genesis settings)
+- **全局:** 影响整个网络，每个组合都需要一个单独的测试网(例如拓扑、网络协议、创世设置)
 
-- **Local:** affects a single node, and can be varied per node in a testnet (e.g. ABCI/privval connections, database backend, block pruning)
+- **Local:** 影响单个节点，并且可以在测试网络中的每个节点变化(例如 ABCI/privval 连接、数据库后端、块修剪)
 
-- **Temporal:** can be run after each other in the same testnet (e.g. recovery and validator changes)
+- **Temporal:** 可以在同一个测试网络中依次运行(例如恢复和验证器更改)
 
-Thus, we can run separate testnets for all combinations of global options (on the order of 100). In each testnet, we run nodes with randomly generated node configurations optimized for broad coverage (i.e. if one node is using GoLevelDB, then no other node should use it if possible). And in each testnet, we sequentially and randomly pick nodes to stop/start, power cycle, add/remove, disconnect, and so on.
+因此，我们可以为全局选项的所有组合(大约 100 个)运行单独的测试网。在每个测试网中，我们运行具有针对广泛覆盖优化的随机生成的节点配置的节点(即，如果一个节点正在使用 GoLevelDB，那么如果可能，其他节点都不应该使用它)。在每个测试网中，我们依次随机选择节点来停止/启动、重启、添加/删除、断开连接等。
 
-All of the settings should be specified in a testnet configuration (or alternatively the seed that generated it) such that it can be retrieved from CI and debugged locally.
+所有设置都应在测试网配置(或生成它的种子)中指定，以便可以从 CI 检索并在本地调试。
 
-A custom ABCI application will have to be built that can exhibit the necessary behavior (e.g. make validator changes, prune blocks, enable/disable persistence, and so on).
+必须构建一个可以展示必要行为的自定义 ABCI 应用程序(例如，进行验证器更改、修剪块、启用/禁用持久性等)。
 
-### Test Stages
+### 测试阶段
 
-Given a test configuration, the test runner has the following stages:
+给定测试配置，测试运行器具有以下阶段:
 
-- **Setup:** configures the Docker containers and networks, but does not start them.
+- **Setup:** 配置 Docker 容器和网络，但不启动它们。
 
-- **Initialization:** starts the Docker containers, performs fast sync/state sync. Accomodates for different start heights.
+- **初始化:** 启动 Docker 容器，执行快速同步/状态同步。适应不同的起始高度。
 
-- **Perturbation:** adds/removes validators, restarts nodes, perturbs networking, etc - liveness and readiness checked between each operation.
+- **扰动:** 添加/删除验证器、重新启动节点、扰动网络等 - 在每个操作之间检查活性和准备情况。
 
-- **Testing:** runs RPC tests independently against all network nodes, making sure data matches expectations and invariants hold.
+- **测试:** 针对所有网络节点独立运行 RPC 测试，确保数据符合预期并保持不变。
 
-### Tests
+### 测试
 
-The general approach will be to put the network through a sequence of operations (see stages above), check basic liveness and readiness after each operation, and then once the network stabilizes run an RPC test suite against each node in the network.
+一般的方法是让网络通过一系列操作(参见上面的阶段)，在每次操作后检查基本的活跃度和准备情况，然后在网络稳定后针对网络中的每个节点运行 RPC 测试套件。
 
-The test suite will do black-box testing against a single node's RPC service. We will be testing the behavior of the network as a whole, e.g. that a fast synced node correctly catches up to the chain head and serves basic block data via RPC. Thus the tests will not send e.g. P2P messages or examine the node database, as these are considered internal implementation details - if the network behaves correctly, presumably the internal components function correctly. Comprehensive component testing (e.g. each and every RPC method parameter) should be done via unit/integration tests.
+测试套件将对单个节点的 RPC 服务进行黑盒测试。我们将测试整个网络的行为，例如一个快速同步的节点正确地赶上链头并通过 RPC 提供基本的块数据。因此测试不会发送例如P2P 消息或检查节点数据库，因为这些被视为内部实现细节 - 如果网络行为正确，则内部组件可能正常运行。综合组件测试(例如每个 RPC 方法参数)应该通过单元/集成测试来完成。
 
-The tests must take into account the node configuration (e.g. some nodes may be pruned, others may not be validators), and should somehow be provided access to expected data (i.e. complete block headers for the entire chain).
+测试必须考虑节点配置(例如，一些节点可能被修剪，其他节点可能不是验证者)，并且应该以某种方式提供对预期数据的访问(即整个链的完整区块头)。
 
-The test suite should use the Tendermint RPC client and the Tendermint light client, to exercise the client code as well.
+测试套件应该使用 Tendermint RPC 客户端和 Tendermint 轻客户端，来练习客户端代码。
 
-### Implementation Considerations
+### 实施注意事项
 
-The testnets should run in Docker Compose, both locally and in CI. This makes it easier to reproduce test failures locally. Supporting multiple test-runners (e.g. on VMs or Kubernetes) is out of scope. The same image should be used for all tests, with configuration passed via a mounted volume.
+测试网应在 Docker Compose 中运行，包括本地和 CI。这使得在本地重现测试失败变得更容易。支持多个测试运行器(例如在 VM 或 Kubernetes 上)超出了范围。所有测试都应使用相同的映像，并通过已安装的卷传递配置。
 
-There does not appear to be any off-the-shelf solutions that would do this for us, so we will have to roll our own on top of Docker Compose. This gives us more flexibility, but is estimated to be a few weeks of work.
+似乎没有任何现成的解决方案可以为我们做到这一点，因此我们必须在 Docker Compose 之上推出我们自己的解决方案。这给了我们更大的灵活性，但估计需要几周的时间。
 
-Testnets should be configured via a YAML file. These are used as inputs for the test runner, which e.g. generates Docker Compose configurations from them. An additional layer on top should generate these testnet configurations from a YAML file that specifies all the option combinations to test.
+应通过 YAML 文件配置测试网。这些用作测试运行器的输入，例如从它们生成 Docker Compose 配置。顶部的附加层应从 YAML 文件生成这些测试网配置，该文件指定要测试的所有选项组合。
 
-Comprehensive testnets should run against master nightly. However, a small subset of representative testnets should run for each pull request, e.g. a four-node IPv4 network with state sync and fast sync.
+综合测试网应该每晚针对主节点运行。但是，应该为每个拉取请求运行一小部分代表性测试网，例如具有状态同​​步和快速同步的四节点 IPv4 网络。
 
-Tests should be written using the standard Go test framework (and e.g. Testify), with a helper function to fetch info from the test configuration. The test runner will run the tests separately for each network node, and the test must vary its expectations based on the node's configuration.
+应该使用标准 Go 测试框架(和例如 Testify)编写测试，并使用辅助函数从测试配置中获取信息。测试运行器将为每个网络节点单独运行测试，并且测试必须根据节点的配置改变其预期。
 
-It should be possible to launch a specific testnet and run individual test cases from the IDE or local terminal against a it.
+应该可以启动特定的测试网并从 IDE 或本地终端针对它运行单个测试用例。
 
-If possible, the existing `testnet` command should be extended to set up the network topologies needed by the end-to-end tests.
+如果可能，应扩展现有的“testnet”命令以设置端到端测试所需的网络拓扑。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Comprehensive end-to-end test coverage of basic Tendermint functionality, exercising common code paths in the same way that users would
+- 基本 Tendermint 功能的全面端到端测试覆盖率，以与用户相同的方式执行通用代码路径
 
-- Test environments can easily be reproduced locally and debugged via standard tooling
+- 测试环境可以轻松地在本地复制并通过标准工具进行调试
 
-### Negative
+### 消极的
 
-- Limited coverage of consensus correctness testing (e.g. Jepsen)
+- 共识正确性测试的覆盖范围有限(例如 Jepsen)
 
-- No coverage of malicious or adversarial behavior
+- 不涉及恶意或对抗性行为
 
-- Have to roll our own test framework, which takes engineering resources
+- 必须推出我们自己的测试框架，这需要工程资源
 
-- Possibly slower CI times, depending on which tests are run
+- 可能会降低 CI 时间，具体取决于运行的测试
 
-- Operational costs and overhead, e.g. infrastructure costs and system maintenance
+- 运营成本和管理费用，例如基础设施成本和系统维护
 
-### Neutral
+### 中性的
 
-- No support for alternative infrastructure platforms, e.g. Kubernetes or VMs
+- 不支持替代基础设施平台，例如Kubernetes 或虚拟机
 
-## References
+## 参考
 
-- [#5291: new end-to-end test suite](https://github.com/tendermint/tendermint/issues/5291)
+- [#5291: 新的端到端测试套件](https://github.com/tendermint/tendermint/issues/5291)

@@ -1,63 +1,63 @@
-# ADR 014: Secp256k1 Signature Malleability
+# ADR 014:Secp256k1 签名延展性
 
-## Context
+## 语境
 
-Secp256k1 has two layers of malleability.
-The signer has a random nonce, and thus can produce many different valid signatures.
-This ADR is not concerned with that.
-The second layer of malleability basically allows one who is given a signature
-to produce exactly one more valid signature for the same message from the same public key.
-(They don't even have to know the message!)
-The math behind this will be explained in the subsequent section.
+Secp256k1 具有两层延展性。
+签名者有一个随机数，因此可以产生许多不同的有效签名。
+本 ADR 与此无关。
+第二层延展性基本上允许被赋予签名的人
+从相同的公钥为相同的消息生成一个更有效的签名。
+(他们甚至不必知道消息！)
+这背后的数学原理将在下一节中解释。
 
-Note that in many downstream applications, signatures will appear in a transaction, and therefore in the tx hash.
-This means that if someone broadcasts a transaction with secp256k1 signature, the signature can be altered into the other form by anyone in the p2p network.
-Thus the tx hash will change, and this altered tx hash may be committed instead.
-This breaks the assumption that you can broadcast a valid transaction and just wait for its hash to be included on chain.
-One example is if you are broadcasting a tx in cosmos,
-and you wait for it to appear on chain before incrementing your sequence number.
-You may never increment your sequence number if a different tx hash got committed.
-Removing this second layer of signature malleability concerns could ease downstream development.
+请注意，在许多下游应用程序中，签名将出现在交易中，因此出现在 tx 哈希中。
+这意味着如果有人广播带有 secp256k1 签名的交易，则该签名可以被 p2p 网络中的任何人更改为另一种形式。
+因此 tx 哈希值会改变，而这个改变的 tx 哈希值可能会被提交。
+这打破了您可以广播有效交易并等待其散列被包含在链中的假设。
+一个例子是如果你在宇宙中广播一个 tx，
+并在增加序列号之前等待它出现在链上。
+如果提交了不同的 tx 哈希，您可能永远不会增加您的序列号。
+消除第二层签名延展性问题可以简化下游开发。
 
-### ECDSA context
+### ECDSA 上下文
 
-Secp256k1 is ECDSA over a particular curve.
-The signature is of the form `(r, s)`, where `s` is a field element.
-(The particular field is the `Z_n`, where the elliptic curve has order `n`)
-However `(r, -s)` is also another valid solution.
-Note that anyone can negate a group element, and therefore can get this second signature.
+Secp256k1 是特定曲线上的 ECDSA。
+签名的形式为 `(r, s)`，其中 `s` 是一个字段元素。
+(特定字段是 `Z_n`，其中椭圆曲线的阶数为 `n`)
+然而，`(r, -s)` 也是另一种有效的解决方案。
+请注意，任何人都可以否定组元素，因此可以获得第二个签名。
 
-## Decision
+## 决定
 
-We can just distinguish a canonical form for the ECDSA signatures.
-Then we require that all ECDSA signatures be in the form which we defined as canonical.
-We reject signatures in non-canonical form.
+我们可以区分 ECDSA 签名的规范形式。
+然后我们要求所有 ECDSA 签名都采用我们定义为规范的形式。
+我们拒绝非规范形式的签名。
 
-A canonical form is rather easy to define and check.
-It would just be the smaller of the two values for `s`, defined lexicographically.
-This is a simple check, instead of checking if `s < n`, instead check `s <= (n - 1)/2`.
-An example of another cryptosystem using this
-is the parity definition here https://github.com/zkcrypto/pairing/pull/30#issuecomment-372910663.
+规范形式相当容易定义和检查。
+它只是按字典顺序定义的 `s` 的两个值中较小的一个。
+这是一个简单的检查，而不是检查是否`s < n`，而是检查`s <= (n - 1)/2`。
+另一个使用此密码系统的示例
+是这里的奇偶定义 https://github.com/zkcrypto/pairing/pull/30#issuecomment-372910663。
 
-This is the same solution Ethereum has chosen for solving secp malleability.
+这与以太坊为解决 secp 延展性选择的解决方案相同。
 
-## Proposed Implementation
+## 建议的实施
 
-Fork https://github.com/btcsuite/btcd, and just update the [parse sig method](https://github.com/btcsuite/btcd/blob/11fcd83963ab0ecd1b84b429b1efc1d2cdc6d5c5/btcec/signature.go#L195) and serialize functions to enforce our canonical form.
+Fork https://github.com/btcsuite/btcd，只需更新[parse sig method](https://github.com/btcsuite/btcd/blob/11fcd83963ab0ecd1b84b429b1efc1d2cdc6d5c5/btcec/signature.go#L19)和serialize5函数强制执行我们的规范形式。
 
-## Status
+## 状态
 
-Implemented
+实施的
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- Lets us maintain the ability to expect a tx hash to appear in the blockchain.
+- 让我们保持期望 tx 哈希出现在区块链中的能力。
 
-### Negative
+### 消极的
 
-- More work in all future implementations (Though this is a very simple check)
-- Requires us to maintain another fork
+- 在所有未来的实现中做更多的工作(虽然这是一个非常简单的检查)
+- 需要我们维护另一个叉子
 
-### Neutral
+### 中性的

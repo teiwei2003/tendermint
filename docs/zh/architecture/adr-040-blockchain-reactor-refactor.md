@@ -1,69 +1,68 @@
-# ADR 040: Blockchain Reactor Refactor
+# ADR 040:区块链反应器重构
 
-## Changelog
+## 变更日志
 
-19-03-2019: Initial draft
+19-03-2019:初稿
 
-## Context
+## 语境
 
-The Blockchain Reactor's high level responsibility is to enable peers who are far behind the current state of the
-blockchain to quickly catch up by downloading many blocks in parallel from its peers, verifying block correctness, and
-executing them against the ABCI application. We call the protocol executed by the Blockchain Reactor `fast-sync`.
-The current architecture diagram of the blockchain reactor can be found here:
+区块链反应器的高级职责是使远远落后于当前状态的对等节点
+区块链通过从其对等方并行下载许多块来快速赶上，验证块的正确性，以及
+针对 ABCI 应用程序执行它们。我们将区块链反应器执行的协议称为“fast-sync”。
+可以在此处找到区块链反应器的当前架构图:
 
-![Blockchain Reactor Architecture Diagram](img/bc-reactor.png)
+![区块链反应器架构图](img/bc-reactor.png)
 
-The current architecture consists of dozens of routines and it is tightly depending on the `Switch`, making writing
-unit tests almost impossible. Current tests require setting up complex dependency graphs and dealing with concurrency.
-Note that having dozens of routines is in this case overkill as most of the time routines sits idle waiting for
-something to happen (message to arrive or timeout to expire). Due to dependency on the `Switch`, testing relatively
-complex network scenarios and failures (for example adding and removing peers) is very complex tasks and frequently lead
-to complex tests with not deterministic behavior ([#3400]). Impossibility to write proper tests makes confidence in
-the code low and this resulted in several issues (some are fixed in the meantime and some are still open):
-[#3400], [#2897], [#2896], [#2699], [#2888], [#2457], [#2622], [#2026].
+当前的架构由数十个例程组成，并且紧密依赖于`Switch`，使得编写
+单元测试几乎不可能。当前的测试需要设置复杂的依赖图并处理并发性。
+请注意，在这种情况下，拥有数十个例程是多余的，因为大多数时间例程都处于空闲等待状态
+将要发生的事情(消息到达或超时到期)。由于依赖`Switch`，测试相对
+复杂的网络场景和故障(例如添加和删除对等点)是非常复杂的任务，并且经常导致
+到具有不确定行为的复杂测试 ([#3400])。无法编写适当的测试使人们对
+代码低，这导致了几个问题(有些已在此期间修复，有些仍处于打开状态):
+[#3400]、[#2897]、[#2896]、[#2699]、[#2888]、[#2457]、[#2622]、[#2026]。
 
-## Decision
+## 决定
 
-To remedy these issues we plan a major refactor of the blockchain reactor. The proposed architecture is largely inspired
-by ADR-30 and is presented on the following diagram:
-![Blockchain Reactor Refactor Diagram](img/bc-reactor-refactor.png)
+为了解决这些问题，我们计划对区块链反应器进行重大重构。提议的架构很大程度上受到启发
+由 ADR-30 提供，如下图所示:
+![区块链反应堆重构图](img/bc-reactor-refactor.png)
 
-We suggest a concurrency architecture where the core algorithm (we call it `Controller`) is extracted into a finite
-state machine. The active routine of the reactor is called `Executor` and is responsible for receiving and sending
-messages from/to peers and triggering timeouts. What messages should be sent and timeouts triggered is determined mostly
-by the `Controller`. The exception is `Peer Heartbeat` mechanism which is `Executor` responsibility. The heartbeat
-mechanism is used to remove slow and unresponsive peers from the peer list. Writing of unit tests is simpler with
-this architecture as most of the critical logic is part of the `Controller` function. We expect that simpler concurrency
-architecture will not have significant negative effect on the performance of this reactor (to be confirmed by
-experimental evaluation).
+我们建议采用一种并发架构，其中核心算法(我们称之为“控制器”)被提取到一个有限的
+状态机。反应器的活动例程称为`Executor`，负责接收和发送
+来自/到对等方的消息并触发超时。应该发送什么消息和触发超时主要是确定的
+由`控制器`。例外是“Peer Heartbeat”机制，它是“Executor”的职责。心跳
+机制用于从对等点列表中删除缓慢和无响应的对等点。编写单元测试更简单
+这种架构作为大多数关键逻辑是“控制器”功能的一部分。我们期望更简单的并发
+架构不会对这个反应堆的性能产生显着的负面影响(有待证实)
+实验评价)。
 
 
-### Implementation changes
+### 实施更改
 
-We assume the following system model for "fast sync" protocol:
+我们假设“快速同步”协议的系统模型如下:
 
-* a node is connected to a random subset of all nodes that represents its peer set. Some nodes are correct and some
-  might be faulty. We don't make assumptions about ratio of faulty nodes, i.e., it is possible that all nodes in some
-	peer set are faulty.
-* we assume that communication between correct nodes is synchronous, i.e., if a correct node `p` sends a message `m` to
-  a correct node `q` at time `t`, then `q` will receive message the latest at time `t+Delta` where `Delta` is a system
-	parameter that is known by network participants. `Delta` is normally chosen to be an order of magnitude higher than
-	the real communication delay (maximum) between correct nodes. Therefore if a correct node `p` sends a request message
-	to a correct node `q` at time `t` and there is no the corresponding reply at time `t + 2*Delta`, then `p` can assume
-	that `q` is faulty. Note that the network assumptions for the consensus reactor are different (we assume partially
-	synchronous model there).
+* 一个节点连接到代表其对等集的所有节点的随机子集。有些节点是正确的，有些节点是正确的
+  可能有问题。我们不对故障节点的比率做出假设，即，有可能某些节点中的所有节点
+对等设置有问题。
+* 我们假设正确节点之间的通信是同步的，即，如果正确的节点 `p` 发送消息 `m` 到
+  一个正确的节点“q”在时间“t”，那么“q”将在时间“t+Delta”收到最新的消息，其中“Delta”是一个系统
+网络参与者已知的参数。 `Delta` 通常被选择为高于一个数量级
+正确节点之间的实际通信延迟(最大)。因此，如果一个正确的节点 `p` 发送了一个请求消息
+在时间`t`到一个正确的节点`q`并且在时间`t + 2*Delta`没有相应的回复，那么`p`可以假设
+那 `q` 是有问题的。请注意，共识反应器的网络假设是不同的(我们部分假设
+同步模型)。
 
-The requirements for the "fast sync" protocol are formally specified as follows:
+“快速同步”协议的要求正式规定如下:
 
-- `Correctness`: If a correct node `p` is connected to a correct node `q` for a long enough period of time, then `p`
-- will eventually download all requested blocks from `q`.
-- `Termination`: If a set of peers of a correct node `p` is stable (no new nodes are added to the peer set of `p`) for
-- a long enough period of time, then protocol eventually terminates.
-- `Fairness`: A correct node `p` sends requests for blocks to all peers from its peer set.
+- `正确性`:如果正确的节点`p`连接到正确的节点`q`足够长的时间，那么`p`
+- 最终将从`q`下载所有请求的块。
+- `终止`:如果正确节点`p`的一组对等体是稳定的(没有新节点添加到`p`的对等体集中)
+- 足够长的时间，然后协议最终终止。
+- `Fairness`:正确的节点 `p` 向其对等集合中的所有对等节点发送对块的请求。
 
-As explained above, the `Executor` is responsible for sending and receiving messages that are part of the `fast-sync`
-protocol. The following messages are exchanged as part of `fast-sync` protocol:
-
+如上所述，“Executor”负责发送和接收属于“fast-sync”的消息
+协议。以下消息作为“快速同步”协议的一部分进行交换:
 ``` go
 type Message int
 const (
@@ -74,18 +73,18 @@ const (
   MessageBlockResponse
 )
 ```
-`MessageStatusRequest` is sent periodically to all peers as a request for a peer to provide its current height. It is
-part of the `Peer Heartbeat` mechanism and a failure to respond timely to this message results in a peer being removed
-from the peer set. Note that the `Peer Heartbeat` mechanism is used only while a peer is in `fast-sync` mode. We assume
-here existence of a mechanism that gives node a possibility to inform its peers that it is in the `fast-sync` mode.
+`MessageStatusRequest` 会定期发送给所有对等方，作为对等方提供其当前高度的请求。 它是
+“Peer Heartbeat”机制的一部分以及未能及时响应此消息会导致对等点被删除
+来自对等组。 请注意，仅当对等方处于“快速同步”模式时才使用“对等心跳”机制。 我们猜测
+这里存在一种机制，使节点有可能通知其对等方它处于“快速同步”模式。
 
 ``` go
 type MessageStatusRequest struct {
   SeqNum int64     // sequence number of the request
 }
 ```
-`MessageStatusResponse` is sent as a response to `MessageStatusRequest` to inform requester about the peer current
-height.
+`MessageStatusResponse` 作为对 `MessageStatusRequest` 的响应发送，以通知请求者当前的对等方
+高度。
 
 ``` go
 type MessageStatusResponse struct {
@@ -94,7 +93,7 @@ type MessageStatusResponse struct {
 }
 ```
 
-`MessageBlockRequest` is used to make a request for a block and the corresponding commit certificate at a given height.
+`MessageBlockRequest` 用于在给定高度请求一个块和相应的提交证书。
 
 ``` go
 type MessageBlockRequest struct {
@@ -102,8 +101,8 @@ type MessageBlockRequest struct {
 }
 ```
 
-`MessageBlockResponse` is a response for the corresponding block request. In addition to providing the block and the
-corresponding commit certificate, it contains also a current peer height.
+`MessageBlockResponse` 是对相应块请求的响应。 除了提供块和
+相应的提交证书，它还包含当前的对等高度。
 
 ``` go
 type MessageBlockResponse struct {
@@ -114,8 +113,8 @@ type MessageBlockResponse struct {
 }
 ```
 
-In addition to sending and receiving messages, and `HeartBeat` mechanism, controller is also managing timeouts
-that are triggered upon `Controller` request. `Controller` is then informed once a timeout expires.
+除了发送和接收消息，还有`HeartBeat`机制，控制器还管理超时
+在“Controller”请求时触发。 一旦超时到期，就会通知“控制器”。
 
 ``` go
 type TimeoutTrigger int
@@ -126,20 +125,20 @@ const (
 )
 ```
 
-The `Controller` can be modelled as a function with clearly defined inputs:
+`Controller` 可以建模为具有明确定义输入的函数:
 
-* `State` - current state of the node. Contains data about connected peers and its behavior, pending requests,
-* received blocks, etc.
-* `Event` - significant events in the network.
+* `State` - 节点的当前状态。 包含有关连接的对等点及其行为、待处理请求、
+* 收到的区块等
+* `Event` - 网络中的重要事件。
 
-producing clear outputs:
+产生清晰的输出:
 
-* `State` - updated state of the node,
-* `MessageToSend` - signal what message to send and to which peer
-* `TimeoutTrigger` - signal that timeout should be triggered.
+* `State` - 节点的更新状态，
+* `MessageToSend` - 表示要发送什么消息以及发送给哪个对等方
+* `TimeoutTrigger` - 表示应该触发超时。
 
 
-We consider the following `Event` types:
+我们考虑以下“事件”类型:
 
 ``` go
 type Event int
@@ -510,25 +509,25 @@ func verifyBlocks(state State) State {
 }
 ```
 
-In the proposed architecture `Controller` is not active task, i.e., it is being called by the `Executor`. Depending on
-the return values returned by `Controller`,`Executor` will send a message to some peer (`msg` != nil), trigger a
-timeout (`timeout` != nil) or deal with errors (`error` != nil).
-In case a timeout is triggered, it will provide as an input to `Controller` the corresponding timeout event once
-timeout expires.
+在提议的架构中，“Controller”不是活动任务，即它被“Executor”调用。 根据
+`Controller`、`Executor` 返回的返回值会发送消息给某个 peer (`msg` != nil)，触发一个
+timeout (`timeout` != nil) 或处理错误 (`error` != nil)。
+如果超时被触发，它将作为输入提供给`Controller`一次相应的超时事件
+超时到期。
 
 
-## Status
+## 状态
 
-Draft.
+草稿。
 
-## Consequences
+## 结果
 
-### Positive
+### 积极的
 
-- isolated implementation of the algorithm
-- improved testability - simpler to prove correctness
-- clearer separation of concerns - easier to reason
+- 算法的隔离实现
+- 改进的可测试性 - 更容易证明正确性
+- 更清晰的关注点分离 - 更容易推理
 
-### Negative
+### 消极的
 
-### Neutral
+### 中性的

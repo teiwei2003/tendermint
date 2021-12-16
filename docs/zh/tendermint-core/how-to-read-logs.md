@@ -1,3 +1,3 @@
-# How to read logs
+# 如何读取日志
 
-This file has moved to the [node section](../nodes/logging.md).
+此文件已移至 [节点部分](../nodes/logging.md)。
