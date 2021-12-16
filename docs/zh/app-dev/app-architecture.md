@@ -5,7 +5,7 @@ Tendermint 区块链应用。
 
 下图提供了一个极好的示例:
 
-![cosmos-tendermint-stack](../imgs/cosmos-tendermint-stack-4k.jpg)
+![cosmos-tendermint-stack](../../imgs/cosmos-tendermint-stack-4k.jpg)
 
 我们在这里区分两种形式的“应用程序”。第一个是
 最终用户应用程序，例如用户下载的基于桌面的钱包应用程序，

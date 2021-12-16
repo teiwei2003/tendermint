@@ -223,7 +223,7 @@ Tendermint Core 为应用程序创建了三个 ABCI 连接；一
 有用，但这种架构提供了一个起点。图表
 下面说明了通过 ABCI 的消息流。
 
-![abci](../imgs/abci.png)
+![abci](../../imgs/abci.png)
 
 ## 关于决定论的说明
 
@@ -259,7 +259,7 @@ Tendermint 是一种易于理解的、主要是异步的、BFT 共识
 协议。该协议遵循一个简单的状态机，看起来像
 这:
 
-![共识逻辑](../imgs/consensus_logic.png)
+![共识逻辑](../../imgs/consensus_logic.png)
 
 协议的参与者被称为**验证者**；他们轮流
 提出交易区块并对其进行投票。块是
@@ -323,4 +323,4 @@ Tendermint 是它使用相同的机制来提交一个块
 
 下图是 Tendermint 的(技术)简而言之。
 
-![tx-flow](../imgs/tm-transaction-flow.png)
+![tx-flow](../../imgs/tm-transaction-flow.png)

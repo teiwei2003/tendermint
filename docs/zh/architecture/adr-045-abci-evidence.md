@@ -30,7 +30,7 @@
 检查)。
 
 目前，证据验证由 Tendermint 处理。一旦承诺，
-【证据已过
+[证据已过
 ABCI](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto#L354)
 以简化形式在 BeginBlock 中，仅包括
 证据的类型、它的高度和时间戳、它来自的验证器，以及

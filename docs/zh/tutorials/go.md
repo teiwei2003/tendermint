@@ -23,7 +23,7 @@ Where X=Go](https://learnxinyminutes.com/docs/go/) 先来熟悉一下
 
 为了获得最佳性能，最好与您的应用程序一起运行
 Tendermint 核心。 [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) 编写
-这边走。请参考【编写内置 Tendermint Core 应用程序】
+这边走。请参考[编写内置 Tendermint Core 应用程序]
 Go](./go-built-in.md) 指南了解详情。
 
 拥有一个单独的应用程序可能会给你更好的安全保证
@@ -32,7 +32,7 @@ Go](./go-built-in.md) 指南了解详情。
 
 ## 1.1 安装 Go
 
-请参考【官方安装指南】
+请参考[官方安装指南]
 去](https://golang.org/doc/install)。
 
 验证您是否安装了最新版本的 Go:
@@ -458,7 +458,7 @@ go build
 
 要创建默认配置、nodeKey 和私有验证器文件，让我们
 执行 `tendermint init 验证器`。 但在我们这样做之前，我们需要安装
-Tendermint 核心。 请参考【官方
+Tendermint 核心。 请参考[官方
 指南](https://docs.tendermint.com/master/introduction/install.html)。 如果你是
 从源代码安装，不要忘记检查最新版本(`git
 结帐 vX.Y.Z`)。 不要忘记检查应用程序是否使用相同的

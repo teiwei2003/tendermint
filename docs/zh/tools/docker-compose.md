@@ -4,9 +4,9 @@
 
 ## 要求
 
-1.【安装tendermint】(../introduction/install.md)
-2.【安装docker】(https://docs.docker.com/engine/installation/)
-3.【安装docker-compose】(https://docs.docker.com/compose/install/)
+1.[安装tendermint](../introduction/install.md)
+2.[安装docker](https://docs.docker.com/engine/installation/)
+3.[安装docker-compose](https://docs.docker.com/compose/install/)
 
 ## 建造
 

@@ -115,7 +115,7 @@ I[10-04|13:54:30.392] Started node                                 module=main n
 接下来是一个标准的区块创建周期，我们在这里输入一个新的
 轮，提出一个区块，获得超过 2/3 的赞成票，然后
 预提交并最终有机会提交一个块。 欲知详情，
-请参考【拜占庭共识
+请参考[拜占庭共识
 算法](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md)。
 
 ```sh

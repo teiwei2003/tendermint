@@ -22,20 +22,20 @@ echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
 ```
 
-Get the source code:
+获取源代码：
 
 ```sh
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
 ```
 
-Then run:
+然后运行:
 
 ```sh
 make install
 ```
 
-to put the binary in `$GOPATH/bin` or use:
+将二进制文件放入 `$GOPATH/bin` 或使用：
 
 ```sh
 make build
@@ -55,7 +55,7 @@ _免责声明_ Tendermint 的二进制文件是在没有 DWARF 的情况下构�
 tendermint version
 ```
 
-## Run
+## 运行
 
 要使用简单的进程内应用程序启动单节点区块链:
 
@@ -64,7 +64,7 @@ tendermint init validator
 tendermint start --proxy-app=kvstore
 ```
 
-## Reinstall
+## 重新安装
 
 如果您已经安装了 Tendermint，并且您进行了更新，只需
 
@@ -72,7 +72,7 @@ tendermint start --proxy-app=kvstore
 make install
 ```
 
-To upgrade, run
+要升级，请运行
 
 ```sh
 git pull origin master
@@ -102,20 +102,20 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
   rm -f v1.20.tar.gz
 ```
 
-Set a database backend to `cleveldb`:
+将数据库后端设置为 `cleveldb`：
 
 ```toml
 # config/config.toml
 db_backend = "cleveldb"
 ```
 
-To install Tendermint, run:
+要安装 Tendermint，请运行：
 
 ```sh
 CGO_LDFLAGS="-lsnappy" make install TENDERMINT_BUILD_OPTIONS=cleveldb
 ```
 
-or run:
+或运行:
 
 ```sh
 CGO_LDFLAGS="-lsnappy" make build TENDERMINT_BUILD_OPTIONS=cleveldb

@@ -71,7 +71,7 @@ Tendermint 目前有一个抽象，允许支持多个数据库后端。这种普
 
 Tendermint 节点目前与其他进程有多个通信领域(例如 ABCI、远程签名者、P2P、JSONRPC、websockets、事件)。其中许多有多个实现，其中一个就足够了。巩固和清理IPC。 [更多](https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-002-ipc-ecosystem.md)
 
-###小作品
+### 提示
 
 - 失忆症攻击处理。 [更多](https://github.com/tendermint/tendermint/issues/5270)
 - 删除/更新共识 WAL。 [更多](https://github.com/tendermint/tendermint/issues/6397)

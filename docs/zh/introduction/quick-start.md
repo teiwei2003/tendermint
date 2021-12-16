@@ -8,7 +8,7 @@
 
 ## 初始化
 
-跑步:
+运行:
 
 ```sh
 tendermint init validator
@@ -28,12 +28,11 @@ $ ls $HOME/.tendermint/config/
 config.toml  genesis.json  node_key.json  priv_validator.json
 ```
 
-For a single, local node, no further configuration is required.
-Configuring a cluster is covered further below.
+对于单个本地节点，不需要进一步配置。 下面进一步介绍了配置集群
 
-## Local Node
+## 本地节点
 
-Start Tendermint with a simple in-process application:
+使用一个简单的进程内应用程序启动 Tendermint：
 
 ```sh
 tendermint start --proxy-app=kvstore
@@ -41,48 +40,48 @@ tendermint start --proxy-app=kvstore
 
 > Note: `kvstore` is a non persistent app, if you would like to run an application with persistence run `--proxy-app=persistent_kvstore`
 
-and blocks will start to stream in:
+并且块将开始流入：
 
 ```sh
 I[01-06|01:45:15.592] Executed block                               module=state height=1 validTxs=0 invalidTxs=0
 I[01-06|01:45:15.624] Committed state                              module=state height=1 txs=0 appHash=
 ```
 
-Check the status with:
+检查状态：
 
 ```sh
 curl -s localhost:26657/status
 ```
 
-### Sending Transactions
+### 发送交易
 
-With the KVstore app running, we can send transactions:
+运行 KVstore 应用程序后，我们可以发送交易：
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
 ```
 
-and check that it worked with:
+并检查它是否适用于：
 
 ```sh
 curl -s 'localhost:26657/abci_query?data="abcd"'
 ```
 
-We can send transactions with a key and value too:
+我们也可以发送带有键和值的交易：
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
 ```
 
-and query the key:
+并查询密钥：
 
 ```sh
 curl -s 'localhost:26657/abci_query?data="name"'
 ```
 
-where the value is returned in hex.
+其中以十六进制返回值。
 
-## Cluster of Nodes
+## 节点集群
 
 首先创建四台Ubuntu云机器。 以下是在数字上测试的
 Ocean Ubuntu 16.04 x64(3GB/1CPU，20GB SSD)。 我们会参考他们各自的IP
@@ -108,7 +107,7 @@ tendermint show_node_id --home ./mytestnet/node2
 tendermint show_node_id --home ./mytestnet/node3
 ```
 
-Finally, from each machine, run:
+最后，在每台机器上运行：
 
 ```sh
 tendermint start --home ./mytestnet/node0 --proxy-app=kvstore --p2p.persistent-peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
