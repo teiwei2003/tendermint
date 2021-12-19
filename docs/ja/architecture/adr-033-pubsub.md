@@ -1,27 +1,27 @@
-# ADR 033: pubsub 2.0
+# ADR 033:パブリッシュおよびサブスクライブ2.0
 
-Author: Anton Kaliaev (@melekes)
+著者:アントン・カリアエフ(@melekes)
 
-## Changelog
+## 変更ログ
 
-02-10-2018: Initial draft
+2018年2月10日:最初のドラフト
 
-16-01-2019: Second version based on our conversation with Jae
+2019年1月16日:ジェとの会話に基づく2番目のバージョン
 
-17-01-2019: Third version explaining how new design solves current issues
+2017年1月17日:第3版では、新しい設計が現在の問題をどのように解決するかを説明しています
 
-25-01-2019: Fourth version to treat buffered and unbuffered channels differently
+25-01-2019:4番目のバージョンは、バッファリングされたチャネルとバッファリングされていないチャネルを異なる方法で処理します
 
-## Context
+## 環境
 
-Since the initial version of the pubsub, there's been a number of issues
-raised: [#951], [#1879], [#1880]. Some of them are high-level issues questioning the
-core design choices made. Others are minor and mostly about the interface of
-`Subscribe()` / `Publish()` functions.
+pubsubの初期バージョン以来、多くの問題がありました
+提出済み:[#951]、[#1879]、[#1880]。 それらのいくつかは質問しています
+コアデザインの選択が行われました。 その他は二次的で、主に
+`Subscribe()`/`Publish()`関数。
 
-### Sync vs Async
+###同期および非同期
 
-Now, when publishing a message to subscribers, we can do it in a goroutine:
+これで、サブスクライバーにメッセージを公開するときに、ゴルーチンでそれを行うことができます。
 
 _using channels for data transmission_
 ```go
@@ -40,25 +40,25 @@ for each subscriber {
 }
 ```
 
-This gives us greater performance and allows us to avoid "slow client problem"
-(when other subscribers have to wait for a slow subscriber). A pool of
-goroutines can be used to avoid uncontrolled memory growth.
+これにより、パフォーマンスが向上し、「クライアントの速度低下の問題」を回避できます。
+(他のサブスクライバーが遅いサブスクライバーを待たなければならない場合)。 プール
+Goroutinesは、制御されていないメモリの増加を回避するために使用できます。
 
-In certain cases, this is what you want. But in our case, because we need
-strict ordering of events (if event A was published before B, the guaranteed
-delivery order will be A -> B), we can't publish msg in a new goroutine every time.
+場合によっては、これが必要なものです。 しかし、私たちの例では、
+イベントの厳密な順序(イベントAがBの前に公開されている場合、それは保証されます
+配信順序はA-> B)となり、毎回新しいゴルーチンでメッセージを公開することはできません。
 
-We can also have a goroutine per subscriber, although we'd need to be careful
-with the number of subscribers. It's more difficult to implement as well +
-unclear if we'll benefit from it (cause we'd be forced to create N additional
-channels to distribute msg to these goroutines).
+注意が必要ですが、サブスクライバーごとにゴルーチンを設定することもできます。
+そして加入者の数。 実装も難しい+
+私たちがそれから利益を得るかどうかは明らかではありません(私たちはさらにNを作成することを余儀なくされるため)
+これらのゴルーチンチャネルにメッセージを配布します)。
 
-### Non-blocking send
+### ノンブロッキング送信
 
-There is also a question whenever we should have a non-blocking send.
-Currently, sends are blocking, so publishing to one client can block on
-publishing to another. This means a slow or unresponsive client can halt the
-system. Instead, we can use a non-blocking send:
+ノンブロッキング送信を実行する必要があるときはいつでも、別の問題があります。
+現在、送信はブロックされているため、クライアントへの投稿はブロックできます
+別の人に公開します。 これは、遅いまたは応答しないクライアントが停止する可能性があることを意味します
+システム。 代わりに、ノンブロッキング送信を使用できます。
 
 ```go
 for each subscriber {
@@ -71,37 +71,37 @@ for each subscriber {
 }
 ```
 
-This fixes the "slow client problem", but there is no way for a slow client to
-know if it had missed a message. We could return a second channel and close it
-to indicate subscription termination. On the other hand, if we're going to
-stick with blocking send, **devs must always ensure subscriber's handling code
-does not block**, which is a hard task to put on their shoulders.
+これは「遅いクライアントの問題」を解決しますが、遅いクライアントはできません
+メッセージを見逃したかどうかを確認します。 2番目のチャネルに戻って閉じることができます
+サブスクリプションが終了したことを示します。一方、私たちが望むなら
+送信のブロックを主張します。**開発者は常にサブスクライバーの処理コードを確認する必要があります
+**をブロックしないでください。これは彼らの肩にかかる骨の折れる作業です。
 
-The interim option is to run goroutines pool for a single message, wait for all
-goroutines to finish. This will solve "slow client problem", but we'd still
-have to wait `max(goroutine_X_time)` before we can publish the next message.
+一時的なオプションは、単一のメッセージに対してgoroutinesプールを実行し、すべてを待機することです。
+完了するためのgoroutines。これは「遅いクライアントの問題」を解決しますが、それでも
+次のメッセージを公開する前に、 `max(goroutine_X_time)`を待つ必要があります。
 
-### Channels vs Callbacks
+###チャネルとコールバック
 
-Yet another question is whether we should use channels for message transmission or
-call subscriber-defined callback functions. Callback functions give subscribers
-more flexibility - you can use mutexes in there, channels, spawn goroutines,
-anything you really want. But they also carry local scope, which can result in
-memory leaks and/or memory usage increase.
+もう1つの質問は、メッセージ送信にチャネルを使用する必要があるかどうかです。
+サブスクライバーによって定義されたコールバック関数を呼び出します。加入者へのコールバック機能
+柔軟性の向上-ミューテックス、チャネルを使用し、そこでゴルーチンを生成できます。
+あなたが本当に欲しいものは何でも。しかし、それらにはローカルスコープもあり、これは
+メモリリークおよび/またはメモリ使用量の増加。
 
-Go channels are de-facto standard for carrying data between goroutines.
+Goチャネルは、ゴルーチン間でデータを転送するための事実上の標準です。
 
-### Why `Subscribe()` accepts an `out` channel?
+### `Subscribe()`が `out`チャネルを受け入れるのはなぜですか？
 
-Because in our tests, we create buffered channels (cap: 1). Alternatively, we
-can make capacity an argument and return a channel.
+テストでは、バッファチャネルを作成したためです(上限:1)。または私たち
+容量をパラメータとして使用して、チャネルに戻ることができます。
 
-## Decision
+## 決定
 
 ### MsgAndTags
 
-Use a `MsgAndTags` struct on the subscription channel to indicate what tags the
-msg matched.
+サブスクライブされたチャネルで `MsgAndTags`構造を使用して、どのタグを示すか
+msgが一致します。
 
 ```go
 type MsgAndTags struct {
@@ -110,10 +110,10 @@ type MsgAndTags struct {
 }
 ```
 
-### Subscription Struct
+### サブスクリプション構造
 
 
-Change `Subscribe()` function to return a `Subscription` struct:
+`Subscribe()`関数を変更して、 `Subscription`構造を返します。
 
 ```go
 type Subscription struct {
@@ -125,18 +125,18 @@ func (s *Subscription) Canceled() <-chan struct{}
 func (s *Subscription) Err() error
 ```
 
-`Out()` returns a channel onto which messages and tags are published.
-`Unsubscribe`/`UnsubscribeAll` does not close the channel to avoid clients from
-receiving a nil message.
+`Out()`は、メッセージとラベルを公開するためのチャネルを返します。
+`Unsubscribe` /` UnsubscribeAll`は、クライアントを避けるためにチャネルを閉じません
+nilメッセージを受信しました。
 
-`Canceled()` returns a channel that's closed when the subscription is terminated
-and supposed to be used in a select statement.
+`Canceled()`は、サブスクリプションが終了したときに閉じられたチャネルを返します
+そして、選択ステートメントで使用する必要があります。
 
-If the channel returned by `Canceled()` is not closed yet, `Err()` returns nil.
-If the channel is closed, `Err()` returns a non-nil error explaining why:
-`ErrUnsubscribed` if the subscriber choose to unsubscribe,
-`ErrOutOfCapacity` if the subscriber is not pulling messages fast enough and the channel returned by `Out()` became full.
-After `Err()` returns a non-nil error, successive calls to `Err() return the same error.
+`Canceled()`によって返されたチャネルが閉じられていない場合、 `Err()`はnilを返します。
+チャネルが閉じている場合、 `Err()`は理由を説明するnil以外のエラーを返します。
+`ErrUnsubscribed`サブスクライバーがサブスクライブ解除を選択した場合、
+`ErrOutOfCapacity`サブスクライバーがメッセージを十分に速くプルせず、` Out() `によって返されるチャネルがいっぱいの場合。
+`Err()`がゼロ以外のエラーを返した後、 `Err()を連続して呼び出すと同じエラーが返されます。
 
 ```go
 subscription, err := pubsub.Subscribe(...)
@@ -152,12 +152,12 @@ select {
 }
 ```
 
-### Capacity and Subscriptions
+### 容量とサブスクリプション
 
-Make the `Out()` channel buffered (with capacity 1) by default. In most cases, we want to
-terminate the slow subscriber. Only in rare cases, we want to block the pubsub
-(e.g. when debugging consensus). This should lower the chances of the pubsub
-being frozen.
+デフォルトでは、 `Out()`チャネルはバッファリングされます(容量は1)。 ほとんどの場合、
+遅いサブスクライバーを終了します。 ごくまれに、公開と購読を禁止したい場合があります
+(たとえば、コンセンサスをデバッグする場合)。 これにより、公開と購読の機会が減るはずです
+凍っていた。
 
 ```go
 // outCap can be used to set capacity of Out channel
@@ -172,14 +172,14 @@ Use a different function for an unbuffered channel:
 SubscribeUnbuffered(ctx context.Context, clientID string, query Query) (Subscription, error) {
 ```
 
-SubscribeUnbuffered should not be exposed to users.
+SubscribeUnbuffered 不应向用户公开。
 
-### Blocking/Nonblocking
+### ブロッキング/非ブロッキング
 
-The publisher should treat these kinds of channels separately.
-It should block on unbuffered channels (for use with internal consensus events
-in the consensus tests) and not block on the buffered ones. If a client is too
-slow to keep up with it's messages, it's subscription is terminated:
+サイト運営者は、これらのタイプのチャネルを個別に扱う必要があります。
+バッファリングされていないチャネルをブロックする必要があります(内部コンセンサスイベントの場合)
+コンセンサステストでは)バッファリングを防ぐ代わりに。 顧客も
+そのニュースに追いつくのは遅く、そのサブスクリプションは終了しました:
 
 for each subscription {
     out := subscription.outChan
@@ -200,48 +200,48 @@ for each subscription {
     }
 }
 
-### How this new design solves the current issues?
+###この新しい設計は、現在の問題をどのように解決しますか？
 
-[#951] ([#1880]):
+[#951]([#1880]):
 
-Because of non-blocking send, situation where we'll deadlock is not possible
-anymore. If the client stops reading messages, it will be removed.
+ノンブロッキング送信のため、デッドロックは発生しません
+上。クライアントがメッセージの読み取りを停止すると、メッセージは削除されます。
 
 [#1879]:
 
-MsgAndTags is used now instead of a plain message.
+通常のメッセージの代わりにMsgAndTagsを使用するようになりました。
 
-### Future problems and their possible solutions
+###将来の問題と考えられる解決策
 
 [#2826]
 
-One question I am still pondering about: how to prevent pubsub from slowing
-down consensus. We can increase the pubsub queue size (which is 0 now). Also,
-it's probably a good idea to limit the total number of subscribers.
+私がまだ考えている質問:pubsubが遅くなるのを防ぐ方法
+コンセンサスを作成します。パブリッシュ/サブスクライブキューのサイズを増やすことができます(現在は0)。また、
+サブスクライバーの総数を制限することをお勧めします。
 
-This can be made automatically. Say we set queue size to 1000 and, when it's >=
-80% full, refuse new subscriptions.
+これは自動的に行うことができます。キューサイズを1000に設定し、それが> =の場合を想定します。
+80％がいっぱいで、新しいサブスクリプションを拒否します。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- more idiomatic interface
-- subscribers know what tags msg was published with
-- subscribers aware of the reason their subscription was canceled
+-より慣用的なインターフェース
+-サブスクライバーは、どのタグmsgが公開されているかを知っています
+-サブスクライバーは、サブスクリプションがキャンセルされた理由を知っています
 
-### Negative
+### ネガティブ
 
-- (since v1) no concurrency when it comes to publishing messages
+-(v1以降)メッセージを公開するときに同時実行性はありません
 
-### Neutral
+### ニュートラル
 
 
-[#951]: https://github.com/tendermint/tendermint/issues/951
-[#1879]: https://github.com/tendermint/tendermint/issues/1879
-[#1880]: https://github.com/tendermint/tendermint/issues/1880
-[#2826]: https://github.com/tendermint/tendermint/issues/2826
+[#951]:https://github.com/tendermint/tendermint/issues/951
+[#1879]:https://github.com/tendermint/tendermint/issues/1879
+[#1880]:https://github.com/tendermint/tendermint/issues/1880
+[#2826]:https://github.com/tendermint/tendermint/issues/2826

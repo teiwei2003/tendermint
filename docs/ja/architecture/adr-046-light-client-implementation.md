@@ -1,18 +1,18 @@
-# ADR 046: Lite Client Implementation
+# ADR 046:Liteクライアントの実装
 
-## Changelog
-* 13-02-2020: Initial draft
-* 26-02-2020: Cross-checking the first header
-* 28-02-2020: Bisection algorithm details
-* 31-03-2020: Verify signature got changed
+## 変更ログ
+* 13-02-2020:最初のドラフト
+* 26-02-2020:最初の見出しをクロスチェックします
+* 28-02-2020:二分アルゴリズムの詳細
+* 31-03-2020:検証署名が変更されました
 
-## Context
+## 環境
 
-A `Client` struct represents a light client, connected to a single blockchain.
+`Client`構造は、単一のブロックチェーンに接続されたライトクライアントを表します。
 
-The user has an option to verify headers using `VerifyHeader` or
-`VerifyHeaderAtHeight` or `Update` methods. The latter method downloads the
-latest header from primary and compares it with the currently trusted one.
+ユーザーは `VerifyHeader`ま​​たは
+`VerifyHeaderAtHeight`または` Update`メソッド。 後者の方法をダウンロードする
+メインの最新のヘッダーから、現在の信頼できるヘッダーと比較します。
 
 ```go
 type Client interface {
@@ -36,11 +36,11 @@ type Client interface {
 }
 ```
 
-A new light client can either be created from scratch (via `NewClient`) or
-using the trusted store (via `NewClientFromTrustedStore`). When there's some
-data in the trusted store and `NewClient` is called, the light client will a)
-check if stored header is more recent b) optionally ask the user whenever it
-should rollback (no confirmation required by default).
+新しいライトクライアントは、( `NewClient`を介して)最初から作成するか、
+信頼できるストアを使用します( `NewClientFromTrustedStore`経由)。 あるとき
+ストレージ内のデータを信頼し、「NewClient」を呼び出します。ライトクライアントはa)
+保存されたヘッダーが更新されているかどうかを確認しますb)オプションでいつでもユーザーに確認します
+ロールバックする必要があります(デフォルトでは確認は必要ありません)。
 
 ```go
 func NewClient(
@@ -52,22 +52,22 @@ func NewClient(
 	options ...Option) (*Client, error) {
 ```
 
-`witnesses` as argument (as opposite to `Option`) is an intentional choice,
-made to increase security by default. At least one witness is required,
-although, right now, the light client does not check that primary != witness.
-When cross-checking a new header with witnesses, minimum number of witnesses
-required to respond: 1. Note the very first header (`TrustOptions.Hash`) is
-also cross-checked with witnesses for additional security.
+( `Option`ではなく)パラメータとしての` witnesses`は意図的な選択です。
+デフォルトでセキュリティが強化されています。 少なくとも1人の証人が必要です。
+現在、ライトクライアントはメインの！=証人をチェックしません。
+新しいタイトルを目撃者とクロスチェックするときの目撃者の最小数
+必要な応答:1。最初のヘッダー( `TrustOptions.Hash`)は
+また、安全性を高めるために目撃者とクロスチェックしてください。
 
-Due to bisection algorithm nature, some headers might be skipped. If the light
-client does not have a header for height `X` and `VerifyHeaderAtHeight(X)` or
-`VerifyHeader(H#X)` methods are called, these will perform either a) backwards
-verification from the latest header back to the header at height `X` or b)
-bisection verification from the first stored header to the header at height `X`.
+バイナリアルゴリズムの性質上、一部のタイトルはスキップされる場合があります。 軽い場合
+クライアントには、高さが「X」で「VerifyHeaderAtHeight(X)」のヘッダーがありません。
+`VerifyHeader(H#X)`メソッドが呼び出され、これらのメソッドはa)逆方向に実行されます
+最新のヘッダーから高さ「X」のヘッダーの検証に戻る、またはb)
+最初に保存されたタイトルから高さ「X」のタイトルまでのバイナリ検証。
 
-`TrustedHeader`, `TrustedValidatorSet` only communicate with the trusted store.
-If some header is not there, an error will be returned indicating that
-verification is required.
+`TrustedHeader`、` TrustedValidatorSet`は信頼できるストアとのみ通信します。
+ヘッダーが存在しない場合は、エラーが返され、
+確認する必要があります。
 
 ```go
 type Provider interface {
@@ -78,17 +78,16 @@ type Provider interface {
 }
 ```
 
-Provider is a full node usually, but can be another light client. The above
-interface is thin and can accommodate many implementations.
+プロバイダーは通常、完全なノードですが、別のライトクライアントにすることもできます。 その上
+インターフェイスは非常に薄く、多くの実装に対応できます。
 
-If provider (primary or witness) becomes unavailable for a prolonged period of
-time, it will be removed to ensure smooth operation.
+プロバイダー(プライマリーまたはウィットネス)が長期間利用できない場合
+時間、スムーズな操作を確保するために削除されます。
 
-Both `Client` and providers expose chain ID to track if there are on the same
-chain. Note, when chain upgrades or intentionally forks, chain ID changes.
+`Client`とプロバイダーの両方がチェーンIDを開示して、同じチェーンが存在するかどうかを追跡します
+鎖。 チェーンをアップグレードしたり、意図的にフォークしたりすると、チェーンIDが変更されることに注意してください。
 
-The light client stores headers & validators in the trusted store:
-
+ライトクライアントは、ヘッダーとベリファイアを信頼できるストレージに保存します。
 ```go
 type Store interface {
 	SaveSignedHeaderAndValidatorSet(sh *types.SignedHeader, valSet *types.ValidatorSet) error
@@ -108,9 +107,9 @@ type Store interface {
 }
 ```
 
-At the moment, the only implementation is the `db` store (wrapper around the KV
-database, used in Tendermint). In the future, remote adapters are possible
-(e.g. `Postgresql`).
+現在、唯一の実装は `db`ストレージ(KV周辺)です
+データベース、Tendermintで使用)。 将来的には、リモートアダプタが可能です
+(例: `Postgresql`)。
 
 ```go
 func Verify(
@@ -125,45 +124,45 @@ func Verify(
 	trustLevel tmmath.Fraction) error {
 ```
 
-`Verify` pure function is exposed for a header verification. It handles both
-cases of adjacent and non-adjacent headers. In the former case, it compares the
-hashes directly (2/3+ signed transition). Otherwise, it verifies 1/3+
-(`trustLevel`) of trusted validators are still present in new validators.
+`Verify`純粋関数は、ヘッダー検証に公に使用されます。同時に処理します
+隣接ヘッダーと非隣接ヘッダーの場合。前者の場合、比較します
+直接ハッシュ(2/3以上の署名変換)。それ以外の場合は、1/3 +を検証します
+( `trustLevel`)信頼できるベリファイアはまだ新しいベリファイアに存在します。
 
-While `Verify` function is certainly handy, `VerifyAdjacent` and
-`VerifyNonAdjacent` should be used most often to avoid logic errors.
+`Verify`関数は確かに便利ですが、` VerifyAdjacent`と
+`VerifyNonAdjacent`は、論理エラーを回避するために最も頻繁に使用する必要があります。
 
-### Bisection algorithm details
+###除算アルゴリズムの詳細
 
-Non-recursive bisection algorithm was implemented despite the spec containing
-the recursive version. There are two major reasons:
+仕様には含まれていますが、非再帰的な二分法アルゴリズムが実装されています
+再帰バージョン。主な理由は2つあります。
 
-1) Constant memory consumption => no risk of getting OOM (Out-Of-Memory) exceptions;
-2) Faster finality (see Fig. 1).
+1)継続的なメモリ消費=> OOM(メモリ不足)例外のリスクはありません。
+2)より高速な終了(図1を参照)。
 
-_Fig. 1: Differences between recursive and non-recursive bisections_
+_示されているように。 1:再帰的および非再帰的二分法の違い_
 
-![Fig. 1](./img/adr-046-fig1.png)
+！ [示されているように。 1](./img/adr-046-fig1.png)
 
-Specification of the non-recursive bisection can be found
-[here](https://github.com/tendermint/spec/blob/zm_non-recursive-verification/spec/consensus/light-client/non-recursive-verification.md).
+非再帰的二分法の基準を見つけることができます
+[こちら](https://github.com/tendermint/spec/blob/zm_non-recursive-verification/spec/consensus/light-client/non-recursive-verification.md)。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-* single `Client` struct, which is easy to use
-* flexible interfaces for header providers and trusted storage
+*単一の `Client`構造、使いやすい
+*ヘッダープロバイダーと信頼できるストレージ間の柔軟なインターフェイス
 
-### Negative
+### ネガティブ
 
-* `Verify` needs to be aligned with the current spec
+* `Verify`は現在の仕様と一致している必要があります
 
-### Neutral
+### ニュートラル
 
-* `Verify` function might be misused (called with non-adjacent headers in
-  incorrectly implemented sequential verification)
+* `Verify`関数は誤用される可能性があります(
+  (誤って実装されたシーケンス検証)

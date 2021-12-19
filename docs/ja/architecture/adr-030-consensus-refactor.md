@@ -1,44 +1,44 @@
-# ADR 030: Consensus Refactor
+# ADR 030:コンセンサス再構築
 
-## Context
+## 環境
 
-One of the biggest challenges this project faces is to proof that the
-implementations of the specifications are correct, much like we strive to
-formaly verify our alogrithms and protocols we should work towards high
-confidence about the correctness of our program code. One of those is the core
-of Tendermint - Consensus - which currently resides in the `consensus` package.
-Over time there has been high friction making changes to the package due to the
-algorithm being scattered in a side-effectful container (the current
-`ConsensusState`). In order to test the algorithm a large object-graph needs to
-be set up and even than the non-deterministic parts of the container makes will
-prevent high certainty. Where ideally we have a 1-to-1 representation of the
-[spec](https://github.com/tendermint/spec), ready and easy to test for domain
-experts.
+プロジェクトが直面している最大の課題の1つは、証明することです
+私たちが試みているように、仕様の実装は正しいです
+アルゴリズムとプロトコルをフォーマル検証し、改善に努める必要があります
+プログラムコードの正確さに自信を持ってください。それらの1つはコアです
+Tendermint-コンセンサス-現在 `コンセンサス`パッケージに含まれています。
+時間の経過とともに、
+アルゴリズムは副作用のあるコンテナに散在しています(現在
+`コンセンサスステータス`)。アルゴリズムをテストするには、ラージオブジェクトグラフが必要です
+コンテナの非決定論的な部品製造以上のセットアップ
+高い確実性を防ぎます。理想的には、1対1の表現があります
+[spec](https://github.com/tendermint/spec)、ドメインをテストする準備ができて簡単
+エキスパート。
 
-Addresses:
+住所:
 
-- [#1495](https://github.com/tendermint/tendermint/issues/1495)
-- [#1692](https://github.com/tendermint/tendermint/issues/1692)
+-[#1495](https://github.com/tendermint/tendermint/issues/1495)
+-[#1692](https://github.com/tendermint/tendermint/issues/1692)
 
-## Decision
+## 決定
 
-To remedy these issues we plan a gradual, non-invasive refactoring of the
-`consensus` package. Starting of by isolating the consensus alogrithm into
-a pure function and a finite state machine to address the most pressuring issue
-of lack of confidence. Doing so while leaving the rest of the package in tact
-and have follow-up optional changes to improve the sepration of concerns.
+これらの問題を解決するために、
+`コンセンサス`パッケージ。まず、コンセンサスアルゴリズムを次のように分離します
+最も差し迫った問題を解決するための純粋関数と有限状態マシン
+自信の欠如。残りのパッケージをそのままにして、これを行います
+そして、関心の分離を改善するために、その後のオプションの変更があります。
 
-### Implementation changes
+### 変更を実装する
 
-The core of Consensus can be modelled as a function with clear defined inputs:
+コンセンサスのコアは、明確に定義された入力を持つ関数としてモデル化できます。
 
-* `State` - data container for current round, height, etc.
-* `Event`- significant events in the network
+* `State`-現在のラウンド、高さなどのデータコンテナ。
+* `イベント`-ネットワーク内の重要なイベント
 
-producing clear outputs;
+明確な出力を生成します。
 
-* `State` - updated input
-* `Message` - signal what actions to perform
+* `State`-入力を更新
+* `メッセージ`-実行するアクションを示します
 
 ```go
 type Event int
@@ -84,11 +84,11 @@ func Consensus(Event, State) (State, Message) {
 }
 ```
 
-Tracking of relevant information to feed `Event` into the function and act on
-the output is left to the `ConsensusExecutor` (formerly `ConsensusState`). 
+関連情報を追跡して、機能に「イベント」を入力し、アクションを実行します
+出力は `ConsensusExecutor`(以前は` ConsensusState`と呼ばれていました)に任されています。
 
-Benefits for testing surfacing nicely as testing for a sequence of events
-against algorithm could be as simple as the following example:
+テストの利点は、一連のイベントのテストとして十分に示されています
+異議申し立てアルゴリズムは、次の例のように単純にすることができます。
 
 ``` go
 func TestConsensusXXX(t *testing.T) {
@@ -127,10 +127,9 @@ func TestConsensusXXX(t *testing.T) {
 ```
 
 
-## Consensus Executor
+## コンセンサスエグゼキュータ
 
-## Consensus Core
-
+## コンセンサスコア
 ```go
 type Event interface{}
 
@@ -147,7 +146,7 @@ type EventProposal struct {
     Timestamp        Time
     BlockID          BlockID
     POLRound         int
-    Sender           int   
+    Sender           int
 }
 
 type Majority23PrevotesBlock struct {
@@ -217,7 +216,7 @@ type RoundStep int
 
 const (
 	RoundStepUnknown RoundStep = iota
-	RoundStepPropose       
+	RoundStepPropose
 	RoundStepPrevote
 	RoundStepPrecommit
 	RoundStepCommit
@@ -252,9 +251,9 @@ func Consensus(event Event, state State) (State, Message, TriggerTimeout) {
     		    state.ValidValue = nil
     		    state.ValidRound = -1
     		    state.ValidatorId = event.ValidatorId
-    		} 
+    		}
     	    return state, msg, timeout
-    	
+
     	case EventNewRound:
     		if event.Height == state.Height and event.Round > state.Round {
                state.Round = eventRound
@@ -269,24 +268,24 @@ func Consensus(event Event, state State) (State, Message, TriggerTimeout) {
                timeout = TriggerTimeout { state.Height, state.Round, timeoutPropose(state.Round) }
             }
     	    return state, msg, timeout
-    	
+
     	case EventProposal:
-    		if event.Height == state.Height and event.Round == state.Round and 
-    	       event.Sender == proposal(state.Height, state.Round) and state.Step == RoundStepPropose { 
+    		if event.Height == state.Height and event.Round == state.Round and
+    	       event.Sender == proposal(state.Height, state.Round) and state.Step == RoundStepPropose {
     	       	if event.POLRound >= state.LockedRound or event.BlockID == state.BlockID or state.LockedRound == -1 {
     	       		msg = MessageVote { state.Height, state.Round, event.BlockID, Prevote }
     	       	}
     	       	state.Step = RoundStepPrevote
             }
     	    return state, msg, timeout
-    	
+
     	case TimeoutPropose:
     		if event.Height == state.Height and event.Round == state.Round and state.Step == RoundStepPropose {
     		    msg = MessageVote { state.Height, state.Round, nil, Prevote }
     			state.Step = RoundStepPrevote
             }
     	    return state, msg, timeout
-    	
+
     	case Majority23PrevotesBlock:
     		if event.Height == state.Height and event.Round == state.Round and state.Step >= RoundStepPrevote and event.Round > state.ValidRound {
     		    state.ValidRound = event.Round
@@ -299,75 +298,75 @@ func Consensus(event Event, state State) (State, Message, TriggerTimeout) {
     		    }
             }
     	    return state, msg, timeout
-    	
+
     	case Majority23PrevotesAny:
     		if event.Height == state.Height and event.Round == state.Round and state.Step == RoundStepPrevote {
     			timeout = TriggerTimeout { state.Height, state.Round, timeoutPrevote(state.Round) }
     		}
     	    return state, msg, timeout
-    	
+
     	case TimeoutPrevote:
     		if event.Height == state.Height and event.Round == state.Round and state.Step == RoundStepPrevote {
     			msg = MessageVote { state.Height, state.Round, nil, Precommit }
     			state.Step = RoundStepPrecommit
     		}
     	    return state, msg, timeout
-    	
+
     	case Majority23PrecommitBlock:
     		if event.Height == state.Height {
     		    state.Step = RoundStepCommit
     		    state.LockedValue = event.BlockID
     		}
     	    return state, msg, timeout
-    		
+
     	case Majority23PrecommitAny:
     		if event.Height == state.Height and event.Round == state.Round {
     			timeout = TriggerTimeout { state.Height, state.Round, timeoutPrecommit(state.Round) }
     		}
     	    return state, msg, timeout
-    	
+
     	case TimeoutPrecommit:
             if event.Height == state.Height and event.Round == state.Round {
             	state.Round = state.Round + 1
             }
     	    return state, msg, timeout
 	}
-}	
+}
 
 func ConsensusExecutor() {
 	proposal = nil
 	votes = HeightVoteSet { Height: 1 }
 	state = State {
 		Height:       1
-		Round:        0          
+		Round:        0
 		Step:         RoundStepPropose
 		LockedValue:  nil
 		LockedRound:  -1
 		ValidValue:   nil
 		ValidRound:   -1
 	}
-	
+
 	event = EventNewHeight {1, id}
 	state, msg, timeout = Consensus(event, state)
-	
+
 	event = EventNewRound {state.Height, 0}
 	state, msg, timeout = Consensus(event, state)
-	
+
 	if msg != nil {
 		send msg
 	}
-	
+
 	if timeout != nil {
 		trigger timeout
 	}
-	
+
 	for {
 		select {
 		    case message := <- msgCh:
 		    	switch msg := message.(type) {
 		    	    case MessageProposal:
-		    	        
-		    	    case MessageVote:	
+
+		    	    case MessageVote:
 		    	    	if msg.Height == state.Height {
 		    	    		newVote = votes.AddVote(msg)
 		    	    		if newVote {
@@ -378,14 +377,14 @@ func ConsensusExecutor() {
                                 			event = EventNewRound { msg.Height, msg.Round }
                                 			state, msg, timeout = Consensus(event, state)
                                 			state = handleStateChange(state, msg, timeout)
-                                		}	
-                                		
+                                		}
+
                                 		if blockID, ok = prevotes.TwoThirdsMajority(); ok and blockID != nil {
                                 		    if msg.Round == state.Round and hasBlock(blockID) {
                                 		    	event = Majority23PrevotesBlock { msg.Height, msg.Round, blockID }
                                 		    	state, msg, timeout = Consensus(event, state)
                                 		    	state = handleStateChange(state, msg, timeout)
-                                		    } 
+                                		    }
                                 		    if proposal != nil and proposal.POLRound == msg.Round and hasBlock(blockID) {
                                 		        event = EventProposal {
                                                         Height: state.Height
@@ -398,61 +397,61 @@ func ConsensusExecutor() {
                                 		        state = handleStateChange(state, msg, timeout)
                                 		    }
                                 		}
-                                		
+
                                 		if prevotes.HasTwoThirdsAny() and msg.Round == state.Round {
                                 			event = Majority23PrevotesAny { msg.Height, msg.Round, blockID }
                                 			state, msg, timeout = Consensus(event, state)
                                             state = handleStateChange(state, msg, timeout)
                                 		}
-                                		
-                                	case Precommit:	
-                                		
+
+                                	case Precommit:
+
 		    	    		    }
 		    	    	    }
 		    	        }
 		    case timeout := <- timeoutCh:
-		    
-		    case block := <- blockCh:	
-		    	
+
+		    case block := <- blockCh:
+
 		}
 	}
 }
-	
+
 func handleStateChange(state, msg, timeout) State {
 	if state.Step == Commit {
 		state = ExecuteBlock(state.LockedValue)
-	}	
+	}
 	if msg != nil {
 		send msg
-	}	
+	}
 	if timeout != nil {
 		trigger timeout
-	}	
+	}
 }
 
 ```
 
-### Implementation roadmap
+### 実装ロードマップ
 
-* implement proposed implementation
-* replace currently scattered calls in `ConsensusState` with calls to the new
-  `Consensus` function
-* rename `ConsensusState` to `ConsensusExecutor` to avoid confusion
-* propose design for improved separation and clear information flow between
-  `ConsensusExecutor` and `ConsensusReactor`
+*提案された実装の実装
+*現在 `ConsensusState`に散在している通話を新しい通話に置き換えます
+    `コンセンサス`機能
+*混乱を避けるために、 `ConsensusState`の名前を` ConsensusExecutor`に変更しました
+*分離を改善し、情報の流れを明確にするための設計を提案する
+    `ConsensusExecutor`と` ConsensusReactor`
 
-## Status
+## ステータス
 
-Draft.
+下書き。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- isolated implementation of the algorithm
-- improved testability - simpler to proof correctness
-- clearer separation of concerns - easier to reason
+-アルゴリズムの分離された実装
+-改善されたテスト容易性-正当性を証明するのがより簡単
+-関心の分離の明確化-推論の容易化
 
-### Negative
+### ネガティブ
 
-### Neutral
+### ニュートラル

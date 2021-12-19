@@ -1,42 +1,42 @@
-# ADR 019: Encoding standard for Multisignatures
+# ADR 019:マルチシグニチャのコーディング標準
 
-## Changelog
+## 変更ログ
 
-06-08-2018: Minor updates
+2018年6月8日:小さな更新
 
-27-07-2018: Update draft to use amino encoding
+27-07-2018:アミノコードを使用するようにドラフトを更新
 
-11-07-2018: Initial Draft
+2018年11月7日:最初のドラフト
 
-5-26-2021: Multisigs were moved into the Cosmos-sdk
+2021年5月26日:MultisigはCosmos-sdkに移動されました
 
-## Context
+## 環境
 
-Multisignatures, or technically _Accountable Subgroup Multisignatures_ (ASM),
-are signature schemes which enable any subgroup of a set of signers to sign any message,
-and reveal to the verifier exactly who the signers were.
-This allows for complex conditionals of when to validate a signature.
+マルチシグニチャ、または技術的には_Accountable Subgroup Multisignatures_(ASM)、
+署名者のグループの任意のサブグループが任意のメッセージに署名できるようにする署名スキームです。
+そして、署名者の正確な身元を検証者に明らかにします。
+これにより、署名を検証するタイミングの複雑な条件が可能になります。
 
-Suppose the set of signers is of size _n_.
-If we validate a signature if any subgroup of size _k_ signs a message,
-this becomes what is commonly reffered to as a _k of n multisig_ in Bitcoin.
+署名者セットのサイズが_n_であると仮定します。
+署名を確認する場合、サイズ_k_のサブグループがメッセージに署名すると、
+これは、ビットコインで一般にnマルチ署名と呼ばれる_kのコンテンツになります。
 
-This ADR specifies the encoding standard for general accountable subgroup multisignatures,
-k of n accountable subgroup multisignatures, and its weighted variant.
+このADRは、サブグループのマルチシグニチャを一般的に担当するコーディング標準を規定しています。
+nは、サブグループのマルチシグニチャのkと、それらの重み付けされたバリアントを担当します。
 
-In the future, we can also allow for more complex conditionals on the accountable subgroup.
+将来的には、説明責任のあるサブグループに対してより複雑な条件を許可することもできます。
 
-## Proposed Solution
+## 推奨される解決策
 
-### New structs
+### 新しい構造
 
-Every ASM will then have its own struct, implementing the crypto.Pubkey interface.
+次に、各ASMは独自の構造を持ち、crypto.Pubkeyインターフェイスを実装します。
 
-This ADR assumes that [replacing crypto.Signature with []bytes](https://github.com/tendermint/tendermint/issues/1957) has been accepted.
+このADRは、[crypto.Signatureを[]バイトに置き換える](https://github.com/tendermint/tendermint/issues/1957)を受け入れたと見なされます。
 
-#### K of N threshold signature
+#### K個のN個のしきい値シグネチャ
 
-The pubkey is the following struct:
+公開鍵の構造は次のとおりです。
 
 ```golang
 type ThresholdMultiSignaturePubKey struct { // K of N threshold multisig
@@ -45,26 +45,26 @@ type ThresholdMultiSignaturePubKey struct { // K of N threshold multisig
 }
 ```
 
-We will derive N from the length of pubkeys. (For spatial efficiency in encoding)
+公開鍵の長さからNを導き出します。 (コーディングスペース効率のため)
 
-`Verify` will expect an `[]byte` encoded version of the Multisignature.
-(Multisignature is described in the next section)
-The multisignature will be rejected if the bitmap has less than k indices,
-or if any signature at any of the k indices is not a valid signature from
-the kth public key on the message.
-(If more than k signatures are included, all must be valid)
+`Verify`には、` [] byte`でエンコードされたマルチシグニチャが必要です。
+(マルチシグニチャについては次のセクションで説明します)
+ビットマップのインデックスがk未満の場合、マルチシグニチャは拒否されます。
+または、k個のインデックスのいずれかの署名が
+メッセージ内のk番目の公開鍵。
+(kを超える署名が含まれている場合は、すべての署名が有効である必要があります)
 
-`Bytes` will be the amino encoded version of the pubkey.
+`Bytes`は、公開鍵のアミノエンコードバージョンになります。
 
-Address will be `Hash(amino_encoded_pubkey)`
+アドレスは `Hash(amino_encoded_pubkey)`になります
 
-The reason this doesn't use `log_8(n)` bytes per signer is because that heavily optimizes for the case where a very small number of signers are required.
-e.g. for `n` of size `24`, that would only be more space efficient for `k < 3`.
-This seems less likely, and that it should not be the case optimized for.
+これがすべての署名者に `log_8(n)`バイトを使用しない理由は、非常に少数の署名者を必要とする状況に合わせて大幅に最適化されているためです。
+たとえば、サイズが「24」の「n」の場合、「k <3」の場合、これはスペースを節約するだけです。
+これはありそうもないようであり、この状況に合わせて最適化するべきではありません。
 
-#### Weighted threshold signature
+#### 加重しきい値シグネチャ
 
-The pubkey is the following struct:
+公開鍵の構造は次のとおりです。
 
 ```golang
 type WeightedThresholdMultiSignaturePubKey struct {
@@ -74,13 +74,13 @@ type WeightedThresholdMultiSignaturePubKey struct {
 }
 ```
 
-Weights and Pubkeys must be of the same length.
-Everything else proceeds identically to the K of N multisig,
-except the multisig fails if the sum of the weights is less than the threshold.
+ウェイトとパブキーの長さは同じでなければなりません。
+他のすべては、NマルチシグニチャのKと同じです。
+重みの合計がしきい値よりも小さい場合、マルチシグニチャは失敗します。
 
-#### Multisignature
+#### マルチシグニチャ
 
-The inter-mediate phase of the signatures (as it accrues more signatures) will be the following struct:
+署名の中間段階(より多くの署名が生成されるため)は、次の構造になります。
 
 ```golang
 type Multisignature struct {
@@ -88,11 +88,11 @@ type Multisignature struct {
 	Sigs        [][]byte
 ```
 
-It is important to recall that each private key will output a signature on the provided message itself.
-So no signing algorithm ever outputs the multisignature.
-The UI will take a signature, cast into a multisignature, and then keep adding
-new signatures into it, and when done marshal into `[]byte`.
-This will require the following helper methods:
+各秘密鍵は、提供されたメッセージ自体に署名を出力することを覚えておくことが重要です。
+したがって、署名アルゴリズムは複数の署名を出力しません。
+UIは署名を受け入れ、マルチ署名に変換してから、追加を続けます
+新しい署名を追加し、完了後に `[] byte`にグループ化します。
+これには、次の補助メソッドが必要になります。
 
 ```golang
 func SigToMultisig(sig []byte, n int)
@@ -100,11 +100,11 @@ func GetIndex(pk crypto.Pubkey, []crypto.Pubkey)
 func AddSignature(sig Signature, index int, multiSig *Multisignature)
 ```
 
-The multisignature will be converted to an `[]byte` using amino.MarshalBinaryBare. \*
+マルチシグニチャは、amino.MarshalBinaryBareを使用して `[]バイト`に変換されます。 \ *
 
-#### Bit Array
+#### ビット配列
 
-We would be using a new implementation of a bitarray. The struct it would be encoded/decoded from is
+ビット配列の新しい実装を使用します。 エンコード/デコードされる構造は次のとおりです。
 
 ```golang
 type CryptoBitArray struct {
@@ -113,50 +113,50 @@ type CryptoBitArray struct {
 }
 ```
 
-The reason for not using the BitArray currently implemented in `libs/common/bit_array.go`
-is that it is less space efficient, due to a space / time trade-off.
-Evidence for this is outlined in [this issue](https://github.com/tendermint/tendermint/issues/2077).
+現在 `libs/common/bit_array.go`に実装されているBitArrayを使用しない理由
+スペースと時間のトレードオフのため、スペース効率は低くなります。
+[この問題](https://github.com/tendermint/tendermint/issues/2077)は、この点に関する証拠を要約しています。
 
-In the multisig, we will not be performing arithmetic operations,
-so there is no performance increase with the current implementation,
-and just loss of spatial efficiency.
-Implementing this new bit array with `[]byte` _should_ be simple, as no
-arithmetic operations between bit arrays are required, and save a couple of bytes.
-(Explained in that same issue)
+マルチシグニチャでは、算術演算を実行しません。
+したがって、現在の実装ではパフォーマンスの向上はありません。
+スペース効率の低下にすぎません。
+この新しいビット配列を `[] byte`で実装するのは非常に簡単なはずです。なぜなら、
+ビット配列間の算術演算が必要で、数バイトを節約します。
+(同じ質問で説明されています)
 
-When this bit array encoded, the number of elements is encoded due to amino.
-However we may be encoding a full byte for what we actually only need 1-7 bits for.
-We store that difference in ExtraBitsStored.
-This allows for us to have an unbounded number of signers, and is more space efficient than what is currently used in `libs/common`.
-Again the implementation of this space saving feature is straight forward.
+このビット配列がコード化されると、要素の数はアミノ基によってコード化されます。
+ただし、実際には1〜7ビットしか必要としないコンテンツのフルバイトをエンコードしている場合があります。
+この違いをExtraBitsStoredに保存します。
+これにより、署名者の数に制限がなくなり、現在 `libs/common`で使用されているスペースよりも多くのスペースを節約できます。
+繰り返しになりますが、この省スペース機能の実現は簡単です。
 
-### Encoding the structs
+### コーディング構造
 
-We will use straight forward amino encoding. This is chosen for ease of compatibility in other languages.
+直接アミノコーディングを使用します。このオプションは、他の言語との互換性のために選択されています。
 
-### Future points of discussion
+###今後の議論のポイント
 
-If desired, we can use ed25519 batch verification for all ed25519 keys.
-This is a future point of discussion, but would be backwards compatible as this information won't need to be marshalled.
-(There may even be cofactor concerns without ristretto)
-Aggregation of pubkeys / sigs in Schnorr sigs / BLS sigs is not backwards compatible, and would need to be a new ASM type.
+必要に応じて、すべてのed25519キーにed25519バッチ検証を使用できます。
+これは将来の議論のポイントですが、この情報をグループ化する必要がないため、下位互換性があります。
+(リストレットがない場合は、補因子の問題さえあるかもしれません)
+Schnorr sigs/BLSsigsの公開鍵/ sigs集約は下位互換性がなく、新しいASMタイプである必要があります。
 
-## Status
+## ステータス
 
-Implemented (moved to cosmos-sdk)
+実装(cosmos-sdkに移動)
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Supports multisignatures, in a way that won't require any special cases in our downstream verification code.
-- Easy to serialize / deserialize
-- Unbounded number of signers
+-マルチシグニチャをサポートします。ダウンストリームの検証コードに特別な状況は必要ありません。
+-簡単にシリアル化/逆シリアル化
+-無制限の数の署名者
 
-### Negative
+### ネガティブ
 
-- Larger codebase, however this should reside in a subfolder of tendermint/crypto, as it provides no new interfaces. (Ref #https://github.com/tendermint/go-crypto/issues/136)
-- Space inefficient due to utilization of amino encoding
-- Suggested implementation requires a new struct for every ASM.
+-より大きなコードベースですが、新しいインターフェイスを提供しないため、これはtendermint/cryptoのサブフォルダーに配置する必要があります。 (参照#https://github.com/tendermint/go-crypto/issues/136)
+-アミノコードを使用しているため、スペース効率が低い
+-提案された実装では、ASMごとに新しい構造が必要です。
 
-### Neutral
+### ニュートラル

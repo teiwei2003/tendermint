@@ -1,45 +1,44 @@
-# Reactor
+# リアクター
 
-Consensus Reactor defines a reactor for the consensus service. It contains the ConsensusState service that
-manages the state of the Tendermint consensus internal state machine.
-When Consensus Reactor is started, it starts Broadcast Routine which starts ConsensusState service.
-Furthermore, for each peer that is added to the Consensus Reactor, it creates (and manages) the known peer state
-(that is used extensively in gossip routines) and starts the following three routines for the peer p:
-Gossip Data Routine, Gossip Votes Routine and QueryMaj23Routine. Finally, Consensus Reactor is responsible
-for decoding messages received from a peer and for adequate processing of the message depending on its type and content.
-The processing normally consists of updating the known peer state and for some messages
-(`ProposalMessage`, `BlockPartMessage` and `VoteMessage`) also forwarding message to ConsensusState module
-for further processing. In the following text we specify the core functionality of those separate unit of executions
-that are part of the Consensus Reactor.
+コンセンサスリアクターは、コンセンサスサービス用のリアクターを定義します。 ConsensusStateサービスが含まれています
+Tendermintコンセンサス内部ステートマシンの状態を管理します。
+Consensus Reactorが起動すると、Broadcast Routineが開始され、ConsensusStateサービスが開始されます。
+さらに、コンセンサスリアクタに追加されたピアごとに、既知のピア状態を作成(および管理)します。
+(ゴシップルーチンで広く使用されています)そして、ピアpに対して次の3つのルーチンを開始します。
+ゴシップデータルーチン、ゴシップ投票ルーチン、およびQueryMaj23Routine。最後に、コンセンサスリアクターが責任を負います
+ピアから受信したメッセージをデコードし、メッセージの種類と内容に応じてメッセージを適切に処理するために使用されます。
+処理には通常、既知のピアステータスといくつかのメッセージの更新が含まれます
+( `ProposalMessage`、` BlockPartMessage`および `VoteMessage`)もメッセージをConsensusStateモジュールに転送します
+さらなる処理のため。以下のテキストでは、これらの個々の実行ユニットのコア機能を指定します
+コンセンサスリアクターの一部です。
 
-## ConsensusState service
+## コンセンサスステートサービス
 
-Consensus State handles execution of the Tendermint BFT consensus algorithm. It processes votes and proposals,
-and upon reaching agreement, commits blocks to the chain and executes them against the application.
-The internal state machine receives input from peers, the internal validator and from a timer.
+コンセンサス状態は、テンダーミントBFTコンセンサスアルゴリズムの実行を扱います。投票と提案を処理し、
+そして、合意に達した後、ブロックをチェーンに送信し、アプリケーションに対して実行します。
+内部ステートマシンは、ピア、内部バリデーター、およびタイマーから入力を受け取ります。
 
-Inside Consensus State we have the following units of execution: Timeout Ticker and Receive Routine.
-Timeout Ticker is a timer that schedules timeouts conditional on the height/round/step that are processed
-by the Receive Routine.
+コンセンサス状態では、次の実行ユニットがあります:タイムアウトティッカーと受信ルーチン。
+タイムアウトティッカーは、処理の高さ/ラウンド/ステップ長に応じてタイムアウトをスケジュールするタイマーです。
+受信ルーチンを介して。
 
-### Receive Routine of the ConsensusState service
+### ConsensusStateサービスを受ける例
 
-Receive Routine of the ConsensusState handles messages which may cause internal consensus state transitions.
-It is the only routine that updates RoundState that contains internal consensus state.
-Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majorities.
-It receives messages from peers, internal validators and from Timeout Ticker
-and invokes the corresponding handlers, potentially updating the RoundState.
-The details of the protocol (together with formal proofs of correctness) implemented by the Receive Routine are
-discussed in separate document. For understanding of this document
-it is sufficient to understand that the Receive Routine manages and updates RoundState data structure that is
-then extensively used by the gossip routines to determine what information should be sent to peer processes.
+ConsensusStateの受信ルーチンは、内部コンセンサス状態遷移を引き起こす可能性のあるメッセージを処理します。
+これは、内部コンセンサス状態を含むRoundStateを更新する唯一のルーチンです。
+更新(状態遷移)は、タイムアウト、完全な提案、および2/3の過半数で発生します。
+ピア、内部バリデーター、タイムアウトティッカーからメッセージを受信します
+そして、対応するハンドラーを呼び出すと、RoundStateが更新される場合があります。
+受信ルーチンによって実装されるプロトコルの詳細(および正式な正当性の証明)は次のとおりです。
+別のドキュメントで話し合います。このドキュメントを理解するために
+受信ルーチンがRoundStateデータ構造を管理および更新することを理解するだけで十分です。
+次に、ゴシッププログラムで広く使用され、ピアプロセスに送信する情報を決定します。
 
-## Round State
+## 世俗国家
 
-RoundState defines the internal consensus state. It contains height, round, round step, a current validator set,
-a proposal and proposal block for the current round, locked round and block (if some block is being locked), set of
-received votes and last commit and last validators set.
-
+RoundStateは、内部コンセンサス状態を定義します。高さ、円、円のステップ、現在のバリデーターセット、
+提案の現在のラウンドと提案されたブロック、ロックラウンドとブロック(ブロックがロックされている場合)、セット
+投票を受け取り、最後の提出と最後の検証者を設定します。
 ```go
 type RoundState struct {
  Height             int64
@@ -58,7 +57,7 @@ type RoundState struct {
 }
 ```
 
-Internally, consensus will run as a state machine with the following states:
+内部的には、コンセンサスは次の状態のステートマシンとして動作します。
 
 - RoundStepNewHeight
 - RoundStepNewRound
@@ -70,46 +69,46 @@ Internally, consensus will run as a state machine with the following states:
 - RoundStepPrecommitWait
 - RoundStepCommit
 
-## Peer Round State
+## ピアホイールのステータス
 
-Peer round state contains the known state of a peer. It is being updated by the Receive routine of
-Consensus Reactor and by the gossip routines upon sending a message to the peer.
+ピア状態には、ピアの既知の状態が含まれます。 受信ルーチンによって更新されています
+コンセンサスリアクターとゴシップルーチンは、ピアにメッセージを送信するときのものです。
 
 ```golang
 type PeerRoundState struct {
- Height                   int64               // Height peer is at
- Round                    int                 // Round peer is at, -1 if unknown.
- Step                     RoundStepType       // Step peer is at
- Proposal                 bool                // True if peer has proposal for this round
+ Height                   int64              //Height peer is at
+ Round                    int                //Round peer is at, -1 if unknown.
+ Step                     RoundStepType      //Step peer is at
+ Proposal                 bool               //True if peer has proposal for this round
  ProposalBlockPartsHeader PartSetHeader
  ProposalBlockParts       BitArray
- ProposalPOLRound         int                 // Proposal's POL round. -1 if none.
- ProposalPOL              BitArray            // nil until ProposalPOLMessage received.
- Prevotes                 BitArray            // All votes peer has for this round
- Precommits               BitArray            // All precommits peer has for this round
- LastCommitRound          int                 // Round of commit for last height. -1 if none.
- LastCommit               BitArray            // All commit precommits of commit for last height.
- CatchupCommitRound       int                 // Round that we have commit for. Not necessarily unique. -1 if none.
- CatchupCommit            BitArray            // All commit precommits peer has for this height & CatchupCommitRound
+ ProposalPOLRound         int                //Proposal's POL round. -1 if none.
+ ProposalPOL              BitArray           //nil until ProposalPOLMessage received.
+ Prevotes                 BitArray           //All votes peer has for this round
+ Precommits               BitArray           //All precommits peer has for this round
+ LastCommitRound          int                //Round of commit for last height. -1 if none.
+ LastCommit               BitArray           //All commit precommits of commit for last height.
+ CatchupCommitRound       int                //Round that we have commit for. Not necessarily unique. -1 if none.
+ CatchupCommit            BitArray           //All commit precommits peer has for this height & CatchupCommitRound
 }
 ```
 
-## Receive method of Consensus reactor
+## コンセンサスリアクターの受信方法
 
-The entry point of the Consensus reactor is a receive method. When a message is
-received from a peer p, normally the peer round state is updated
-correspondingly, and some messages are passed for further processing, for
-example to ConsensusState service. We now specify the processing of messages in
-the receive method of Consensus reactor for each message type. In the following
-message handler, `rs` and `prs` denote `RoundState` and `PeerRoundState`,
-respectively.
+コンセンサスリアクターのエントリポイントは、受信方法です。 メッセージが
+ピアpから受信し、通常はピアラウンドステータスを更新します
+したがって、一部のメッセージは、さらに処理するために渡されます。
+例としてConsensusStateサービスを取り上げます。 メッセージの処理を指定します
+メッセージタイプごとのコンセンサスリアクタの受信方法。 下
+メッセージハンドラ、 `rs`および` prs`は `RoundState`および` PeerRoundState`を表します。
+それぞれ。
 
-### NewRoundStepMessage handler
+### NewRoundStepMessageハンドラー
 
 ```go
 handleMessage(msg):
     if msg is from smaller height/round/step then return
-    // Just remember these values.
+   //Just remember these values.
     prsHeight = prs.Height
     prsRound = prs.Round
     prsCatchupCommitRound = prs.CatchupCommitRound
@@ -169,7 +168,7 @@ handleMessage(msg):
 handleMessage(msg):
     if prs.Height != msg.Height || prs.Round != msg.Round || prs.Proposal then return
     prs.Proposal = true
-    if prs.ProposalBlockParts == empty set then // otherwise it is set in NewValidBlockMessage handler
+    if prs.ProposalBlockParts == empty set then//otherwise it is set in NewValidBlockMessage handler
       prs.ProposalBlockPartsHeader = msg.BlockPartsHeader
     prs.ProposalPOLRound = msg.POLRound
     prs.ProposalPOL = nil
@@ -211,14 +210,14 @@ handleMessage(msg):
     Update prs for the bit-array of votes peer claims to have for the msg.BlockID
 ```
 
-The number of votes is limited to 10000 (`types.MaxVotesCount`) to protect the
-node against DOS attacks.
+保護のため、投票数は10000( `types.MaxVotesCount`)に制限されています
+ノードはDOS攻撃に抵抗します。
 
-## Gossip Data Routine
+##八卦データルーチン
 
-It is used to send the following messages to the peer: `BlockPartMessage`, `ProposalMessage` and
-`ProposalPOLMessage` on the DataChannel. The gossip data routine is based on the local RoundState (`rs`)
-and the known PeerRoundState (`prs`). The routine repeats forever the logic shown below:
+これは、次のメッセージをピアに送信するために使用されます: `BlockPartMessage`、` ProposalMessage`、および
+DataChannelの `ProposalPOLMessage`。 ゴシップデータルーチンは、ローカルのRoundState( `rs`)に基づいています。
+そして、既知のPeerRoundState( `prs`)。 このルーチンは、常に以下に示すロジックを繰り返します。
 
 ```go
 1a) if rs.ProposalBlockPartsHeader == prs.ProposalBlockPartsHeader and the peer does not have all the proposal parts then
@@ -235,7 +234,7 @@ and the known PeerRoundState (`prs`). The routine repeats forever the logic show
         Sleep PeerGossipSleepDuration
         Continue
 
-//  at this point rs.Height == prs.Height and rs.Round == prs.Round
+// at this point rs.Height == prs.Height and rs.Round == prs.Round
 1d) if (rs.Proposal != nil and !prs.Proposal) then
         Send ProposalMessage(rs.Proposal) to the peer
         if send returns true, record that the peer knows Proposal
@@ -248,10 +247,10 @@ and the known PeerRoundState (`prs`). The routine repeats forever the logic show
 2)  Sleep PeerGossipSleepDuration
 ```
 
-### Gossip Data For Catchup
+### 八卦数据追赶
 
-This function is responsible for helping peer catch up if it is at the smaller height (prs.Height < rs.Height).
-The function executes the following logic:
+如果它在较小的高度(prs.Height < rs.Height)，这个函数负责帮助peer 赶上它。
+该函数执行以下逻辑:
 
 ```go
     if peer does not have all block parts for prs.ProposalBlockPart then
@@ -266,11 +265,11 @@ The function executes the following logic:
     else Sleep PeerGossipSleepDuration
 ```
 
-## Gossip Votes Routine
+## ゴシップ投票ルーチン
 
-It is used to send the following message: `VoteMessage` on the VoteChannel.
-The gossip votes routine is based on the local RoundState (`rs`)
-and the known PeerRoundState (`prs`). The routine repeats forever the logic shown below:
+これは、VoteChannelで次のメッセージを送信するために使用されます: `VoteMessage`。
+ゴシップ投票ルーチンは、ローカルのRoundState( `rs`)に基づいています。
+そして、既知のPeerRoundState( `prs`)。 このルーチンは、常に以下に示すロジックを繰り返します。
 
 ```go
 1a) if rs.Height == prs.Height then
@@ -313,9 +312,9 @@ and the known PeerRoundState (`prs`). The routine repeats forever the logic show
 
 ## QueryMaj23Routine
 
-It is used to send the following message: `VoteSetMaj23Message`. `VoteSetMaj23Message` is sent to indicate that a given
-BlockID has seen +2/3 votes. This routine is based on the local RoundState (`rs`) and the known PeerRoundState
-(`prs`). The routine repeats forever the logic shown below.
+次のメッセージを送信するために使用されます: `VoteSetMaj23Message`。 `VoteSetMaj23Message`は、指定されたものを示すために送信されます
+BlockIDは+2/3票を獲得しています。 このルーチンは、ローカルのRoundState( `rs`)と既知のPeerRoundStateに基づいています
+( `prs`)。 このルーチンは、常に以下に示すロジックを繰り返します。
 
 ```go
 1a) if rs.Height == prs.Height then
@@ -349,18 +348,18 @@ BlockID has seen +2/3 votes. This routine is based on the local RoundState (`rs`
 2)  Sleep PeerQueryMaj23SleepDuration
 ```
 
-## Broadcast routine
+## ブロードキャストルーチン
 
-The Broadcast routine subscribes to an internal event bus to receive new round steps and votes messages, and broadcasts messages to peers upon receiving those
-events.
-It broadcasts `NewRoundStepMessage` or `CommitStepMessage` upon new round state event. Note that
-broadcasting these messages does not depend on the PeerRoundState; it is sent on the StateChannel.
-Upon receiving VoteMessage it broadcasts `HasVoteMessage` message to its peers on the StateChannel.
+ブロードキャストルーチンは、内部イベントバスにサブスクライブして、新しいラウンドのステップと投票メッセージを受信し、これらのメッセージを受信した後、メッセージをピアにブロードキャストします。
+イベント。
+ステータスイベントの新しいラウンドで `NewRoundStepMessage`または` CommitStepMessage`をブロードキャストします。 知らせ
+これらのメッセージのブロードキャストはPeerRoundStateに依存せず、StateChannelで送信されます。
+投票メッセージを受信した後、StateChannel上のピアに「HasVoteMessage」メッセージをブロードキャストします。
 
-## Channels
+## チャンネル
 
-Defines 4 channels: state, data, vote and vote_set_bits. Each channel
-has `SendQueueCapacity` and `RecvBufferCapacity` and
-`RecvMessageCapacity` set to `maxMsgSize`.
+ステータス、データ、投票、vote_set_bitsの4つのチャネルが定義されています。 チャネルごと
+`SendQueueCapacity`と` RecvBufferCapacity`があり、
+`RecvMessageCapacity`は` maxMsgSize`に設定されます。
 
-Sending incorrectly encoded data will result in stopping the peer.
+誤ってコード化されたデータを送信すると、ピアが停止します。

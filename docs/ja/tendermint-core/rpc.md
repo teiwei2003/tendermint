@@ -1,16 +1,16 @@
 # RPC
 
-The RPC documentation is hosted here:
+RPCドキュメントはここでホストされています:
 
-- [https://docs.tendermint.com/master/rpc/](https://docs.tendermint.com/master/rpc/)
+-[https://docs.tendermint.com/master/rpc/](https://docs.tendermint.com/master/rpc/)
 
-To update the documentation, edit the relevant `godoc` comments in the [rpc/core directory](https://github.com/tendermint/tendermint/tree/master/rpc/core).
+ドキュメントを更新するには、[rpc/coreディレクトリ](https://github.com/tendermint/tendermint/tree/master/rpc/core)の関連する `godoc`コメントを編集してください。
 
-If you are using Tendermint in-process, you will need to set the version to be displayed in the RPC.
+Tendermintをインプロセスで使用する場合は、RPCに表示されるバージョンを設定する必要があります。
 
-If you are using a makefile with your go project, this can be done by using sed and `ldflags`.
+goプロジェクトでmakefileを使用する場合、これはsedと `ldflags`を使用して実行できます。
 
-Example:
+例:
 
 ```
 VERSION := $(shell go list -m github.com/tendermint/tendermint | sed 's:.* ::')

@@ -1,170 +1,170 @@
-# Peer Strategy and Exchange
+# ピアツーピア戦略とコミュニケーション
 
-Here we outline the design of the PeerStore
-and how it used by the Peer Exchange Reactor (PEX) to ensure we are connected
-to good peers and to gossip peers to others.
+ここでは、PeerStoreの設計の概要を説明します
+そして、Peer Exchange Reactor(PEX)がそれをどのように使用して接続を確保するか
+良い仲間への仲間と他の人へのうわさ話。
 
-## Peer Types
+## ピアタイプ
 
-Certain peers are special in that they are specified by the user as `persistent`,
-which means we auto-redial them if the connection fails, or if we fail to dial
-them.
-Some peers can be marked as `private`, which means
-we will not put them in the peer store or gossip them to others.
+一部のピアの特殊性は、ユーザーによって「永続的」として指定されていることです。
+これは、接続が失敗した場合、またはダイヤルに失敗した場合、自動的にリダイヤルすることを意味します
+彼ら。
+一部のピアは「プライベート」としてマークできます。これは、
+私たちはそれらを私たちの仲間の店に置いたり、他の人にゴシップしたりしません。
 
-All peers except private peers and peers coming from them are tracked using the
-peer store.
+プライベートピアとそのピアを除くすべてのピアが使用します
+コンパニオンストア。
 
-The rest of our peers are only distinguished by being either
-inbound (they dialed our public address) or outbound (we dialed them).
+他のピアとの唯一の違いは次のとおりです。
+インバウンド(彼らは私たちのパブリックアドレスと呼びます)またはアウトバウンド(私たちは彼らと呼びます)。
 
-## Discovery
+## 探す
 
-Peer discovery begins with a list of seeds.
+ピア検出はシードリストから始まります。
 
-When we don't have enough peers, we
+仲間が足りないときは
 
-1. ask existing peers
-2. dial seeds if we're not dialing anyone currently
+1.既存の同僚に尋ねる
+2.現在誰にも電話していない場合は、シードに電話してください
 
-On startup, we will also immediately dial the given list of `persistent_peers`,
-and will attempt to maintain persistent connections with them. If the
-connections die, or we fail to dial, we will redial every 5s for a few minutes,
-then switch to an exponential backoff schedule, and after about a day of
-trying, stop dialing the peer. This behavior is when `persistent_peers_max_dial_period` is configured to zero.
+起動時に、指定された「persistent_peers」リストにもすぐにダイヤルします。
+そして、それらとの永続的な接続を維持しようとします。もしも
+接続が中断されるか、ダイヤルが失敗した場合、5秒ごとに数分リダイヤルします。
+次に、約1日後に指数バックオフプランに切り替えます
+ダイヤルピアを停止してみてください。この動作は、 `persistent_peers_max_dial_period`がゼロに設定されている場合です。
 
-But If `persistent_peers_max_dial_period` is set greater than zero, terms between each dial to each persistent peer
-will not exceed `persistent_peers_max_dial_period` during exponential backoff.
-Therefore, `dial_period` = min(`persistent_peers_max_dial_period`, `exponential_backoff_dial_period`)
-and we keep trying again regardless of `maxAttemptsToDial`
+ただし、 `persistent_peers_max_dial_period`がゼロより大きい値に設定されている場合、各永続ピアへの各ダイヤル間の条件
+インデックスのバックオフ期間中は、「persistent_peers_max_dial_period」を超えることはありません。
+したがって、 `dial_period` = min(` persistent_peers_max_dial_period`、 `exponential_backoff_dial_period`)
+`maxAttemptsToDial`に関係なく、引き続き試行します
 
-As long as we have less than `MaxNumOutboundPeers`, we periodically request
-additional peers from each of our own and try seeds.
+`MaxNumOutboundPeers`未満である限り、定期的にリクエストします
+私たち一人一人からの他の仲間とシードを試してみてください。
 
-## Listening
+## 聞く
 
-Peers listen on a configurable ListenAddr that they self-report in their
-NodeInfo during handshakes with other peers. Peers accept up to
-`MaxNumInboundPeers` incoming peers.
+ピアは構成可能なListenAddrをリッスンし、
+他のピアとのハンドシェイク中のNodeInfo。仲間に最も受け入れられている
+`MaxNumInboundPeers`着信ピア。
 
-## Address Book
+## 住所録
 
-Peers are tracked via their ID (their PubKey.Address()).
-Peers are added to the peer store from the PEX when they first connect to us or
-when we hear about them from other peers.
+ピアはID(PubKey.Address())によって追跡されます。
+ピアは、最初に接続したときにPEXからピアストレージに追加されます。
+他の同僚からそれらについて聞いたとき。
 
-The peer store is arranged in sets of buckets, and distinguishes between
-vetted (old) and unvetted (new) peers. It keeps different sets of buckets for
-vetted and unvetted peers. Buckets provide randomization over peer selection.
-Peers are put in buckets according to their IP groups.
+ピアストアはバケットセットに従って配置され、区別されます
+調査済み(古い)および無修正(新しい)ピア。異なるバケットグループを保持します
+調査され、検閲されていないピア。バケットは、ピア選択のランダム化を提供します。
+ピアは、IPグループに従ってバケットに配置されます。
 
-IP group can be a masked IP (e.g. `1.2.0.0` or `2602:100::`) or `local` for
-local addresses or `unroutable` for unroutable addresses. The mask which
-corresponds to the `/16` subnet is used for IPv4, `/32` subnet - for IPv6.
-Each group has a limited number of buckets to prevent DoS attacks coming from
-that group (e.g. an attacker buying a `/16` block of IPs and launching a DoS
-attack).
+IPグループは、マスクIP(たとえば、「1.2.0.0」または「2602:100 ::」)または「ローカル」にすることができます。
+ローカルアドレスまたはルーティング不可能なアドレスの場合は「ルーティング不可」。あのマスク
+IPv4の場合は `/16`サブネット、IPv6の場合は`/32`サブネットに対応します。
+各グループには、防止するための限られた数のバケットがあります
+グループ(たとえば、攻撃者は「/16」IPブロックを購入し、DoSを開始しました
+攻撃)。
 
-[highwayhash](https://arxiv.org/abs/1612.06257) is used as a hashing function
-when calculating a bucket.
+[highwayhash](https://arxiv.org/abs/1612.06257)をハッシュ関数として使用
+バケットを計算するとき。
 
-When placing a peer into a new bucket:
+ノードを新しいバケットに配置する場合:
 
 ```md
 hash(key + sourcegroup + int64(hash(key + group + sourcegroup)) % bucket_per_group) % num_new_buckets
 ```
 
-When placing a peer into an old bucket:
+ピアを古いバケットに入れる場合:
 
 ```md
 hash(key + group + int64(hash(key + addr)) % buckets_per_group) % num_old_buckets
 ```
 
-where `key` - random 24 HEX string, `group` - IP group of the peer (e.g. `1.2.0.0`),
-`sourcegroup` - IP group of the sender (peer who sent us this address) (e.g. `174.11.0.0`),
-`addr` - string representation of the peer's address (e.g. `174.11.10.2:26656`).
+その中で、 `key`-ランダムな24 HEX文字列、` group`-ピアのIPグループ(たとえば、 `1.2.0.0`)、
+`sourcegroup`-送信者のIPグループ(このアドレスを送信したピア)(例:` 174.11.0.0`)、
+`addr`-ピアアドレスの文字列表現(例:` 174.11.10.2:26656`)。
 
-A vetted peer can only be in one bucket. An unvetted peer can be in multiple buckets, and
-each instance of the peer can have a different IP:PORT.
+精査されたピアは、1つのバケットにのみ存在できます。無修正のピアは複数のバケットに存在する可能性があり、
+ピアの各インスタンスは、異なるIP:PORTを持つことができます。
 
-If we're trying to add a new peer but there's no space in its bucket, we'll
-remove the worst peer from that bucket to make room.
+新しいピアを追加しようとしたが、バケットにスペースがない場合は、
+最悪のピアをバケットから削除して、スペースを確保します。
 
-## Vetting
+## レビュー
 
-When a peer is first added, it is unvetted.
-Marking a peer as vetted is outside the scope of the `p2p` package.
-For Tendermint, a Peer becomes vetted once it has contributed sufficiently
-at the consensus layer; ie. once it has sent us valid and not-yet-known
-votes and/or block parts for `NumBlocksForVetted` blocks.
-Other users of the p2p package can determine their own conditions for when a peer is marked vetted.
+ピアが初めて追加されたとき、それは無修正でした。
+ピアを打ち切りとしてマークすることは、p2pパッケージの範囲を超えています。
+テンダーミントの場合、ピアが十分な貢献をした後、レビューされます
+コンセンサスレベルで; IE。有効で未知の情報が送信されたら
+「NumBlocksForVetted」ブロックの投票および/またはブロック部分。
+p2pパッケージの他のユーザーは、ピアにレビューのマークを付けることができるように、自分の条件を決定できます。
 
-If a peer becomes vetted but there are already too many vetted peers,
-a randomly selected one of the vetted peers becomes unvetted.
+ピアが検閲されているが、検閲されたピアがすでに多すぎる場合、
+ランダムに選択された精査されたピアの1つが無修正になります。
 
-If a peer becomes unvetted (either a new peer, or one that was previously vetted),
-a randomly selected one of the unvetted peers is removed from the peer store.
+ピアが無修正になった場合(新しいピア、または以前に精査されたピア)、
+ランダムに選択された打ち切りのないピアノードの1つが、ピアストレージから削除されます。
 
-More fine-grained tracking of peer behaviour can be done using
-a trust metric (see below), but it's best to start with something simple.
+よりきめ細かいピアツーピア行動追跡を使用できます
+信頼の指標(以下を参照)ですが、簡単なことから始めるのが最善です。
 
-## Select Peers to Dial
+## ダイヤルするピアを選択します
 
-When we need more peers, we pick addresses randomly from the addrbook with some
-configurable bias for unvetted peers. The bias should be lower when we have
-fewer peers and can increase as we obtain more, ensuring that our first peers
-are more trustworthy, but always giving us the chance to discover new good
-peers.
+より多くのピアが必要な場合は、addrbookからいくつかのアドレスをランダムに選択します
+打ち切られていないピアの構成可能な偏差。時々、偏差はもっと低くなるはずです
+ピアが少なくなり、増えるにつれて増える可能性があり、最初のピアが確実になります
+より信頼できますが、常に新しくて良いものを発見する機会を与えてくれます
+ピア。
 
-We track the last time we dialed a peer and the number of unsuccessful attempts
-we've made. If too many attempts are made, we mark the peer as bad.
+ピアへの最後の呼び出しの時間と失敗した試行の数を追跡します
+私たちはそれをしました。試行回数が多すぎる場合は、ピアを不良としてマークします。
 
-Connection attempts are made with exponential backoff (plus jitter). Because
-the selection process happens every `ensurePeersPeriod`, we might not end up
-dialing a peer for much longer than the backoff duration.
+接続の試行は、指数バックオフ(およびジッター)を介して行われます。なぜなら
+選択プロセスは `ensurePeersPeriod`ごとに行われます。終了しない場合があります
+ピアにダイヤルする時間は、バックオフ期間よりもはるかに長くなります。
 
-If we fail to connect to the peer after 16 tries (with exponential backoff), we
-remove from peer store completely. But for persistent peers, we indefinitely try to
-dial all persistent peers unless `persistent_peers_max_dial_period` is configured to zero
+16回の試行後にピアへの接続に失敗した場合(指数バックオフを使用)、
+ピアツーピアストアから完全に削除されました。しかし、忍耐強い同僚のために、私たちは無期限に試みます
+`persistent_peers_max_dial_period`がゼロに設定されていない限り、すべての永続ピアにダイヤルします
 
-## Select Peers to Exchange
+## 交換するピアを選択します
 
-When we’re asked for peers, we select them as follows:
+ピアの提供を求められた場合、次のように選択します。
 
-- select at most `maxGetSelection` peers
-- try to select at least `minGetSelection` peers - if we have less than that, select them all.
-- select a random, unbiased `getSelectionPercent` of the peers
+-最大で `maxGetSelection`ピアを選択します
+-少なくとも `minGetSelection`ピアを選択してみてください-この値よりも小さい場合は、すべてを選択してください。
+-ランダムで偏りのない「getSelectionPercent」ピアを選択します
 
-Send the selected peers. Note we select peers for sending without bias for vetted/unvetted.
+選択したピアを送信します。ピアに対して公平なレビュー/非レビューを実施することを選択していることに注意してください。
 
-## Preventing Spam
+## スパムを防ぐ
 
-There are various cases where we decide a peer has misbehaved and we disconnect from them.
-When this happens, the peer is removed from the peer store and black listed for
-some amount of time. We call this "Disconnect and Mark".
-Note that the bad behaviour may be detected outside the PEX reactor itself
-(for instance, in the mconnection, or another reactor), but it must be communicated to the PEX reactor
-so it can remove and mark the peer.
+さまざまな状況で、ピアは誤動作しており、ピアから切断されていると考えられます。
+これが発生すると、ピアはピアストレージから削除され、ブラックリストに登録されます
+しばらくの間。これを「切断してマーク」と呼びます。
+PEXリアクター自体の外部で不正な動作が検出される場合があることに注意してください
+(例:mconnectionまたは別のリアクター内)、ただし、PEXリアクターと通信する必要があります
+したがって、ピアを削除してマークを付けることができます。
 
-In the PEX, if a peer sends us an unsolicited list of peers,
-or if the peer sends a request too soon after another one,
-we Disconnect and MarkBad.
+PEXでは、ピアが一方的なピアのリストを送信した場合、
+または、ピアが別のリクエストの後にリクエストを送信するのが速すぎる場合は、
+MarkBadから切断します。
 
-## Trust Metric
+## 信頼指標
 
-The quality of peers can be tracked in more fine-grained detail using a
-Proportional-Integral-Derivative (PID) controller that incorporates
-current, past, and rate-of-change data to inform peer quality.
+ピアの品質は、よりきめ細かい詳細で追跡できます
+比例積分微分(PID)コントローラーには次のものが含まれます
+ピアの品質を通知するための現在、過去、および変更率のデータ。
 
-While a PID trust metric has been implemented, it remains for future work
-to use it in the PEX.
+PIDトラストメトリックは実装されていますが、それでも将来の作業が必要です
+PEXで使用します。
 
-See the [trustmetric](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-006-trust-metric.md)
-and [trustmetric useage](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-007-trust-metric-usage.md)
-architecture docs for more details.
-
-
+[trustmetric](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-006-trust-metric.md)を参照してください
+そして[trustmetricuseage](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-007-trust-metric-usage.md)
+詳細については、アーキテクチャのドキュメントを参照してください。
 
 
 
-<!-- todo: diagrams!!! -->
+
+
+<！-todo:図!!!->

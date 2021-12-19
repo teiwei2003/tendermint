@@ -1,55 +1,55 @@
-# ADR 013: Need for symmetric cryptography
+# ADR 013:対称暗号化の必要性
 
-## Context
+## 環境
 
-We require symmetric ciphers to handle how we encrypt keys in the sdk,
-and to potentially encrypt `priv_validator.json` in tendermint.
+SDKのキーを暗号化する方法を処理するには、対称暗号が必要です。
+また、テンダーミントで `priv_validator.json`を暗号化する場合があります。
 
-Currently we use AEAD's to support symmetric encryption,
-which is great since we want data integrity in addition to privacy and authenticity.
-We don't currently have a scenario where we want to encrypt without data integrity,
-so it is fine to optimize our code to just use AEAD's.
-Currently there is not a way to switch out AEAD's easily, this ADR outlines a way
-to easily swap these out.
+現在、対称暗号化をサポートするためにAEADを使用しています。
+プライバシーと信頼性に加えて、データの整合性も必要になるため、これは良いことです。
+現在、データの整合性なしで暗号化するシナリオはありません。
+したがって、AEADのみを使用するようにコードを最適化できます。
+現在、AEADを簡単に切り替える方法はありません。このADRは1つの方法の概要を示しています
+これらは簡単に交換できます。
 
-### How do we encrypt with AEAD's
+### AEAD暗号化の使用方法
 
-AEAD's typically require a nonce in addition to the key.
-For the purposes we require symmetric cryptography for,
-we need encryption to be stateless.
-Because of this we use random nonces.
-(Thus the AEAD must support random nonces)
+キーに加えて、AEADは通常乱数を必要とします。
+対称暗号化の目的で、
+ステートレスにするには暗号化が必要です。
+したがって、乱数を使用します。
+(したがって、AEADは乱数をサポートする必要があります)
 
-We currently construct a random nonce, and encrypt the data with it.
-The returned value is `nonce || encrypted data`.
-The limitation of this is that does not provide a way to identify
-which algorithm was used in encryption.
-Consequently decryption with multiple algoritms is sub-optimal.
-(You have to try them all)
+現在、乱数を作成し、それを使用してデータを暗号化しています。
+戻り値は `nonce ||暗号化されたデータ`です。
+これの制限は、それが識別の方法を提供しないということです
+暗号化で使用されるアルゴリズム。
+したがって、復号化に複数のアルゴリズムを使用することは最適ではありません。
+(すべて試してみる必要があります)
 
-## Decision
+## 決定
 
-We should create the following two methods in a new `crypto/encoding/symmetric` package:
+新しい `crypto/encoding/symmetric`パッケージに次の2つのメソッドを作成する必要があります。
 
-```golang
-func Encrypt(aead cipher.AEAD, plaintext []byte) (ciphertext []byte, err error)
-func Decrypt(key []byte, ciphertext []byte) (plaintext []byte, err error)
-func Register(aead cipher.AEAD, algo_name string, NewAead func(key []byte) (cipher.Aead, error)) error
-```
+`` `golang
+func Encrypt(aead cipher.AEAD、plaintext [] byte)(ciphertext [] byte、err error)
+func Decrypt(key [] byte、ciphertext [] byte)(plaintext [] byte、err error)
+func Register(aead cipher.AEAD、algo_name string、NewAead func(key [] byte)(cipher.Aead、error))エラー
+`` `
 
-This allows you to specify the algorithm in encryption, but not have to specify
-it in decryption.
-This is intended for ease of use in downstream applications, in addition to people
-looking at the file directly.
-One downside is that for the encrypt function you must have already initialized an AEAD,
-but I don't really see this as an issue.
+これにより、暗号化アルゴリズムを指定できますが、必ずしもそうとは限りません。
+復号化中です。
+これは、人員を除いて、ダウンストリームアプリケーションで使いやすくするためです。
+ファイルを直接見てください。
+欠点の1つは、暗号化機能の場合、AEADを初期化する必要があることです。
+しかし、これは問題ではないと思います。
 
-If there is no error in encryption, Encrypt will return `algo_name || nonce || aead_ciphertext`.
-`algo_name` should be length prefixed, using standard varuint encoding.
-This will be binary data, but thats not a problem considering the nonce and ciphertext are also binary.
+暗号化にエラーがない場合、Encryptは `algo_name ||乱数|| aead_ciphertext`を返します。
+`algo_name`は、標準のvaruintエンコーディングを使用して、長さのプレフィックスである必要があります。
+これは2進数のデータになりますが、乱数と暗号文も2進数であることを考えると、これは問題ではありません。
 
-This solution requires a mapping from aead type to name.
-We can achieve this via reflection.
+このソリューションでは、aeadタイプから名前へのマッピングが必要です。
+これは、振り返りによって実現できます。
 
 ```golang
 func getType(myvar interface{}) string {
@@ -61,39 +61,39 @@ func getType(myvar interface{}) string {
 }
 ```
 
-Then we maintain a map from the name returned from `getType(aead)` to `algo_name`.
+次に、 `getType(aead)`によって返される名前から `algo_name`へのマッピングを維持します。
 
-In decryption, we read the `algo_name`, and then instantiate a new AEAD with the key.
-Then we call the AEAD's decrypt method on the provided nonce/ciphertext.
+復号化では、 `algo_name`を読み取り、キーを使用して新しいAEADをインスタンス化します。
+次に、提供された乱数/暗号文に対してAEAD復号化メソッドを呼び出します。
 
-`Register` allows a downstream user to add their own desired AEAD to the symmetric package.
-It will error if the AEAD name is already registered.
-This prevents a malicious import from modifying / nullifying an AEAD at runtime.
+`Register`を使用すると、ダウンストリームユーザーは目的のAEADを対称パッケージに追加できます。
+AEAD名がすでに登録されている場合は、エラーが発生します。
+これにより、悪意のあるインポートが実行時にAEADを変更/キャンセルするのを防ぎます。
 
-## Implementation strategy
+## 実装戦略
 
-The golang implementation of what is proposed is rather straight forward.
-The concern is that we will break existing private keys if we just switch to this.
-If this is concerning, we can make a simple script which doesn't require decoding privkeys,
-for converting from the old format to the new one.
+提案されたコンテンツのgolangの実装はかなり単純です。
+心配なのは、これに切り替えるだけで、既存の秘密鍵が破壊されることです。
+これに関連する場合は、秘密鍵をデコードする必要のない簡単なスクリプトを作成できます。
+古い形式から新しい形式に変換するために使用されます。
 
-## Status
+## ステータス
 
-Proposed.
+提案しました。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Allows us to support new AEAD's, in a way that makes decryption easier
-- Allows downstream users to add their own AEAD
+-復号化を容易にする方法で新しいAEADをサポートできるようにします
+-ダウンストリームユーザーが独自のAEADを追加できるようにする
 
-### Negative
+### ネガティブ
 
-- We will have to break all private keys stored on disk.
-  They can be recovered using seed words, and upgrade scripts are simple.
+-ディスクに保存されているすべての秘密鍵を解読する必要があります。
+   シードワードを使用して復元でき、アップグレードスクリプトも非常に簡単です。
 
-### Neutral
+### ニュートラル
 
-- Caller has to instantiate the AEAD with the private key.
-  However it forces them to be aware of what signing algorithm they are using, which is a positive.
+-呼び出し元は、秘密鍵を使用してAEADをインスタンス化する必要があります。
+   ただし、使用している署名アルゴリズムを知る必要があります。これは肯定的なことです。

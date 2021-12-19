@@ -1,326 +1,326 @@
-# What is Tendermint
+#テンダーミントとは
 
-Tendermint is software for securely and consistently replicating an
-application on many machines. By securely, we mean that Tendermint works
-even if up to 1/3 of machines fail in arbitrary ways. By consistently,
-we mean that every non-faulty machine sees the same transaction log and
-computes the same state. Secure and consistent replication is a
-fundamental problem in distributed systems; it plays a critical role in
-the fault tolerance of a broad range of applications, from currencies,
-to elections, to infrastructure orchestration, and beyond.
+Tendermintは、安全で一貫性のある複製のための方法です
+複数のマシンでのアプリケーション。セキュリティとは、テンダーミントが効果的であることを意味します
+マシンの1/3でさえ、何らかの形で故障します。いつも、
+つまり、障害が発生していないすべてのマシンに同じトランザクションログが表示され、
+同じ状態を計算します。安全で一貫性のあるレプリケーションは
+分散システムの基本的な問題;それは
+通貨から、幅広いアプリケーションのフォールトトレランス
+選挙、インフラストラクチャのスケジューリングなど。
 
-The ability to tolerate machines failing in arbitrary ways, including
-becoming malicious, is known as Byzantine fault tolerance (BFT). The
-theory of BFT is decades old, but software implementations have only
-became popular recently, due largely to the success of "blockchain
-technology" like Bitcoin and Ethereum. Blockchain technology is just a
-reformalization of BFT in a more modern setting, with emphasis on
-peer-to-peer networking and cryptographic authentication. The name
-derives from the way transactions are batched in blocks, where each
-block contains a cryptographic hash of the previous one, forming a
-chain. In practice, the blockchain data structure actually optimizes BFT
-design.
+を含むあらゆる方法で機械の故障に耐える能力
+悪意を持って、ビザンチンフォールトトレランス(BFT)と呼ばれます。この
+BFT理論には数十年の歴史がありますが、ソフトウェアの実装には
+最近人気が出ているのは、主に「ブロックチェーン」の成功によるものです。
+ビットコインやイーサリアムなどのテクノロジー」。ブロックチェーンテクノロジーは単なる
+より近代的な環境でBFTを再調整し、
+ピアツーピアネットワークと暗号化された認証。名前
+トランザクションがブロックにバッチ処理される方法から派生します。
+ブロックには前のブロックの暗号化ハッシュが含まれ、
+鎖。実際には、ブロックチェーンのデータ構造は実際にBFTを最適化します
+設計。
 
-Tendermint consists of two chief technical components: a blockchain
-consensus engine and a generic application interface. The consensus
-engine, called Tendermint Core, ensures that the same transactions are
-recorded on every machine in the same order. The application interface,
-called the Application BlockChain Interface (ABCI), enables the
-transactions to be processed in any programming language. Unlike other
-blockchain and consensus solutions, which come pre-packaged with built
-in state machines (like a fancy key-value store, or a quirky scripting
-language), developers can use Tendermint for BFT state machine
-replication of applications written in whatever programming language and
-development environment is right for them.
+テンダーミントは、2つの主要な技術コンポーネントで構成されています:ブロックチェーン
+コンセンサスエンジンと一般的なアプリケーションプログラムのインターフェイス。コンセンサス
+Tendermint Coreと呼ばれるエンジンは、同じトランザクションを保証します
+各マシンで同じ順序で録音します。アプリケーションインターフェイス、
+アプリケーションブロックリンクインターフェイス(ABCI)と呼ばれ、
+任意のプログラミング言語で処理されるトランザクション。他とは違う
+ブロックチェーンおよびコンセンサスソリューション、事前にパッケージ化され、組み込まれています
+ステートマシン(派手なKey-Valueストアや風変わりなスクリプトなど)
+言語)、開発者はBFTステートマシンとしてTendermintを使用できます
+任意のプログラミング言語で記述されたアプリケーションをコピーし、
+開発環境は彼らに適しています。
 
-Tendermint is designed to be easy-to-use, simple-to-understand, highly
-performant, and useful for a wide variety of distributed applications.
+テンダーミントは、使いやすく、理解しやすく、高度に設計されています
+優れたパフォーマンスで、さまざまな分散アプリケーションに適しています。
 
-## Tendermint vs. X
+##テンダーミントとX
 
-Tendermint is broadly similar to two classes of software. The first
-class consists of distributed key-value stores, like Zookeeper, etcd,
-and consul, which use non-BFT consensus. The second class is known as
-"blockchain technology", and consists of both cryptocurrencies like
-Bitcoin and Ethereum, and alternative distributed ledger designs like
-Hyperledger's Burrow.
+Tendermintは、2種類のソフトウェアにほぼ似ています。まず、
+このクラスは、Zookeeperなどの分散型Key-Valueストアで構成されています。
+そして執政官、彼らは非BFTコンセンサスを使用します。 2番目のカテゴリは
+「ブロックチェーンテクノロジー」は、次のような2つの暗号通貨で構成されています
+ビットコインとイーサリアム、および代替の分散型台帳の設計(
+Hyperledgerの洞窟。
 
-### Zookeeper, etcd, consul
+### Zookeeperなど、領事
 
-Zookeeper, etcd, and consul are all implementations of a key-value store
-atop a classical, non-BFT consensus algorithm. Zookeeper uses a version
-of Paxos called Zookeeper Atomic Broadcast, while etcd and consul use
-the Raft consensus algorithm, which is much younger and simpler. A
-typical cluster contains 3-5 machines, and can tolerate crash failures
-in up to 1/2 of the machines, but even a single Byzantine fault can
-destroy the system.
+Zookeeperなどと領事はすべてKey-Valueストレージの実装です
+従来の非BFTコンセンサスアルゴリズムに加えて。 Zookeeperはバージョンを使用します
+PaxosはZookeeperAtomic Broadcastと呼ばれ、etcdと領事は使用します
+いかだコンセンサスアルゴリズム、それは若くて単純です。一
+一般的なクラスターには3〜5台のマシンが含まれており、クラッシュに耐えることができます
+最大1/2台のマシンで、ただし1つのビザンチン障害でも
+システムを破壊します。
 
-Each offering provides a slightly different implementation of a
-featureful key-value store, but all are generally focused around
-providing basic services to distributed systems, such as dynamic
-configuration, service discovery, locking, leader-election, and so on.
+各製品はわずかに異なる実装を提供します
+強力なKey-Valueストレージですが、通常は集中しています
+動的などの分散システムに基本的なサービスを提供する
+構成、サービスディスカバリ、ロック、リーダー選出など。
 
-Tendermint is in essence similar software, but with two key differences:
+Tendermintは基本的に同様のソフトウェアですが、主に2つの違いがあります。
 
-- It is Byzantine Fault Tolerant, meaning it can only tolerate up to a
-  1/3 of failures, but those failures can include arbitrary behaviour -
-  including hacking and malicious attacks.
-- It does not specify a particular application, like a fancy key-value
-  store. Instead, it focuses on arbitrary state machine replication,
-  so developers can build the application logic that's right for them,
-  from key-value store to cryptocurrency to e-voting platform and beyond.
+-ビザンチンフォールトトレラントです。つまり、せいぜいしか耐えられません。
+  失敗の1/3ですが、これらの失敗には任意の動作が含まれる可能性があります-
+  ハッカー攻撃と悪意のある攻撃を含みます。
+-ファンシーキー値などの特定のアプリケーションを指定しません
+  店。代わりに、任意の状態マシンレプリケーションに焦点を当てています。
+  したがって、開発者は自分に合ったアプリケーションロジックを構築できます。
+  Key-Valueストレージから暗号化された通貨、電子投票プラットフォームなどまで。
 
-### Bitcoin, Ethereum, etc
+###ビットコイン、イーサリアムなど
 
-Tendermint emerged in the tradition of cryptocurrencies like Bitcoin,
-Ethereum, etc. with the goal of providing a more efficient and secure
-consensus algorithm than Bitcoin's Proof of Work. In the early days,
-Tendermint had a simple currency built in, and to participate in
-consensus, users had to "bond" units of the currency into a security
-deposit which could be revoked if they misbehaved -this is what made
-Tendermint a Proof-of-Stake algorithm.
+テンダーミントはビットコインのような暗号通貨の伝統に登場します、
+より効率的で安全なものを提供することを目的としたイーサリアムなど
+コンセンサスアルゴリズムは、ビットコインのプルーフオブワークよりも優れています。初めの頃、
+テンダーミントにはシンプルな通貨が組み込まれているので、参加できます
+コンセンサス、ユーザーは通貨単位を証券に「バインド」する必要があります
+彼らが不正行為をした場合、彼らは預金を引き出すことができます-これは
+Tendermintは、プルーフオブステークアルゴリズムです。
 
-Since then, Tendermint has evolved to be a general purpose blockchain
-consensus engine that can host arbitrary application states. That means
-it can be used as a plug-and-play replacement for the consensus engines
-of other blockchain software. So one can take the current Ethereum code
-base, whether in Rust, or Go, or Haskell, and run it as a ABCI
-application using Tendermint consensus. Indeed, [we did that with
-Ethereum](https://github.com/cosmos/ethermint). And we plan to do
-the same for Bitcoin, ZCash, and various other deterministic
-applications as well.
+それ以来、テンダーミントはユニバーサルブロックチェーンに発展しました
+任意のアプリケーション状態をホストできるコンセンサスエンジン。これの意味は
+コンセンサスエンジンのプラグアンドプレイの代替手段として使用できます
+その他のブロックチェーンソフトウェア。したがって、現在のイーサリアムコードを使用できます
+Rust、Go、Haskellのいずれであっても、基本はABCIとして実行します
+Tendermintコンセンサスを使用するアプリケーション。実際、[
+イーサリアム](https://github.com/cosmos/ethermint)。やる予定です
+ビットコイン、ZCashおよびその他のさまざまな決定論的
+同じことがアプリケーションにも当てはまります。
 
-Another example of a cryptocurrency application built on Tendermint is
-[the Cosmos network](http://cosmos.network).
+Tendermintベースの暗号通貨アプリケーションの別の例は
+[コスモスネットワーク](http://cosmos.network)。
 
-### Other Blockchain Projects
+###その他のブロックチェーンプロジェクト
 
-[Fabric](https://github.com/hyperledger/fabric) takes a similar approach
-to Tendermint, but is more opinionated about how the state is managed,
-and requires that all application behaviour runs in potentially many
-docker containers, modules it calls "chaincode". It uses an
-implementation of [PBFT](http://pmg.csail.mit.edu/papers/osdi99.pdf).
-from a team at IBM that is [augmented to handle potentially
-non-deterministic
-chaincode](https://www.zurich.ibm.com/~cca/papers/sieve.pdf) It is
-possible to implement this docker-based behaviour as a ABCI app in
-Tendermint, though extending Tendermint to handle non-determinism
-remains for future work.
+[ファブリック](https://github.com/hyperledger/fabric)も同様のアプローチを取りました
+テンダーミントに、しかし状態を管理する方法についてのより多くの意見、
+そして、すべてのアプリケーションの動作が多くの場合に発生する可能性があることを要求します
+Dockerコンテナ、これは「チェーンコード」モジュールと呼ばれます。それは使用します
+[PBFT](http://pmg.csail.mit.edu/papers/osdi99.pdf)の実装。
+[潜在能力を処理するために強化されたIBMのチーム
+わからない
+チェーンコード)(https://www.zurich.ibm.com/~cca/papers/sieve.pdf)はい
+このDockerベースの動作は、ABCIアプリケーションとして実装できます。
+テンダーミント、ただしテンダーミントは非決定論を処理するように拡張されています
+今後の作業のために保存してください。
 
-[Burrow](https://github.com/hyperledger/burrow) is an implementation of
-the Ethereum Virtual Machine and Ethereum transaction mechanics, with
-additional features for a name-registry, permissions, and native
-contracts, and an alternative blockchain API. It uses Tendermint as its
-consensus engine, and provides a particular application state.
+[Burrow](https://github.com/hyperledger/burrow)は実装です
+イーサリアム仮想マシンとイーサリアムトランザクションメカニズム、および
+このマシンの名前登録、権限、および追加機能
+コントラクト、および代替ブロックチェーンAPI。テンダーミントを使用しています
+コンセンサスエンジンと特定のアプリケーションステータスを提供します。
 
-## ABCI Overview
+## ABCIの概要
 
-The [Application BlockChain Interface
+[アプリケーションブロックリンクポート
 (ABCI)](https://github.com/tendermint/tendermint/tree/master/abci)
-allows for Byzantine Fault Tolerant replication of applications
-written in any programming language.
+アプリケーションのビザンチンフォールトトレラントレプリケーションを可能にします
+任意のプログラミング言語で書かれています。
 
-### Motivation
+### 動機
 
-Thus far, all blockchains "stacks" (such as
-[Bitcoin](https://github.com/bitcoin/bitcoin)) have had a monolithic
-design. That is, each blockchain stack is a single program that handles
-all the concerns of a decentralized ledger; this includes P2P
-connectivity, the "mempool" broadcasting of transactions, consensus on
-the most recent block, account balances, Turing-complete contracts,
-user-level permissions, etc.
+これまでのところ、すべてのブロックチェーンは「スタック」されています(例:
+[ビットコイン](https://github.com/bitcoin/bitcoin))は全体を持っています
+設計。言い換えれば、各ブロックチェーンスタックはプロセスです
+分散型元帳に関するすべての問題。これにはP2Pが含まれます
+接続性、トランザクションの「メモリプール」ブロードキャスト、コンセンサス
+最近のブロック、口座残高、チューリング完全契約、
+ユーザーレベルの権限など。
 
-Using a monolithic architecture is typically bad practice in computer
-science. It makes it difficult to reuse components of the code, and
-attempts to do so result in complex maintenance procedures for forks of
-the codebase. This is especially true when the codebase is not modular
-in design and suffers from "spaghetti code".
+コンピュータでモノリシックアーキテクチャを使用することは一般的に悪い習慣です
+理科。これにより、コードのコンポーネントを再利用することが困難になり、
+そうしようとすると、フォークのメンテナンス手順が複雑になります
+コードライブラリ。これは、コードベースがモジュール式でない場合に特に当てはまります
+デザインで「スパゲッティコード」トラブルに悩まされています。
 
-Another problem with monolithic design is that it limits you to the
-language of the blockchain stack (or vice versa). In the case of
-Ethereum which supports a Turing-complete bytecode virtual-machine, it
-limits you to languages that compile down to that bytecode; today, those
-are Serpent and Solidity.
+モノリシックデザインのもう1つの問題は、それがあなたを制限することです
+ブロックチェーンスタックの言語(およびその逆)。もしも
+イーサリアムは、チューリングの完全なバイトコード仮想マシンをサポートしています。
+そのバイトコードにコンパイルされる言語に制限します;今日、それらは
+それは蛇と堅実です。
 
-In contrast, our approach is to decouple the consensus engine and P2P
-layers from the details of the application state of the particular
-blockchain application. We do this by abstracting away the details of
-the application to an interface, which is implemented as a socket
-protocol.
+対照的に、私たちのアプローチは、コンセンサスエンジンとP2Pを分離することです
+特定のアプリケーション状態の詳細レベルから
+ブロックチェーンアプリケーション。詳細を抽象化することでこれを行います
+ソケットとして実装されるインターフェースへの適用
+プロトコル。
 
-Thus we have an interface, the Application BlockChain Interface (ABCI),
-and its primary implementation, the Tendermint Socket Protocol (TSP, or
-Teaspoon).
+つまり、アプリケーションブロックリンクインターフェイス(ABCI)というインターフェイスがあります。
+そして、その主な実装であるTendermint Socket Protocol(TSP、または
+ティースプーン)。
 
-### Intro to ABCI
+### ABCIはじめに
 
-[Tendermint Core](https://github.com/tendermint/tendermint) (the
-"consensus engine") communicates with the application via a socket
-protocol that satisfies the ABCI.
+[テンダーミントコア](https://github.com/tendermint/tendermint)(
+「コンセンサスエンジン」)は、ソケットを介してアプリケーションと通信します
+ABCI契約を満たします。
 
-To draw an analogy, lets talk about a well-known cryptocurrency,
-Bitcoin. Bitcoin is a cryptocurrency blockchain where each node
-maintains a fully audited Unspent Transaction Output (UTXO) database. If
-one wanted to create a Bitcoin-like system on top of ABCI, Tendermint
-Core would be responsible for
+たとえば、有名な暗号通貨について話しましょう、
+ビットコイン。ビットコインは暗号通貨のブロックチェーンであり、各ノードは
+完全に監査された未使用のトランザクション出力(UTXO)データベースを維持します。もしも
+誰かがABCIとテンダーミントの上にビットコインのようなシステムを作りたいと思っています
+コアが責任を負います
 
-- Sharing blocks and transactions between nodes
-- Establishing a canonical/immutable order of transactions
-  (the blockchain)
+-ノード間でブロックとトランザクションを共有する
+-標準化された/不変のトランザクションシーケンスを確立します
+  (ブロックチェーン)
 
-The application will be responsible for
+アプリが責任を負います
 
-- Maintaining the UTXO database
-- Validating cryptographic signatures of transactions
-- Preventing transactions from spending non-existent transactions
-- Allowing clients to query the UTXO database.
+-UTXOデータベースを維持します
+-トランザクションの暗号署名を確認します
+-取引コストが存在しない取引を防止します
+-クライアントがUTXOデータベースにクエリを実行できるようにします。
 
-Tendermint is able to decompose the blockchain design by offering a very
-simple API (ie. the ABCI) between the application process and consensus
-process.
+テンダーミントは非常に提供することができます
+アプリケーションとコンセンサスの間のシンプルなAPI(つまり、ABCI)
+処理する。
 
-The ABCI consists of 3 primary message types that get delivered from the
-core to the application. The application replies with corresponding
-response messages.
+ABCIは、次の3つの主要なメッセージタイプで構成されています。
+アプリケーションのコア。アプリケーションはそれに応じて応答します
+応答メッセージ。
 
-The messages are specified here: [ABCI Message
-Types](https://github.com/tendermint/tendermint/blob/master/abci/README.md#message-types).
+メッセージはここで指定されます:[ABCIメッセージ
+タイプ](https://github.com/tendermint/tendermint/blob/master/abci/README.md#message-types)。
 
-The **DeliverTx** message is the work horse of the application. Each
-transaction in the blockchain is delivered with this message. The
-application needs to validate each transaction received with the
-**DeliverTx** message against the current state, application protocol,
-and the cryptographic credentials of the transaction. A validated
-transaction then needs to update the application state — by binding a
-value into a key values store, or by updating the UTXO database, for
-instance.
+** DeliverTx **メッセージはアプリケーションの主力製品です。各
+ブロックチェーン内のトランザクションは、このメッセージとともに渡されます。この
+アプリケーションは、受け取ったすべてのトランザクションを確認する必要があります
+** DeliverTx **現在のステータス、アプリケーションプロトコルについては、
+そして、トランザクションの暗号化された証明書。実績のある
+次に、トランザクションはアプリケーションの状態を更新する必要があります。
+値をKey-Valueストアに追加するか、UTXOデータベースを更新して
+実例。
 
-The **CheckTx** message is similar to **DeliverTx**, but it's only for
-validating transactions. Tendermint Core's mempool first checks the
-validity of a transaction with **CheckTx**, and only relays valid
-transactions to its peers. For instance, an application may check an
-incrementing sequence number in the transaction and return an error upon
-**CheckTx** if the sequence number is old. Alternatively, they might use
-a capabilities based system that requires capabilities to be renewed
-with every transaction.
+** CheckTx **メッセージは** DeliverTx **に似ていますが、使用されるのは
+トランザクションを確認します。 TendermintCoreのメモリプールが最初にチェックされます
+** CheckTx **トランザクションの有効性、およびリレーのみが有効です
+その仲間に対処します。たとえば、アプリケーションがチェックする場合があります
+トランザクションのシーケンス番号をインクリメントしてエラーを返します
+** CheckTx **シリアル番号が古い場合。または彼らは使用するかもしれません
+コンピテンシーベースのシステム、機能を更新する必要がある
+すべてのトランザクション。
 
-The **Commit** message is used to compute a cryptographic commitment to
-the current application state, to be placed into the next block header.
-This has some handy properties. Inconsistencies in updating that state
-will now appear as blockchain forks which catches a whole class of
-programming errors. This also simplifies the development of secure
-lightweight clients, as Merkle-hash proofs can be verified by checking
-against the block hash, and that the block hash is signed by a quorum.
+**コミット**メッセージは、
+現在のアプリケーションの状態は、次のブロックヘッダーに配置されます。
+これにはいくつかの便利な機能があります。ステータスの不整合を更新します
+ブロックチェーンフォークとして表示され、クラス全体をキャプチャします
+プログラミングエラー。これにより、セキュリティ開発も簡素化されます
+マークルハッシュプルーフは検査によって検証できるため、軽量クライアント
+ブロックハッシュの場合、ブロックハッシュはクォーラムによって署名されます。
 
-There can be multiple ABCI socket connections to an application.
-Tendermint Core creates three ABCI connections to the application; one
-for the validation of transactions when broadcasting in the mempool, one
-for the consensus engine to run block proposals, and one more for
-querying the application state.
+アプリケーションは、複数のABCIソケット接続を持つことができます。
+Tendermint Coreは、アプリケーション用に3つのABCI接続を作成します。1つは
+メモリプールでブロードキャストするときにトランザクションを検証するために使用されます。
+ブロック提案を実行するためのコンセンサスエンジン、および
+アプリケーションのステータスを照会します。
 
-It's probably evident that applications designers need to very carefully
-design their message handlers to create a blockchain that does anything
-useful but this architecture provides a place to start. The diagram
-below illustrates the flow of messages via ABCI.
+明らかに、アプリケーション設計者は非常に注意する必要があります
+メッセージハンドラーを設計して、何でもできるブロックチェーンを作成します
+便利ですが、このアーキテクチャは出発点を提供します。チャート
+ABCIを介したメッセージフローについて以下に説明します。
 
-![abci](../imgs/abci.png)
+！[abci](../../imgs/abci.png)
 
-## A Note on Determinism
+##決定論に関する注記
 
-The logic for blockchain transaction processing must be deterministic.
-If the application logic weren't deterministic, consensus would not be
-reached among the Tendermint Core replica nodes.
+ブロックチェーントランザクション処理のロジックは決定論的でなければなりません。
+アプリケーションロジックが決定論的でない場合、コンセンサスは決定論的ではありません
+TendermintCoreのレプリカノード間で到達します。
 
-Solidity on Ethereum is a great language of choice for blockchain
-applications because, among other reasons, it is a completely
-deterministic programming language. However, it's also possible to
-create deterministic applications using existing popular languages like
-Java, C++, Python, or Go. Game programmers and blockchain developers are
-already familiar with creating deterministic programs by avoiding
-sources of non-determinism such as:
+イーサリアムのSolidityは、ブロックチェーンに最適な言語です
+アプリケーション、他の理由の中でも、それは完全であるため
+決定論的プログラミング言語。しかし、それはまたできます
+既存の人気のある言語を使用して、次のような決定論的なアプリケーションを作成します
+Java、C ++、PythonまたはGo。ゲームプログラマーとブロックチェーン開発者は
+決定論的手順の作成を回避することですでによく知られています
+次のような不確実性の原因:
 
-- random number generators (without deterministic seeding)
-- race conditions on threads (or avoiding threads altogether)
-- the system clock
-- uninitialized memory (in unsafe programming languages like C
-  or C++)
-- [floating point
-  arithmetic](http://gafferongames.com/networking-for-game-programmers/floating-point-determinism/)
-- language features that are random (e.g. map iteration in Go)
+-乱数ジェネレーター(決定論的シードなし)
+-スレッドの競合状態(またはスレッドを完全に回避する)
+-システム時計
+-初期化されていないメモリ(Cなどの安全でないプログラミング言語)
+  またはC ++)
+-[浮動小数点
+  算術](http://gafferongames.com/networking-for-game-programmers/floating-point-determinism/)
+-ランダムな言語機能(例:Goでのマップの反復)
 
-While programmers can avoid non-determinism by being careful, it is also
-possible to create a special linter or static analyzer for each language
-to check for determinism. In the future we may work with partners to
-create such tools.
+プログラマーは注意することで不確実性を回避できますが、それは
+言語ごとに特別なリンターまたは静的アナライザーを作成できます
+確実性を確認してください。将来的には、パートナーと協力する可能性があります。
+そのようなツールを作成します。
 
-## Consensus Overview
+##コンセンサスの概要
 
-Tendermint is an easy-to-understand, mostly asynchronous, BFT consensus
-protocol. The protocol follows a simple state machine that looks like
-this:
+Tendermintは、理解しやすい、主に非同期のBFTコンセンサスです。
+プロトコル。プロトコルは、次のような単純なステートマシンに従います。
+この:
 
-![consensus-logic](../imgs/consensus_logic.png)
+！[コンセンサスロジック](../../imgs/consensus_logic.png)
 
-Participants in the protocol are called **validators**; they take turns
-proposing blocks of transactions and voting on them. Blocks are
-committed in a chain, with one block at each **height**. A block may
-fail to be committed, in which case the protocol moves to the next
-**round**, and a new validator gets to propose a block for that height.
-Two stages of voting are required to successfully commit a block; we
-call them **pre-vote** and **pre-commit**. A block is committed when
-more than 2/3 of validators pre-commit for the same block in the same
-round.
+契約の参加者は**バリデーター**と呼ばれ、交代で参加します
+トランザクションブロックを提案し、それらに投票します。ブロックは
+**高さ**ごとに1ブロックずつ、チェーンで送信します。ブロックはかもしれません
+提出に失敗しました。この場合、契約は次の契約に移ります
+**ラウンド**、そして新しいバリデーターはその高さのブロックを提案できます。
+ブロックを正常に送信するには、2段階の投票が必要です。
+それらを**事前投票**および**事前コミット**と呼びます。ブロックがコミットされたとき
+バリデーターの2/3以上が同じブロックで事前コミットします
+円形。
 
-There is a picture of a couple doing the polka because validators are
-doing something like a polka dance. When more than two-thirds of the
-validators pre-vote for the same block, we call that a **polka**. Every
-pre-commit must be justified by a polka in the same round.
+オーセンティケーターが
+ポルカダンスのようなことをしてください。 3分の2以上の場合
+検証者は、**ポルカ**と呼ばれる同じブロックに事前投票します。毎日
+事前提出は、同じラウンドでポルカによって証明されなければなりません。
 
-Validators may fail to commit a block for a number of reasons; the
-current proposer may be offline, or the network may be slow. Tendermint
-allows them to establish that a validator should be skipped. Validators
-wait a small amount of time to receive a complete proposal block from
-the proposer before voting to move to the next round. This reliance on a
-timeout is what makes Tendermint a weakly synchronous protocol, rather
-than an asynchronous one. However, the rest of the protocol is
-asynchronous, and validators only make progress after hearing from more
-than two-thirds of the validator set. A simplifying element of
-Tendermint is that it uses the same mechanism to commit a block as it
-does to skip to the next round.
+さまざまな理由により、バリデーターはブロックを送信できない場合があります。これは
+現在の提案者がオフラインであるか、ネットワークが遅い可能性があります。肌の若返り
+バリデーターをスキップする必要があることを彼らが判断できるようにします。バリデーター
+から少し待つ
+投票する前の提案者は次のラウンドに入ります。この依存関係
+タイムアウトは、Tendermintを弱い同期プロトコルにするものであり、
+非同期より。ただし、残りの契約は
+非同期、バリデーターは、より多くの意見を聞いた後にのみ進歩を遂げることができます
+バリデーターセットの3分の2以上。簡略化された要素
+テンダーミントは、同じメカニズムを使用してブロックを送信することです
+次のラウンドにスキップします。
 
-Assuming less than one-third of the validators are Byzantine, Tendermint
-guarantees that safety will never be violated - that is, validators will
-never commit conflicting blocks at the same height. To do this it
-introduces a few **locking** rules which modulate which paths can be
-followed in the flow diagram. Once a validator precommits a block, it is
-locked on that block. Then,
+バリデーターの3分の1未満がビザンチウム、テンダーミントであると仮定します
+セキュリティが侵害されないことを保証します。つまり、検証者は
+同じ高さで競合するブロックを送信しないでください。これを行うことができる必要があります
+いくつかの**ロック**ルールが導入されました。これらのルールは、どのパスを調整できるかを調整できます
+次はフローチャートです。バリデーターがブロックを事前にコミットすると、
+そのブロックにロックされています。それで、
 
-1. it must prevote for the block it is locked on
-2. it can only unlock, and precommit for a new block, if there is a
-    polka for that block in a later round
+1.ロックされているブロックに投票する必要があります
+2.新しいブロックがある場合にのみ、ロックを解除して事前にコミットできます
+    次のラウンドでそのブロックのポルカをプレイ
 
-## Stake
+##エクイティ
 
-In many systems, not all validators will have the same "weight" in the
-consensus protocol. Thus, we are not so much interested in one-third or
-two-thirds of the validators, but in those proportions of the total
-voting power, which may not be uniformly distributed across individual
-validators.
+多くのシステムでは、すべてのバリデーターが同じ「重み」を持っているわけではありません
+コンセンサス合意。したがって、私たちは
+バリデーターの3分の2ですが、全体のこれらの割合で
+議決権は個人間で均等に分配されない場合があります
+バリデーター。
 
-Since Tendermint can replicate arbitrary applications, it is possible to
-define a currency, and denominate the voting power in that currency.
-When voting power is denominated in a native currency, the system is
-often referred to as Proof-of-Stake. Validators can be forced, by logic
-in the application, to "bond" their currency holdings in a security
-deposit that can be destroyed if they're found to misbehave in the
-consensus protocol. This adds an economic element to the security of the
-protocol, allowing one to quantify the cost of violating the assumption
-that less than one-third of voting power is Byzantine.
+Tendermintは任意のアプリケーションをコピーできるため、次のことができます。
+通貨を定義し、その通貨で議決権を指定します。
+議決権が自国通貨建ての場合、制度は
+通常、公平性の証明と呼ばれます。バリデーターはロジックを介して強制することができます
+アプリケーションでは、保有する通貨を有価証券に「バインド」します
+不正行為が見つかった場合に破棄される可能性のある預金
+コンセンサス合意。これにより、ネットワークのセキュリティに経済的要因が追加されます
+仮定に違反するコストの定量化を可能にする契約
+投票権の3分の1未満がビザンチンです。
 
-The [Cosmos Network](https://cosmos.network) is designed to use this
-Proof-of-Stake mechanism across an array of cryptocurrencies implemented
-as ABCI applications.
+[コスモスネットワーク](https://cosmos.network)はこれを使用します
+一連の暗号通貨全体に実装されたプルーフオブステークメカニズム
+ABCIアプリケーションとして。
 
-The following diagram is Tendermint in a (technical) nutshell.
+下の写真は、一言で言えばテンダーミント(技術)です。
 
-![tx-flow](../imgs/tm-transaction-flow.png)
+！[tx-flow](../../imgs/tm-transaction-flow.png)

@@ -1,61 +1,61 @@
-# ADR 055: Protobuf Design
+# ADR 055:Protobufデザイン
 
-## Changelog
+## 変更ログ
 
-- 2020-4-15: Created (@marbar3778)
-- 2020-6-18: Updated (@marbar3778)
+-2020-4-15:作成(@ marbar3778)
+-2020-6-18:更新(@ marbar3778)
 
-## Context
+## 環境
 
-Currently we use [go-amino](https://github.com/tendermint/go-amino) throughout Tendermint. Amino is not being maintained anymore (April 15, 2020) by the Tendermint team and has been found to have issues:
+現在、Tendermintでは[go-amino](https://github.com/tendermint/go-amino)を使用しています。 TendermintチームはAminoを保守しなくなり(2020年4月15日)、問題があることがわかりました。
 
-- https://github.com/tendermint/go-amino/issues/286
-- https://github.com/tendermint/go-amino/issues/230
-- https://github.com/tendermint/go-amino/issues/121
+-https://github.com/tendermint/go-amino/issues/286
+-https://github.com/tendermint/go-amino/issues/230
+-https://github.com/tendermint/go-amino/issues/121
 
-These are a few of the known issues that users could run into.
+これらは、ユーザーが遭遇する可能性のあるいくつかの既知の問題です。
 
-Amino enables quick prototyping and development of features. While this is nice, amino does not provide the performance and developer convenience that is expected. For Tendermint to see wider adoption as a BFT protocol engine a transition to an adopted encoding format is needed. Below are some possible options that can be explored.
+アミノはラピッドプロトタイピングと機能開発をサポートします。これは良いことですが、Aminoは期待されるパフォーマンスと開発者の利便性を提供しません。 TendermintをBFTプロトコルエンジンとして広く採用するには、採用されているエンコーディング形式に移行する必要があります。探索できるいくつかの可能なオプションがあります。
 
-There are a few options to pick from:
+選択できるオプションはいくつかあります。
 
-- `Protobuf`: Protocol buffers are Google's language-neutral, platform-neutral, extensible mechanism for serializing structured data – think XML, but smaller, faster, and simpler. It is supported in countless languages and has been proven in production for many years.
+-`Protobuf`:プロトコルバッファはGoogleの言語に依存せず、プラットフォームに依存せず、拡張可能な構造化データのシリアル化メカニズムです。XMLについて考えてみてください。ただし、XMLはより小さく、より速く、よりシンプルです。それは無数の言語をサポートし、長年にわたって本番環境で証明されています。
 
-- `FlatBuffers`: FlatBuffers is an efficient cross platform serialization library. Flatbuffers are more efficient than Protobuf due to the fast that there is no parsing/unpacking to a second representation. FlatBuffers has been tested and used in production but is not widely adopted.
+-`FlatBuffers`:FlatBuffersは、効率的なクロスプラットフォームのシリアル化ライブラリです。 Flatbuffersは、2番目の表現への解析/解凍の速度がないため、Protobufよりも効果的です。 FlatBuffersはテストされ、本番環境で使用されていますが、広く採用されていません。
 
-- `CapnProto`: Cap’n Proto is an insanely fast data interchange format and capability-based RPC system. Cap'n Proto does not have a encoding/decoding step. It has not seen wide adoption throughout the industry.
+-`CapnProto`:Cap'n Protoは、非常に高速なデータ交換フォーマットであり、機能ベースのRPCシステムです。 Cap'n Protoには、エンコード/デコードの手順はありません。まだ業界全体で広く採用されていません。
 
-- @erikgrinaker - https://github.com/tendermint/tendermint/pull/4623#discussion_r401163501
-  ```
-  Cap'n'Proto is awesome. It was written by one of the original Protobuf developers to fix some of its issues, and supports e.g. random access to process huge messages without loading them into memory and an (opt-in) canonical form which would be very useful when determinism is needed (e.g. in the state machine). That said, I suspect Protobuf is the better choice due to wider adoption, although it makes me kind of sad since Cap'n'Proto is technically better.
-  ```
+-@ erikgrinaker-https://github.com/tendermint/tendermint/pull/4623#discussion_r401163501
+  「
+  Cap'n'Protoは素晴らしいです。これは、元のProtobuf開発者の一人によって書かれ、問題のいくつかを修正し、たとえば、メモリにロードせずに多数のメッセージを処理するためのランダムアクセスをサポートし、決定論が必要な場合(たとえば、ステートマシン)をサポートします。非常に便利な(オプトイン)標準形。とはいえ、広く採用されているため、Protobufの方が適していると思いますが、Cap'n'Protoの方が技術的に優れているため、少し悲しくなります。
+  「
 
-## Decision
+## 決定
 
-Transition Tendermint to Protobuf because of its performance and tooling. The Ecosystem behind Protobuf is vast and has outstanding [support for many languages](https://developers.google.com/protocol-buffers/docs/tutorials).
+そのパフォーマンスとツールにより、TendermintからProtobufに移行します。 Protobufの背後にあるエコシステムは非常に大きく、優れた[複数の言語のサポート](https://developers.google.com/protocol-buffers/docs/tutorials)を備えています。
 
-We will be making this possible by keeping the current types in there current form (handwritten) and creating a `/proto` directory in which all the `.proto` files will live. Where encoding is needed, on disk and over the wire, we will call util functions that will transition the types from handwritten go types to protobuf generated types. This is inline with the recommended file structure from [buf](https://buf.build). You can find more information on this file structure [here](https://buf.build/docs/lint-checkers#file_layout).
+これを実現するには、現在のタイプを現在の形式(手書き)で保持し、すべての `.proto`ファイルが保存される` / proto`ディレクトリを作成します。エンコーディングが必要な場合、ディスク上およびネットワーク上で、util関数を呼び出して、タイプを手書きのgoタイプからprotobufによって生成されたタイプに変換します。これは、[buf](https://buf.build)で推奨されているファイル構造に準拠しています。このファイルの構造の詳細については、[ここ](https://buf.build/docs/lint-checkers#file_layout)を参照してください。
 
-By going with this design we will enable future changes to types and allow for a more modular codebase.
+この設計を採用することで、タイプの将来の変更をサポートし、よりモジュール化されたコードベースを可能にします。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Allows for modular types in the future
-- Less refactoring
-- Allows the proto files to be pulled into the spec repo in the future.
-- Performance
-- Tooling & support in multiple languages
+-将来のモジュラータイプを許可する
+-リファクタリングが少ない
+-将来、元のドキュメントを仕様リポジトリにプルできるようにします。
+- パフォーマンス
+-複数の言語でのツールとサポート
 
-### Negative
+### ネガティブ
 
-- When a developer is updating a type they need to make sure to update the proto type as well
+-開発者がタイプを更新するときは、プロトタイプも更新する必要があります
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する

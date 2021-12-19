@@ -1,57 +1,57 @@
-# Creating an application in Go
+# Goでアプリケーションを作成する
 
-## Guide Assumptions
+## ガイド仮説
 
-This guide is designed for beginners who want to get started with a Tendermint
-Core application from scratch. It does not assume that you have any prior
-experience with Tendermint Core.
+このガイドは、テンダーミントを使い始めたい初心者を対象としています。
+ゼロからのコアアプリケーション。以前に持っていることを前提とはしていません
+TendermintCoreの使用経験。
 
-Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state
-transition machine - written in any programming language - and securely
-replicates it on many machines.
+Tendermint Coreは、状態を採用するビザンチンフォールトトレラント(BFT)ミドルウェアです。
+翻訳者-任意のプログラミング言語で書かれている-そして安全
+多くのマシンにコピーします。
 
-Although Tendermint Core is written in the Golang programming language, prior
-knowledge of it is not required for this guide. You can learn it as we go due
-to it's simplicity. However, you may want to go through [Learn X in Y minutes
-Where X=Go](https://learnxinyminutes.com/docs/go/) first to familiarize
-yourself with the syntax.
+Tendermint CoreはGolangプログラミング言語で書かれていますが、以前は
+このガイドはそれを理解する必要はありません。あなたは私たちが期日になるときにそれを学ぶことができます
+そのシンプルさ。ただし、[Y分でXを学ぶ
+X = Goの場合](https://learnxinyminutes.com/docs/go/)最初に慣れましょう
+独自の文法。
 
-By following along with this guide, you'll create a Tendermint Core project
-called kvstore, a (very) simple distributed BFT key-value store.
+このガイドに従うことで、Tendermintコアプロジェクトを作成します
+kvstoreと呼ばれる、(非常に)単純な分散BFTキー値ストア。
 
-## Built-in app vs external app
+## 組み込みアプリケーションと外部アプリケーション
 
-To get maximum performance it is better to run your application alongside
-Tendermint Core. [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) is written
-this way. Please refer to [Writing a built-in Tendermint Core application in
-Go](./go-built-in.md) guide for details.
+最高のパフォーマンスを得るには、アプリケーションで実行するのが最適です
+テンダーミントコア。 [Cosmos SDK](https://github.com/cosmos/cosmos-sdk)
+こちらです。 [組み込みのTendermintCoreアプリケーションを作成する]を参照してください。
+詳細については、Go](./go-built-in.md)ガイドを参照してください。
 
-Having a separate application might give you better security guarantees as two
-processes would be communicating via established binary protocol. Tendermint
-Core will not have access to application's state.
+別のアプリケーションを使用すると、セキュリティがより確実に保証される場合があります
+プロセスは、確立されたバイナリプロトコルを介して通信します。肌の若返り
+コアはアプリケーションの状態にアクセスできなくなります。
 
-## 1.1 Installing Go
+## 1.1Goのインストール
 
-Please refer to [the official guide for installing
-Go](https://golang.org/doc/install).
+[公式インストールガイド]を参照してください
+Go](https://golang.org/doc/install)。
 
-Verify that you have the latest version of Go installed:
+Goの最新バージョンを使用していることを確認します。
 
 ```bash
 $ go version
 go version go1.16.x darwin/amd64
 ```
 
-## 1.2 Creating a new Go project
+## 1.2 创建一个新的 Go 项目
 
-We'll start by creating a new Go project.
+我们将首先创建一个新的 Go 项目。
 
 ```bash
 mkdir kvstore
 cd kvstore
 ```
 
-Inside the example directory create a `main.go` file with the following content:
+次の内容のmain.goファイルをサンプルディレクトリに作成します。
 
 ```go
 package main
@@ -65,22 +65,22 @@ func main() {
 }
 ```
 
-When run, this should print "Hello, Tendermint Core" to the standard output.
+実行時に、これは「Hello、TendermintCore」を標準出力に出力するはずです。
 
 ```bash
 go run main.go
 Hello, Tendermint Core
 ```
 
-## 1.3 Writing a Tendermint Core application
+## 1.3Tendermintコアアプリケーションの作成
 
-Tendermint Core communicates with the application through the Application
-BlockChain Interface (ABCI). All message types are defined in the [protobuf
-file](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
-This allows Tendermint Core to run applications written in any programming
-language.
+Tendermint Coreは、アプリケーションを介してアプリケーションと通信します
+ブロックリンクポート(ABCI)。 すべてのメッセージタイプは[protobuf
+ファイル](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto)。
+これにより、TendermintCoreはプログラムで記述されたアプリケーションを実行できます。
+言語。
 
-Create a file called `app.go` with the following content:
+次の内容の「app.go」という名前のファイルを作成します。
 
 ```go
 package main
@@ -158,7 +158,7 @@ application to check it (validate the format, signatures, etc.).
 import "bytes"
 
 func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
- // check format
+//check format
  parts := bytes.Split(tx, []byte("="))
  if len(parts) != 2 {
   return 1
@@ -166,7 +166,7 @@ func (app *KVStoreApplication) isValid(tx []byte) (code uint32) {
 
  key, value := parts[0], parts[1]
 
- // check if the same key=value already exists
+//check if the same key=value already exists
  err := app.db.View(func(txn *badger.Txn) error {
   item, err := txn.Get(key)
   if err != nil && err != badger.ErrKeyNotFound {
@@ -229,10 +229,10 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 
 ### 1.3.2 BeginBlock -> DeliverTx -> EndBlock -> Commit
 
-When Tendermint Core has decided on the block, it's transferred to the
-application in 3 parts: `BeginBlock`, one `DeliverTx` per transaction and
-`EndBlock` in the end. DeliverTx are being transferred asynchronously, but the
-responses are expected to come in order.
+Tendermint Coreがブロックを決定すると、ブロックはに転送されます
+アプリケーションは3つの部分に分かれています: `BeginBlock`、トランザクションごとに1つの` DeliverTx`、
+最後は `EndBlock`です。 DeliverTxは非同期で送信していますが、
+整然とした対応が期待されます。
 
 ```go
 func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
@@ -241,7 +241,7 @@ func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcit
 }
 ```
 
-Here we create a batch, which will store block's transactions.
+在这里我们创建一个批处理，它将存储块的交易。
 
 ```go
 func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
@@ -262,19 +262,19 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 }
 ```
 
-If the transaction is badly formatted or the same key=value already exist, we
-again return the non-zero code. Otherwise, we add it to the current batch.
+トランザクション形式が間違っているか、同じkey = valueがすでに存在する場合、
+ゼロ以外のコードが再び返されます。 それ以外の場合は、現在のバッチに追加します。
 
-In the current design, a block can include incorrect transactions (those who
-passed CheckTx, but failed DeliverTx or transactions included by the proposer
-directly). This is done for performance reasons.
+現在の設計では、ブロックに誤ったトランザクションが含まれている可能性があります(これらのトランザクション
+CheckTxに合格しましたが、DeliverTxまたは提案者に含まれるトランザクションに合格しませんでした
+直接)。 これは、パフォーマンス上の理由から行われます。
 
-Note we can't commit transactions inside the `DeliverTx` because in such case
-`Query`, which may be called in parallel, will return inconsistent data (i.e.
-it will report that some value already exist even when the actual block was not
-yet committed).
+この場合、 `DeliverTx`内でトランザクションをコミットできないことに注意してください
+並行して呼び出すことができるクエリは、一貫性のないデータを返します(つまり、
+実際のブロックが存在しない場合でも、特定の値がすでに存在していることが報告されます
+まだ提出されていません)。
 
-`Commit` instructs the application to persist the new state.
+`Commit`は、新しい状態を維持するようにアプリケーションに指示します。
 
 ```go
 func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
@@ -283,19 +283,19 @@ func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
 }
 ```
 
-### 1.3.3 Query
+### 1.3.3クエリ
 
-Now, when the client wants to know whenever a particular key/value exist, it
-will call Tendermint Core RPC `/abci_query` endpoint, which in turn will call
-the application's `Query` method.
+これで、クライアントが特定のキー/値がいつ存在するかを知りたい場合、
+Tendermint Core RPC `/abci_query`エンドポイントを呼び出します。エンドポイントは次に呼び出します
+アプリケーションの `Query`メソッド。
 
-Applications are free to provide their own APIs. But by using Tendermint Core
-as a proxy, clients (including [light client
-package](https://godoc.org/github.com/tendermint/tendermint/light)) can leverage
-the unified API across different applications. Plus they won't have to call the
-otherwise separate Tendermint Core API for additional proofs.
+アプリケーションは独自のAPIを無料で提供できます。 しかし、テンダーミントコアを使用することによって
+プロキシとして、クライアント([ライトクライアントを含む
+パッケージ](https://godoc.org/github.com/tendermint/tendermint/light))が利用可能
+さまざまなアプリケーションにまたがる統合API。 さらに、彼らは電話する必要はありません
+それ以外の場合は、追加の証明のために別のTendermintコアAPIが使用されます。
 
-Note we don't include a proof here.
+ここには証拠が含まれていないことに注意してください。
 
 ```go
 func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.ResponseQuery) {
@@ -326,9 +326,9 @@ func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery 
 The complete specification can be found
 [here](https://docs.tendermint.com/master/spec/abci/).
 
-## 1.4 Starting an application and a Tendermint Core instances
+## 1.4アプリケーションとTendermintCoreインスタンスを起動します
 
-Put the following code into the "main.go" file:
+次のコードを「main.go」ファイルに入れます。
 
 ```go
 package main
@@ -380,9 +380,9 @@ func main() {
 }
 ```
 
-This is a huge blob of code, so let's break it down into pieces.
+これはたくさんのコードです。いくつかの部分に分けてみましょう。
 
-First, we initialize the Badger database and create an app instance:
+まず、Badgerデータベースを初期化し、アプリケーションインスタンスを作成します。
 
 ```go
 db, err := badger.Open(badger.DefaultOptions("/tmp/badger"))
@@ -394,16 +394,16 @@ defer db.Close()
 app := NewKVStoreApplication(db)
 ```
 
-For **Windows** users, restarting this app will make badger throw an error as it requires value log to be truncated. For more information on this, visit [here](https://github.com/dgraph-io/badger/issues/744).
-This can be avoided by setting the truncate option to true, like this:
+** Windows **ユーザーの場合、このアプリケーションを再起動すると、値ログを切り捨てる必要があるため、Badgerはエラーをスローします。 詳細については、[こちら](https://github.com/dgraph-io/badger/issues/744)にアクセスしてください。
+これは、次のようにtruncateオプションをtrueに設定することで回避できます。
 
 ```go
 db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithTruncate(true))
 ```
 
-Then we start the ABCI server and add some signal handling to gracefully stop
-it upon receiving SIGTERM or Ctrl-C. Tendermint Core will act as a client,
-which connects to our server and send us transactions and other messages.
+次に、ABCIサーバーを起動し、信号処理を追加して正常に停止します
+SIGTERMまたはCtrl-Cを受け取った後です。 TendermintCoreはクライアントとして機能します。
+サーバーに接続し、トランザクションやその他のメッセージを送信します。
 
 ```go
 server := abciserver.NewSocketServer(socketAddr, app)
@@ -420,18 +420,18 @@ signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 os.Exit(0)
 ```
 
-## 1.5 Getting Up and Running
+## 1.5起動して実行
 
-We are going to use [Go modules](https://github.com/golang/go/wiki/Modules) for
-dependency management.
+[Goモジュール](https://github.com/golang/go/wiki/Modules)を使用します
+依存管理。
 
 ```bash
 export GO111MODULE=on
 go mod init github.com/me/example
 ```
 
-This should create a `go.mod` file. The current tutorial only works with
-the master branch of Tendermint, so let's make sure we're using the latest version:
+これにより、 `go.mod`ファイルが作成されます。 現在のチュートリアルはにのみ適用されます
+Tendermintのマスターブランチなので、最新バージョンを使用していることを確認しましょう。
 
 ```sh
 go get github.com/tendermint/tendermint@97a3e44e0724f2017079ce24d36433f03124c09e
@@ -456,16 +456,16 @@ Now we can build the binary:
 go build
 ```
 
-To create a default configuration, nodeKey and private validator files, let's
-execute `tendermint init validator`. But before we do that, we will need to install
-Tendermint Core. Please refer to [the official
-guide](https://docs.tendermint.com/master/introduction/install.html). If you're
-installing from source, don't forget to checkout the latest release (`git
-checkout vX.Y.Z`). Don't forget to check that the application uses the same
-major version.
+デフォルト構成、nodeKey、およびプライベートバリデーターファイルを作成するには、
+`tendermintinitvalidator`を実行します。 ただし、その前に、インストールする必要があります
+テンダーミントコア。 [公式
+ガイド](https://docs.tendermint.com/master/introduction/install.html)。 もしあなたが
+ソースからインストールします。最新バージョンを確認することを忘れないでください( `git
+vX.Y.Z`をチェックしてください)。 アプリが同じものを使用しているかどうかを確認することを忘れないでください
+メジャーバージョン。
 
 ```bash
-rm -rf /tmp/example
+rm -rf/tmp/example
 TMHOME="/tmp/example" tendermint init validator
 
 I[2019-07-16|18:20:36.480] Generated private validator                  module=main keyFile=/tmp/example/config/priv_validator_key.json stateFile=/tmp/example2/data/priv_validator_state.json
@@ -474,11 +474,11 @@ I[2019-07-16|18:20:36.482] Generated genesis file                       module=m
 I[2019-07-16|18:20:36.483] Generated config                             module=main mode=validator
 ```
 
-Feel free to explore the generated files, which can be found at
-`/tmp/example/config` directory. Documentation on the config can be found
-[here](https://docs.tendermint.com/master/tendermint-core/configuration.html).
+随意探索生成的文件，可以在
+`/tmp/example/config` 目录。 可以找到有关配置的文档
+[此处](https://docs.tendermint.com/master/tendermint-core/configuration.html)。
 
-We are ready to start our application:
+我们准备开始我们的应用程序:
 
 ```bash
 rm example.sock
@@ -490,8 +490,8 @@ badger 2019/07/16 18:25:11 INFO: Replay took: 300.4s
 I[2019-07-16|18:25:11.523] Starting ABCIServer                          impl=ABCIServ
 ```
 
-Then we need to start Tendermint Core and point it to our application. Staying
-within the application directory execute:
+次に、Tendermint Coreを起動して、アプリケーションをポイントする必要があります。 止まる
+アプリケーションディレクトリで実行します。
 
 ```bash
 TMHOME="/tmp/example" tendermint node --proxy-app=unix://example.sock
@@ -532,9 +532,9 @@ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 }
 ```
 
-Response should contain the height where this transaction was committed.
+応答には、トランザクションがコミットされた高さを含める必要があります。
 
-Now let's check if the given key now exists and its value:
+次に、指定されたキーが存在するかどうかとその値を確認しましょう。
 
 ```json
 curl -s 'localhost:26657/abci_query?data="tendermint"'
@@ -551,12 +551,12 @@ curl -s 'localhost:26657/abci_query?data="tendermint"'
 }
 ```
 
-"dGVuZGVybWludA==" and "cm9ja3M=" are the base64-encoding of the ASCII of
-"tendermint" and "rocks" accordingly.
+「dGVuZGVybWludA ==」および「cm9ja3M =」はASCIIbase64エンコーディングです
+対応して「テンダーミント」と「ロック」。
 
-## Outro
+## 終わり
 
-I hope everything went smoothly and your first, but hopefully not the last,
-Tendermint Core application is up and running. If not, please [open an issue on
-Github](https://github.com/tendermint/tendermint/issues/new/choose). To dig
-deeper, read [the docs](https://docs.tendermint.com/master/).
+私はすべてがうまくいくことを願っています、あなたの最初ですが、最後ではないことを願っています、
+TendermintCoreアプリケーションが稼働しています。 そうでない場合は、[質問を開いてください
+Github](https://github.com/tendermint/tendermint/issues/new/choose)。 掘る
+[ドキュメント](https://docs.tendermint.com/master/)を詳しく読んでください。

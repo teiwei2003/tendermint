@@ -1,16 +1,16 @@
-# Configuration
+# 構成
 
-Tendermint Core can be configured via a TOML file in
-`$TMHOME/config/config.toml`. Some of these parameters can be overridden by
-command-line flags. For most users, the options in the `##### main base configuration options #####` are intended to be modified while config options
-further below are intended for advance power users.
+TendermintCoreはTOMLファイルを介して構成できます
+`$ TMHOME/config/config.toml`。 これらのパラメータの一部は上書きできます
+コマンドラインフラグ。 ほとんどのユーザーの場合、 `#####主な基本構成オプション#####` ##### `のオプションは、オプションを構成するときに変更することを目的としています。
+以下は、上級ユーザー向けです。
 
-## Options
+## オプション
 
-The default configuration file create by `tendermint init` has all
-the parameters set with their default values. It will look something
-like the file below, however, double check by inspecting the
-`config.toml` created with your version of `tendermint` installed:
+`tendermintinit`によって作成されたデフォルトの設定ファイルにはすべてが含まれています
+パラメータはデフォルト値に設定されています。 それは何かに見えます
+以下のファイルと同じですが、検査を通じて
+`config.toml`は、インストールした` tendermin`のバージョンで作成されます。
 
 ```toml# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
@@ -510,43 +510,42 @@ max-open-connections = 3
 namespace = "tendermint"
 ```
 
-## Empty blocks VS no empty blocks
+##空のブロックVS空のブロックなし
 
 ### create-empty-blocks = true
 
-If `create-empty-blocks` is set to `true` in your config, blocks will be
-created ~ every second (with default consensus parameters). You can regulate
-the delay between blocks by changing the `timeout-commit`. E.g. `timeout-commit = "10s"` should result in ~ 10 second blocks.
+設定で `create-empty-blocks`が` true`に設定されている場合、ブロックは
+〜毎秒作成(デフォルトのコンセンサスパラメータを使用)。あなたは規制することができます
+`timeout-commit`を変更することによるブロック間の遅延。例えば。 `timeout-commit =" 10s "`は、約10秒のブロックになります。
 
 ### create-empty-blocks = false
 
-In this setting, blocks are created when transactions received.
+この設定では、トランザクションを受信したときにブロックが作成されます。
 
-Note after the block H, Tendermint creates something we call a "proof block"
-(only if the application hash changed) H+1. The reason for this is to support
-proofs. If you have a transaction in block H that changes the state to X, the
-new application hash will only be included in block H+1. If after your
-transaction is committed, you want to get a light-client proof for the new state
-(X), you need the new block to be committed in order to do that because the new
-block has the new application hash for the state X. That's why we make a new
-(empty) block if the application hash changes. Otherwise, you won't be able to
-make a proof for the new state.
+ブロックHの後に、テンダーミントは「プルーフブロック」と呼ばれるものを作成することに注意してください
+(アプリケーションハッシュが変更された場合のみ)H +1。これの理由はサポートすることです
+証明。ブロックHに、状態をXに変更するトランザクションがある場合、
+新しいアプリケーションハッシュは、ブロックH +1にのみ含まれます。あなたの後なら
+トランザクションがコミットされました。新しい状態のライトクライアントプルーフを取得する必要があります
+(X)、それを行うには、新しいブロックをコミットする必要があります。
+ブロックには、状態Xの新しいアプリケーションハッシュがあります。そのため、新しいアプリケーションハッシュを作成します。
+(空)アプリケーションハッシュが変更された場合はブロックします。そうでなければ、あなたはすることができません
+新しい状態の証拠を作成します。
 
-Plus, if you set `create-empty-blocks-interval` to something other than the
-default (`0`), Tendermint will be creating empty blocks even in the absence of
-transactions every `create-empty-blocks-interval`. For instance, with
-`create-empty-blocks = false` and `create-empty-blocks-interval = "30s"`,
-Tendermint will only create blocks if there are transactions, or after waiting
-30 seconds without receiving any transactions.
+さらに、 `create-empty-blocks-interval`を
+デフォルト( `0`)、Tendermintは、存在しない場合でも空のブロックを作成します
+`create-empty-blocks-interval`ごとにトランザクションします。たとえば、
+`create-empty-blocks = false`および` create-empty-blocks-interval = "30s" `、
+Tendermintは、トランザクションがある場合、または待機した後にのみブロックを作成します
+トランザクションを受信せずに30秒。
 
-## Consensus timeouts explained
+##コンセンサスタイムアウトの説明
 
-There's a variety of information about timeouts in [Running in
-production](../tendermint-core/running-in-production.md)
+[Running in]には、タイムアウトに関するさまざまな情報があります。
+プロダクション](../tendermint-core/running-in-production.md)
 
-You can also find more detailed technical explanation in the spec: [The latest
-gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
-
+また、仕様でより詳細な技術的説明を見つけることができます:[最新
+BFTコンセンサスに関するゴシップ](https://arxiv.org/abs/1807.04938)。
 ```toml
 [consensus]
 ...
@@ -560,86 +559,86 @@ timeout-precommit-delta = "500ms"
 timeout-commit = "1s"
 ```
 
-Note that in a successful round, the only timeout that we absolutely wait no
-matter what is `timeout-commit`.
+成功したラウンドでは、私たちが絶対に待つ唯一のタイムアウトはそうではないことに注意してください
+「提出のタイムアウト」が何であっても。
 
-Here's a brief summary of the timeouts:
+タイムアウトの概要は次のとおりです。
 
-- `timeout-propose` = how long we wait for a proposal block before prevoting
-  nil
-- `timeout-propose-delta` = how much timeout-propose increases with each round
-- `timeout-prevote` = how long we wait after receiving +2/3 prevotes for
-  anything (ie. not a single block or nil)
-- `timeout-prevote-delta` = how much the timeout-prevote increases with each
-  round
-- `timeout-precommit` = how long we wait after receiving +2/3 precommits for
-  anything (ie. not a single block or nil)
-- `timeout-precommit-delta` = how much the timeout-precommit increases with
-  each round
-- `timeout-commit` = how long we wait after committing a block, before starting
-  on the new height (this gives us a chance to receive some more precommits,
-  even though we already have +2/3)
+-`timeout-propose` =事前投票の前に提案ブロックを待つ時間
+  零
+-`timeout-propose-delta` =各タイムアウトプロポーザルをどれだけ増やすか
+-`timeout-prevote` = + 2/3のprevoteを受け取ってから待機した時間
+  何でも(つまり、単一のブロックまたはゼロではない)
+-`timeout-prevote-delta` =タイムアウトごとにprevoteはどのくらい増加しますか
+  円形
+-`timeout-precommit` = + 2/3precommitを受信して​​から待機する時間
+  何でも(つまり、単一のブロックまたはゼロではない)
+-`timeout-precommit-delta` =タイムアウトのprecommitの増加量
+  毎ラウンド
+-`timeout-commit` =ブロックをコミットしてから開始するまでの時間
+  新しい高さで(これにより、より多くの事前コミットを受け取る機会が得られます。
+  すでに+2/3を持っていても)
 
-## P2P settings
+## P2P設定
 
-This section will cover settings within the p2p section of the `config.toml`.
+このセクションでは、 `config.toml`のp2pセクションの設定を紹介します。
 
-- `external-address` = is the address that will be advertised for other nodes to use. We recommend setting this field with your public IP and p2p port.
-  - > We recommend setting an external address. When used in a private network, Tendermint Core currently doesn't advertise the node's public address. There is active and ongoing work to improve the P2P system, but this is a helpful workaround for now.
-- `persistent-peers` = is a list of comma separated peers that you will always want to be connected to. If you're already connected to the maximum number of peers, persistent peers will not be added.
-- `pex` = turns the peer exchange reactor on or off. Validator node will want the `pex` turned off so it would not begin gossiping to unknown peers on the network. PeX can also be turned off for statically configured networks with fixed network connectivity. For full nodes on open, dynamic networks, it should be turned on.
-- `private-peer-ids` = is a comma-separated list of node ids that will _not_ be exposed to other peers (i.e., you will not tell other peers about the ids in this list). This can be filled with a validator's node id.
+-`external-address` =は他のノードにアナウンスされるアドレスです。このフィールドを設定するには、パブリックIPとp2pポートを使用することをお勧めします。
+  ->外部アドレスを設定することをお勧めします。プライベートネットワークで使用される場合、TendermintCoreは現在ノードのパブリックアドレスをアナウンスしません。 P2Pシステムを改善するための積極的かつ継続的な作業がいくつかありますが、これは現在有用なソリューションです。
+-`persistent-peers` =はコンマで区切られたピアのリストであり、常にこれらのピアに接続する必要があります。最大数のピアに接続している場合、永続的なピアは追加されません。
+-`pex` =ピアツーピア交換リアクターをオンまたはオフにします。バリデーターノードは、ネットワーク上の不明なピアとのチャットを開始しないように、「pex」を閉じたいと思うでしょう。固定ネットワーク接続で静的に構成されたネットワークの場合、PeXをオフにすることもできます。オープンで動的なネットワーク上のフルノードの場合は、オンにする必要があります。
+-`private-peer-ids` =は、ノードIDのコンマ区切りのリストであり、他のピアには公開されません(つまり、このリストのIDを他のピアに通知しません)。これには、バリデーターのノードIDを入力できます。
 
-Recently the Tendermint Team conducted a refactor of the p2p layer. This lead to multiple config paramters being deprecated and/or replaced.
+最近、Tendermintチームはp2pレイヤーをリファクタリングしました。これにより、複数の構成パラメーターが非推奨または置き換えられました。
 
-We will cover the new and deprecated parameters below.
-### New Parameters
+以下に、新しいパラメータと廃止されたパラメータについて説明します。
+###新しいパラメータ
 
-There are three new parameters, which are enabled if use-legacy is set to false.
+use-legacyがfalseに設定されている場合に有効になる、3つの新しいパラメーターがあります。
 
-- `queue-type` = sets a type of queue to use in the p2p layer. There are three options available `fifo`, `priority` and `wdrr`. The default is priority
-- `bootstrap-peers` = is a list of comma seperated peers which will be used to bootstrap the address book.
-- `max-connections` = is the max amount of allowed inbound and outbound connections.
-### Deprecated Parameters
+-`queue-type` = p2pレイヤーで使用されるキュータイプを設定します。 「fifo」、「priority」、「wdrr」の3つのオプションを使用できます。デフォルトは優先度です
+-`bootstrap-peers` =は、アドレスブックをブートストラップするために使用されるノードのコンマ区切りのリストです。
+-`max-connections` =は、許可されるインバウンド接続とアウトバウンド接続の最大数です。
+###非推奨のパラメータ
 
-> Note: For Tendermint 0.35, there are two p2p implementations. The old version is used by deafult with the deprecated fields. The new implementation uses different config parameters, explained above.
+>注:Tendermint 0.35の場合、2つのp2p実装があります。古いバージョンは、非推奨のフィールドを持つdeafultによって使用されていました。新しい実装では、上記のように、さまざまな構成パラメーターを使用します。
 
-- `max-num-inbound-peers` = is the maximum number of peers you will accept inbound connections from at one time (where they dial your address and initiate the connection). *This was replaced by `max-connections`*
-- `max-num-outbound-peers` = is the maximum number of peers you will initiate outbound connects to at one time (where you dial their address and initiate the connection).*This was replaced by `max-connections`*
-- `unconditional-peer-ids` = is similar to `persistent-peers` except that these peers will be connected to even if you are already connected to the maximum number of peers. This can be a validator node ID on your sentry node. *Deprecated*
-- `seeds` = is a list of comma separated seed nodes that you will connect upon a start and ask for peers. A seed node is a node that does not participate in consensus but only helps propagate peers to nodes in the networks *Deprecated, replaced by bootstrap peers*
+-`max-num-inbound-peers` =一度にインバウンド接続を受け入れることができるピアの最大数です(アドレスをダイヤルして接続を開始します)。 *これは `max-connections`に置き換えられます*
+-`max-num-outbound-peers` =一度にアウトバウンド接続を開始するピアの最大数です(アドレスをダイヤルして接続を開始します)。 *これは `max-connections`に置き換えられます*
+-`unconditional-peer-ids` = `persistent-peers`に似ています違いは、最大数のピアに接続している場合でも、これらのピアは接続されるということです。これは、センチネルノードのバリデーターノードIDにすることができます。 *非推奨*
+-`seeds` =は、シードノードのコンマ区切りのリストです。最初に接続してピアノードを要求します。シードノードは、コンセンサスに参加しないノードですが、ノードをネットワーク内のノードに拡散するのに役立つだけです*推奨されません。ガイドノードに置き換えられます*
 
-## Indexing Settings
+##インデックス設定
 
-Operators can configure indexing via the `[tx_index]` section. The `indexer`
-field takes a series of supported indexers. If `null` is included, indexing will
-be turned off regardless of other values provided.
+オペレーターは、 `[tx_index]`セクションを介してインデックスを構成できます。 `インデクサ`
+このフィールドは、サポートされている一連のインデクサーを使用します。 `null`が含まれている場合、インデックスは
+提供された他の値に関係なく、それは閉じられます。
 
-### Supported Indexers
+###サポートされているインデクサー
 
 #### KV
 
-The `kv` indexer type is an embedded key-value store supported by the main
-underlying Tendermint database. Using the `kv` indexer type allows you to query
-for block and transaction events directly against Tendermint's RPC. However, the
-query syntax is limited and so this indexer type might be deprecated or removed
-entirely in the future.
+`kv`インデクサータイプは、サポートされている主要な組み込みKey-Valueストアです
+基盤となるTendermintデータベース。 `kv`インデクサータイプを使用すると、クエリを実行できます
+TendermintのRPCブロックおよびトランザクションイベントを直接ターゲットにするために使用されます。でもそれは
+クエリ構文が制限されているため、このインデクサータイプは非推奨または削除される可能性があります
+完全に将来。
 
 #### PostgreSQL
 
-The `psql` indexer type allows an operator to enable block and transaction event
-indexing by proxying it to an external PostgreSQL instance allowing for the events
-to be stored in relational models. Since the events are stored in a RDBMS, operators
-can leverage SQL to perform a series of rich and complex queries that are not
-supported by the `kv` indexer type. Since operators can leverage SQL directly,
-searching is not enabled for the `psql` indexer type via Tendermint's RPC -- any
-such query will fail.
+`psql`インデクサータイプにより、オペレーターはブロックイベントとトランザクションイベントを有効にできます
+イベントを許可する外部PostgreSQLインスタンスにプロキシしてインデックスを作成します
+リレーショナルモデルに格納されます。イベントはRDBMSに保存されるため、オペレーターは
+SQLを使用して、一連のリッチで複雑なクエリを実行できます
+`kv`インデクサータイプのサポート。演算子はSQLを直接使用できるため、
+TendermintのRPCが `psql`インデクサータイプの検索を有効にできませんでした-任意
+このようなクエリは失敗します。
 
-Note, the SQL schema is stored in `state/indexer/sink/psql/schema.sql` and operators
-must explicitly create the relations prior to starting Tendermint and enabling
-the `psql` indexer type.
+SQLスキーマは `state/indexer/sink/psql/schema.sql`と演算子に格納されていることに注意してください
+Tendermintを起動して有効にする前に、関係を明示的に作成する必要があります
+`psql`インデクサータイプ。
 
-Example:
+例:
 
 ```shell
 $ psql ... -f state/indexer/sink/psql/schema.sql

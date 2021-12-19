@@ -1,8 +1,8 @@
-# Evidence
+# 証拠
 
-Evidence is used to identify validators who have or are acting malicious. There are multiple types of evidence, to read more on the evidence types please see [Evidence Types](https://docs.tendermint.com/master/spec/core/data_structures.html#evidence).
+証拠は、悪意のあるアクションを実行している、または実行している検証者を識別するために使用されます。 証拠にはさまざまな種類があります。証拠の種類の詳細については、[証拠の種類](https://docs.tendermint.com/master/spec/core/data_structures.html#evidence)を参照してください。
 
-The evidence reactor works similar to the mempool reactor. When evidence is observed, it is sent to all the peers in a repetitive manner. This ensures evidence is sent to as many people as possible to avoid sensoring. After evidence is received by peers and committed in a block it is pruned from the evidence module.
+エビデンスリアクターの動作原理は、メモリープールリアクターに似ています。 証拠が観察されると、それはすべてのピアに繰り返し送信されます。 これにより、知覚を回避するために、証拠ができるだけ多くの人々に送信されることが保証されます。 ピアがエビデンスを受信して​​ブロックに送信すると、エビデンスモジュールから削除されます。
 
-Sending incorrectly encoded data or data exceeding `maxMsgSize` will result
-in stopping the peer.
+誤ってコーディングされたデータまたは `maxMsgSize`を超えるデータを送信すると、
+ピアを停止します。

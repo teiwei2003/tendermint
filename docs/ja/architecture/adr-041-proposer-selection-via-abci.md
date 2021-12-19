@@ -1,29 +1,28 @@
-# ADR 041: Application should be in charge of validator set
+# ADR 041:アプリケーションはバリデーターセットを担当する必要があります
 
-## Changelog
+## 変更ログ
 
 
-## Context
+## 環境
 
-Currently Tendermint is in charge of validator set and proposer selection. Application can only update the validator set changes at EndBlock time.
-To support Light Client, application should make sure at least 2/3 of validator are same at each round.
+現在、Tendermintはバリデーターセットと提案者の選択を担当しています。 アプリケーションは、EndBlock時にのみバリデーターセットの変更を更新できます。
+ライトクライアントをサポートするために、アプリケーションは、バリデーターの少なくとも2/3が各ラウンドで同じであることを確認する必要があります。
 
-Application should have full control on validator set changes and proposer selection. In each round Application can provide the list of validators for next rounds in order with their power. The proposer is the first in the list, in case the proposer is offline, the next one can propose the proposal and so on.
+アプリケーションは、バリデーターセットの変更と提案者の選択を完全に制御する必要があります。 各ラウンドで、アプリは次のラウンドのバリデーターのリストを機能別に並べ替えて提供できます。 提案者はリストの最初であり、提案者がオフラインの場合、次の提案者が提案を行うことができます。
 
-## Decision
+## 決定
 
-## Status
+## ステータス
 
-## Consequences
+## 結果
 
-Tendermint is no more in charge of validator set and its changes. The Application should provide the correct information.
-However Tendermint can provide psedo-randomness algorithm to help application for selecting proposer in each round.
+Tendermintは、バリデーターセットとその変更について責任を負いません。 アプリケーションは正しい情報を提供する必要があります。
+ただし、Tendermintは、アプリケーションが各ラウンドで提案者を選択するのに役立つ疑似ランダムアルゴリズムを提供できます。
 
-### Positive
+### ポジティブ
 
-### Negative
+### ネガティブ
 
-### Neutral
+### ニュートラル
 
-## References
-
+## 参照する

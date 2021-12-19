@@ -1,17 +1,17 @@
-# Configure a Light Client
+# ライトクライアントを構成する
 
-Tendermint comes with a built-in `tendermint light` command, which can be used
-to run a light client proxy server, verifying Tendermint RPC. All calls that
-can be tracked back to a block header by a proof will be verified before
-passing them back to the caller. Other than that, it will present the same
-interface as a full Tendermint node.
+Tendermintには `tendermintlight`コマンドが組み込まれています。
+ライトクライアントプロキシサーバーを実行して、TendermintRPCを確認します。 彼らは皆それを呼んでいます
+以前に検証された証明を介してブロックヘッダーまでさかのぼることができます
+それらを発信者に返します。 それ以外の場合は、同じように表示されます
+インターフェイスは完全なTendermintノードとして機能します。
 
-You can start the light client proxy server by running `tendermint light <chainID>`,
-with a variety of flags to specify the primary node,  the witness nodes (which cross-check
-the information provided by the primary), the hash and height of the trusted header,
-and more.
+`tendermint light <chainID>`を実行すると、ライトクライアントプロキシサーバーを起動できます。
+さまざまな記号を使用して、マスターノード、監視ノードを指定します(クロスチェック
+マスターから提供された情報)、信頼できるヘッダーのハッシュと高さ、
+もっと。
 
-For example:
+例えば:
 
 ```bash
 $ tendermint light supernova -p tcp://233.123.0.140:26657 \
@@ -19,12 +19,12 @@ $ tendermint light supernova -p tcp://233.123.0.140:26657 \
   --height=10 --hash=37E9A6DD3FA25E83B22C18835401E8E56088D0D7ABC6FD99FCDC920DD76C1C57
 ```
 
-For additional options, run `tendermint light --help`.
+その他のオプションについては、 `tendermint light--help`を実行してください。
 
-## Where to obtain trusted height & hash
+## 信頼できる高さとハッシュ値を取得する場所
 
-One way to obtain a semi-trusted hash & height is to query multiple full nodes
-and compare their hashes:
+半信頼のハッシュと高さを取得する1つの方法は、複数の完全なノードをクエリすることです。
+そして、それらのハッシュ値を比較します。
 
 ```bash
 $ curl -s https://233.123.0.140:26657:26657/commit | jq "{height: .result.signed_header.header.height, hash: .result.signed_header.commit.block_id.hash}"

@@ -1,105 +1,105 @@
-# ADR 72: Restore Requests for Comments
+# ADR 72:コメントリクエストを再開する
 
-## Changelog
+## 変更ログ
 
-- 20-Aug-2021: Initial draft (@creachadair)
+-2021年8月20日:最初のドラフト(@creachadair)
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Context
+## 環境
 
-In the past, we kept a collection of Request for Comments (RFC) documents in `docs/rfc`.
-Prior to the creation of the ADR process, these documents were used to document
-design and implementation decisions about Tendermint Core. The RFC directory
-was removed in favor of ADRs, in commit 3761aa69 (PR
-[\#6345](https://github.com/tendermint/tendermint/pull/6345)).
+以前は、Request for Comment(RFC)ドキュメントのコレクションを `docs/rfc`に保持していました。
+ADRプロセスが作成される前は、これらのファイルは記録に使用されていました
+TendermintCoreの設計と実装の決定について。 RFCディレクトリ
+3761aa69で提出(PR
+[\#6345](https://github.com/tendermint/tendermint/pull/6345))。
 
-For issues where an explicit design decision or implementation change is
-required, an ADR is generally preferable to an open-ended RFC: An ADR is
-relatively narrowly-focused, identifies a specific design or implementation
-question, and documents the consensus answer to that question.
+明確な設計上の決定または実装の変更のため
+はい、通常、RFCを開くにはADRの方が適しています。ADRは
+比較的狭い、特定の設計または実装を決定する
+質問し、質問に対するコンセンサス回答を記録します。
 
-Some discussions are more open-ended, however, or don't require a specific
-decision to be made (yet). Such conversations are still valuable to document,
-and several members of the Tendermint team have been doing so by writing gists
-or Google docs to share them around. That works well enough in the moment, but
-gists do not support any kind of collaborative editing, and both gists and docs
-are hard to discover after the fact. Google docs have much better collaborative
-editing, but are worse for discoverability, especially when contributors span
-different Google accounts.
+ただし、一部のディスカッションは制限がないか、具体的なものを必要としません
+決定を下します(まだ)。そのような会話はまだ記録する価値があります、
+テンダーミントチームの一部のメンバーは、要点を書いてこれを行っています
+またはGoogleドキュメントで共有してください。現在の効果は非常に良いですが、
+gistは、gistとdocsの両方をサポートする、いかなる形式の協調編集もサポートしていません。
+後で見つけるのは難しいです。 Googleドキュメントのコラボレーションが向上
+編集されましたが、特に寄稿者が交差する場合、発見可能性の点で劣っています
+さまざまなGoogleアカウント。
 
-Discoverability is important, because these kinds of open-ended discussions are
-useful to people who come later -- either as new team members or as outside
-contributors seeking to use and understand the thoughts behind our designs and
-the architectural decisions that arose from those discussion.
+これらのタイプのオープンディスカッションは
+新しいチームメンバーとして、または外部メンバーとして、後で来る人に便利です
+私たちのデザインの背後にあるアイデアを使用して理解しようとしている貢献者
+これらの議論から導き出されたアーキテクチャ上の決定。
 
-With these in mind, I propose that:
+これらを念頭に置いて、私は提案します:
 
--  We re-create a new, initially empty `docs/rfc` directory in the repository,
-   and use it to capture these kinds of open-ended discussions in supplement to
-   ADRs.
+-リポジトリに最初は空の新しい `docs/rfc`ディレクトリを再作成します。
+   そして、それを使用して、これらのタイプのオープンディスカッションをキャプチャして補足します
+   ADR。
 
--  Unlike in the previous RFC scheme, documents in this new directory will
-   _not_ be used directly for decision-making. This is the key difference
-   between an RFC and an ADR.
+-以前のRFCスキームとは異なり、この新しいディレクトリ内のドキュメントは
+   意思決定に直接使用されることはありません。これが重要な違いです
+   RFCとADRの間。
 
-   Instead, an RFC will exist to document background, articulate general
-   principles, and serve as a historical record of discussion and motivation.
+   代わりに、背景を文書化し、一般的なものを明確にするためのRFCがあります
+   原則と議論と動機の歴史的記録として機能します。
 
-   In this system, an RFC may _only_ result in a decision indirectly, via ADR
-   documents created in response to the RFC.
+   このシステムでは、RFCはADRを介した意思決定に間接的につながる可能性があります。
+   RFCに応答して作成されたドキュメント。
 
-   **In short:** If a decision is required, write an ADR; otherwise if a
-   sufficiently broad discussion is needed, write an RFC.
+   **要するに:**決定を下す必要がある場合は、ADRを書き留めてください。そうでない場合は、
+   広範な議論が必要な場合は、RFCを作成してください。
 
-Just so that there is a consistent format, I also propose that:
+一貫したフォーマットにするために、私はまたお勧めします:
 
--  RFC files are named `rfc-XXX-title.{md,rst,txt}` and are written in plain
-   text, Markdown, or ReStructured Text.
+-RFCファイルの名前は `rfc-XXX-title。{md、rst、txt}`で、通常の方法で記述されています
+   テキスト、マークダウン、または再構築されたテキスト。
 
--  Like an ADR, an RFC should include a high-level change log at the top of the
-   document, and sections for:
+-ADRと同様に、RFCの上部に高度な変更ログを含める必要があります
+   ドキュメントとセクション:
 
-     * Abstract: A brief, high-level synopsis of the topic.
-     * Background: Any background necessary to understand the topic.
-     * Discussion: Detailed discussion of the issue being considered.
+     *要約:トピックの簡潔で高レベルの要約。
+     *背景:主題を理解するために必要な背景。
+     *ディスカッション:検討中の問題の詳細なディスカッション。
 
--  Unlike an ADR, an RFC does _not_ include sections for Decisions, Detailed
-   Design, or evaluation of proposed solutions. If an RFC leads to a proposal
-   for an actual architectural change, that must be recorded in an ADR in the
-   usual way, and may refer back to the RFC in its References section.
+-ADRとは異なり、RFCには意思決定部分と詳細情報部分が含まれていません。
+   提案されたソリューションを設計または評価します。 RFCが提案につながる場合
+   実際のアーキテクチャの変更については、ADRに文書化する必要があります
+   通常の方法であり、RFCのリファレンスセクションを参照できます。
 
-## Alternative Approaches
+##代替方法
 
-Leaving aside implementation details, the main alternative to this proposal is
-to leave things as they are now, with ADRs as the only log of record and other
-discussions being held informally in whatever medium is convenient at the time.
+実装の詳細はさておき、この提案の主な代替案は次のとおりです。
+現状を維持し、ADRを唯一の記録ログおよびその他として使用する
+その時点で便利なメディアで非公式に話し合います。
 
-## Decision
+## 決定
 
-(pending)
+(行われなければ)
 
-## Detailed Design
+## 詳細設計
 
-- Create a new `docs/rfc` directory in the `tendermint` repository. Note that
-  this proposal intentionally does _not_ pull back the previous contents of
-  that path from Git history, as those documents were appropriately merged into
-  the ADR process.
+-`tendermint`リポジトリに新しい `docs/rfc`ディレクトリを作成します。知らせ
+  この提案は、以前のコンテンツを故意に撤回するものではありません。
+  これらのドキュメントは適切にマージされているため、Git履歴からのパス
+  ADRプロセス。
 
-- Create a `README.md` for RFCs that explains the rules and their relationship
-  to ADRs.
+-RFC用の `README.md`を作成して、ルールとそれらの間の関係を説明します
+  ADRへ。
 
-- Create an `rfc-template.md` file for RFC files.
+-RFCファイルの `rfc-template.md`ファイルを作成します。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- We will have a more discoverable place to record open-ended discussions that
-  do not immediately result in a design change.
+-オープンディスカッションを記録するためのより簡単な場所があります
+  すぐに設計変更を引き起こさないでください。
 
-### Negative
+### ネガティブ
 
-- Potentially some people could be confused about the RFC/ADR distinction.
+-RFC/ADRの違いについて混乱する人もいるかもしれません。

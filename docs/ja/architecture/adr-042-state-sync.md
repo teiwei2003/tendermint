@@ -1,235 +1,234 @@
-# ADR 042: State Sync Design
+# ADR 042:状態同期設計
 
-## Changelog
+## 変更ログ
 
-2019-06-27: Init by EB
-2019-07-04: Follow up by brapse
+2019-06-27:EB開始
+2019-07-04:ブラプスフォローアップ
 
-## Context
-StateSync is a feature which would allow a new node to receive a
-snapshot of the application state without downloading blocks or going
-through consensus. Once downloaded, the node could switch to FastSync
-and eventually participate in consensus. The goal of StateSync is to
-facilitate setting up a new node as quickly as possible.
+## 環境
+StateSyncは、新しいノードが受信できるようにするアイテムです
+アプリケーションの状態のスナップショット。ブロックをダウンロードしたり、移動したりする必要はありません。
+コンセンサスを通じて。ダウンロード後、ノードはFastSyncに切り替えることができます
+そして最後にコンセンサスに参加します。 StateSyncの目標は
+できるだけ早く新しいノードの確立を促進します。
 
-## Considerations
-Because Tendermint doesn't know anything about the application state,
-StateSync will broker messages between nodes and through
-the ABCI to an opaque applicaton. The implementation will have multiple
-touch points on both the tendermint code base and ABCI application.
+## 予防
+Tendermintはアプリケーションの状態について何も知らないため、
+StateSyncはノード間でメッセージをプロキシし、パスします
+不透明なアプリケーションへのABCI。複数あります
+TendermintコードベースおよびABCIアプリケーションのタッチポイント。
 
-* A StateSync reactor to facilitate peer communication - Tendermint
-* A Set of ABCI messages to transmit application state to the reactor - Tendermint
-* A Set of MultiStore APIs for exposing snapshot data to the ABCI - ABCI application
-* A Storage format with validation and performance considerations - ABCI application
+*ピアツーピア通信を容易にするStateSyncリアクター-Tendermint
+*アプリケーションステータスをreactorに転送するために使用される一連のABCIメッセージ-Tendermint
+*スナップショットデータをABCI-ABCIアプリケーションに公開するためのMultiStoreAPIのセット
+*検証とパフォーマンスを考慮したストレージフォーマット-ABCIアプリケーション
 
-### Implementation Properties
-Beyond the approach, any implementation of StateSync can be evaluated
-across different criteria:
+### 実装属性
+メソッドに加えて、StateSyncの任意の実装を評価できます
+さまざまな基準にわたって:
 
-* Speed: Expected throughput of producing and consuming snapshots
-* Safety: Cost of pushing invalid snapshots to a node
-* Liveness: Cost of preventing a node from receiving/constructing a snapshot
-* Effort: How much effort does an implementation require
+*速度:本番および消費のスナップショットの予想スループット
+*セキュリティ:無効なスナップショットをノードにプッシュするコスト
+*活性:ノードがスナップショットを受信/構築できないようにするためのコスト
+*努力:実現にはどれだけの努力が必要か
 
-### Implementation Question
-* What is the format of a snapshot
-    * Complete snapshot
-    * Ordered IAVL key ranges
-    * Compressed individually chunks which can be validated
-* How is data validated
-    * Trust a peer with it's data blindly
-    * Trust a majority of peers
-    * Use light client validation to validate each chunk against consensus
-      produced merkle tree root
-* What are the performance characteristics
-    * Random vs sequential reads
-    * How parallelizeable is the scheduling algorithm
+### 実装の問題
+*スナップショットの形式は何ですか
+    *完全なスナップショット
+    *注文したIAVLキー範囲
+    *検証可能な個別に圧縮されたブロック
+*データを確認する方法
+    *ピアのデータを盲目的に信頼する
+    *私は私の仲間のほとんどを信じています
+    *ライトクライアント検証を使用して、各ブロックがコンセンサスを満たしているかどうかを検証します
+      メルケルのルーツを生成する
+*パフォーマンス特性は何ですか
+    *ランダムおよびシーケンシャルリーディング
+    *スケジューリングアルゴリズムはどの程度並列ですか
 
-### Proposals
-Broadly speaking there are two approaches to this problem which have had
-varying degrees of discussion and progress. These approach can be
-summarized as:
+### 提案
+大まかに言えば、この問題を解決するには2つの方法があります
+さまざまなレベルの議論と進歩。これらのメソッドは
+要約すると:
 
-**Lazy:** Where snapshots are produced dynamically at request time. This
-solution would use the existing data structure.
-**Eager:** Where snapshots are produced periodically and served from disk at
-request time. This solution would create an auxiliary data structure
-optimized for batch read/writes.
+**怠惰:**要求されたときにスナップショットを動的に生成する場所。この
+このソリューションでは、既存のデータ構造を使用します。
+**熱心な:**スナップショットが定期的に生成され、サービスがディスクから提供される場所
+リクエスト時間。このソリューションは、補助データ構造を作成します
+バッチ読み取り/書き込み用に最適化されています。
 
-Additionally the propsosals tend to vary on how they provide safety
-properties.
+さらに、提案はセキュリティをどのように提供するかによって異なることがよくあります
+特性。
+** LightClient **ここで、クライアントはブロックからメルケルルートを取得できます
+信頼できるバリデーターセットから同期されたヘッダー。アプリケーション状態のサブセット、
+したがって、着信時に呼び出されたブロックを検証して、各ブロックを確認できます。
+メルケルルートの一部です。
 
-**LightClient** Where a client can aquire the merkle root from the block
-headers synchronized from a trusted validator set. Subsets of the application state,
-called chunks can therefore be validated on receipt to ensure each chunk
-is part of the merkle root.
+**ほとんどのピアノード**ブロックリストとチェックサムはどこにありますか
+ダウンロードして、ほとんどの提供バージョンと比較します
+ピア。
 
-**Majority of Peers** Where manifests of chunks along with checksums are
-downloaded and compared against versions provided by a majority of
-peers.
+#### レイジー状態の同期
+元の仕様はAlexisSellierによって公開されました。
+この設計では、状態には特定の元の要素「サイズ」があります(例:
+キーまたはノード)、各要素には0から `size-1`までの番号が割り当てられます。
+ブロックは、そのような一連の要素で構成されます。アクラトスが提案した
+[いくつかの懸念](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit)
+この設計に関しては、IAVLツリーに少し固有です。主に
+ツリーをランダムに読み取り、トラバースして、要素番号のパフォーマンスを判断します
+(つまり、要素は要素番号でインデックス付けされません)。
 
-#### Lazy StateSync
-An initial specification was published by Alexis Sellier.
-In this design, the state has a given `size` of primitive elements (like
-keys or nodes), each element is assigned a number from 0 to `size-1`,
-and chunks consists of a range of such elements.  Ackratos raised
-[some concerns](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit)
-about this design, somewhat specific to the IAVL tree, and mainly concerning
-performance of random reads and of iterating through the tree to determine element numbers
-(ie. elements aren't indexed by the element number).
+ジェクォンは別のデザインを提案しました
+[#3639](https://github.com/tendermint/tendermint/issues/3639)ブロックされた場所
+遅延的かつ動的に発生します。ノードはピアにキー範囲を要求します。
+そして、ピアはいくつかのサブセットで応答します
+リクエストの範囲と、残りを他の人に並行してリクエストする方法に関する指示
+ピア。ブロック番号とは異なり、キーは直接確認できます。いくつかのキーが入っている場合
+スコープを省略した場合、スコープの証明は検証できません。
+このようなノードは、ツリー全体を要求するノードから開始できます。
+そして、ピアは最初のいくつかのキーと要求される範囲で応答できます
+他の同僚から。
 
-An alternative design was suggested by Jae Kwon in
-[#3639](https://github.com/tendermint/tendermint/issues/3639) where chunking
-happens lazily and in a dynamic way: nodes request key ranges from their peers,
-and peers respond with some subset of the
-requested range and with notes on how to request the rest in parallel from other
-peers. Unlike chunk numbers, keys can be verified directly. And if some keys in the
-range are ommitted, proofs for the range will fail to verify.
-This way a node can start by requesting the entire tree from one peer,
-and that peer can respond with say the first few keys, and the ranges to request
-from other peers.
+さらに、各ブロックの検証はより自然になる傾向があります
+ツリーの既存の構造を使用する傾向があるため、レイジーアプローチ
+(つまり、キーまたはノード)状態同期固有のブロックの代わりに。そのような
+テンダーミントのデザインはもともと
+[#828](https://github.com/tendermint/tendermint/issues/828)。
 
-Additionally, per chunk validation tends to come more naturally to the
-Lazy approach since it tends to use the existing structure of the tree
-(ie. keys or nodes) rather than state-sync specific chunks. Such a
-design for tendermint was originally tracked in
-[#828](https://github.com/tendermint/tendermint/issues/828).
+####熱心なStateSync
+OpenEthereumに実装されたワープ同期は高速です
+ピアからブロックと状態のスナップショットをダウンロードします。データは最大4MBに分割されます
+チャンクと活気のある圧縮。きびきびとした圧縮ブロックのハッシュは、
+調整されたステータス同期マニフェストファイル。正しいリストを取得する
+ドキュメントには、正直な大多数の同僚が必要なようです。これはあなたが見つけられないかもしれないことを意味します
+コンテンツ全体をダウンロードして比較するまで、ステータスは正しくありません
+検証済みのブロックヘッダー付き。
 
-#### Eager StateSync
-Warp Sync as implemented in OpenEthereum to rapidly
-download both blocks and state snapshots from peers. Data is carved into ~4MB
-chunks and snappy compressed. Hashes of snappy compressed chunks are stored in a
-manifest file which co-ordinates the state-sync. Obtaining a correct manifest
-file seems to require an honest majority of peers. This means you may not find
-out the state is incorrect until you download the whole thing and compare it
-with a verified block header.
-
-A similar solution was implemented by Binance in
+Binanceは同様のソリューションを実装しました
 [#3594](https://github.com/tendermint/tendermint/pull/3594)
-based on their initial implementation in
-[PR #3243](https://github.com/tendermint/tendermint/pull/3243)
-and [some learnings](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit).
-Note this still requires the honest majority peer assumption.
+彼らが何であるかに基づいて
+[PR#3243](https://github.com/tendermint/tendermint/pull/3243)
+そして[いくつかの学習](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit)。
+これには、正直な多数決の同等性の仮定が必要であることに注意してください。
 
-As an eager protocol, warp-sync can efficiently compress larger, more
-predicatable chunks once per snapshot and service many new peers. By
-comparison lazy chunkers would have to compress each chunk at request
-time.
+緊急のプロトコルとして、warp-syncはより大きくより多くを効果的に圧縮できます
+各スナップショットは予測可能なブロックであり、多くの新しいピアにサービスを提供します。通過する
+レイジーブロッカーは、要求に応じて各ブロックを圧縮する必要があります
+時間。
 
-### Analysis of Lazy vs Eager
-Lazy vs Eager have more in common than they differ. They all require
-reactors on the tendermint side, a set of ABCI messages and a method for
-serializing/deserializing snapshots facilitated by a SnapshotFormat.
+### 怠惰と欲望の分析
+LazyとEagerには、違いよりも共通点があります。それらはすべて必要です
+ミント側のリアクター、ABCIメッセージのセットとメソッド
+SnapshotFormatは、スナップショットのシリアル化/逆シリアル化を容易にします。
 
-The biggest difference between Lazy and Eager proposals is in the
-read/write patterns necessitated by serving a snapshot chunk.
-Specifically, Lazy State Sync performs random reads to the underlying data
-structure while Eager can optimize for sequential reads.
+怠惰な提案と熱心な提案の最大の違いは
+スナップショットブロックに必要な読み取り/書き込みモードを提供します。
+具体的には、Lazy State Syncは、基になるデータのランダムな読み取りを実行します
+構造、および熱心な人は、順次読み取りを最適化できます。
 
-This distinctin between approaches was demonstrated by Binance's
-[ackratos](https://github.com/ackratos) in their implementation of [Lazy
-State sync](https://github.com/tendermint/tendermint/pull/3243), The
-[analysis](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/)
-of the performance, and follow up implementation of [Warp
-Sync](http://github.com/tendermint/tendermint/pull/3594).
+Binanceの調査は、このアプローチの違いを証明しています
+[レイジー]の[ackratos](https://github.com/ackratos)
+状態の同期](https://github.com/tendermint/tendermint/pull/3243)、
+[分析](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/)
+[Warp]のパフォーマンスとフォローアップの実装
+同期](http://github.com/tendermint/tendermint/pull/3594)。
 
-#### Compairing Security Models
-There are several different security models which have been
-discussed/proposed in the past but generally fall into two categories.
+#### 比較セキュリティモデル
+いくつかの異なるセキュリティモデルがあります
+過去に議論・提案されてきましたが、通常は2つのカテゴリーに分けられます。
 
-Light client validation: In which the node receiving data is expected to
-first perform a light client sync and have all the nessesary block
-headers. Within the trusted block header (trusted in terms of from a
-validator set subject to [weak
-subjectivity](https://github.com/tendermint/tendermint/pull/3795)) and
-can compare any subset of keys called a chunk against the merkle root.
-The advantage of light client validation is that the block headers are
-signed by validators which have something to lose for malicious
-behaviour. If a validator were to provide an invalid proof, they can be
-slashed.
+軽いクライアント検証:データを受信するノードが期待される場所
+最初に軽いクライアント同期を実行し、必要なすべてのブロックを用意します
+タイトル。信頼できるブロックヘッダー内(信頼の観点から)
+バリデーターの設定は[weak
+主観性](https://github.com/tendermint/tendermint/pull/3795))および
+ブロックと呼ばれるキーのサブセットは、メルケルルートと比較できます。
+ライトクライアント検証の利点は、ブロックヘッダーが
+検証者によって署名されたこれらの検証者は、悪意を持って何かを失います
+行動。ベリファイアが無効な証明を提供する場合、
+減らす。
 
-Majority of peer validation: A manifest file containing a list of chunks
-along with checksums of each chunk is downloaded from a
-trusted source. That source can be a community resource similar to
-[sum.golang.org](https://sum.golang.org) or downloaded from the majority
-of peers. One disadantage of the majority of peer security model is the
-vuliberability to eclipse attacks in which a malicious users looks to
-saturate a target node's peer list and produce a manufactured picture of
-majority.
+ほとんどのピア検証:ブロックリストを含むマニフェストファイル
+からの各ブロックのチェックサムと一緒に
+信頼できるソース。ソースは、次のようなコミュニティリソースにすることができます
+[sum.golang.org](https://sum.golang.org)またはほとんどからダウンロード
+同い年の。ほとんどのピアツーピアセキュリティモデルの欠点の1つは、
+悪意のあるユーザーが予期していた攻撃を覆い隠す
+ターゲットノードのピアリストを飽和させて生成します
+多くの。
 
-A third option would be to include snapshot related data in the
-block header. This could include the manifest with related checksums and be
-secured through consensus. One challenge of this approach is to
-ensure that creating snapshots does not put undo burden on block
-propsers by synchronizing snapshot creation and block creation. One
-approach to minimizing the burden is for snapshots for height
-`H` to be included in block `H+n` where `n` is some `n` block away,
-giving the block propser enough time to complete the snapshot
-asynchronousy.
+3番目のオプションは、スナップショット関連のデータをに含めることです。
+かさばる。これには、関連するチェックサムのリストが含まれる場合があります。
+コンセンサスによって保証されます。このアプローチの1つの課題は
+スナップショットを作成しても、ブロックに元に戻る負担がかからないようにしてください
+スナップショットの作成とブロックの作成を同期することでサポートされます。 1
+負担を最小限に抑える方法は、高さのスナップショットを撮ることです
+`H`はブロック` H + n`に含まれています。ここで、 `n`はいくつかの` n`ブロックです。
+ブロックプロッパーにスナップショットを完了するのに十分な時間を与えます
+非同期。
 
-## Proposal: Eager StateSync With Per Chunk Light Client Validation
-The conclusion after some concideration of the advantages/disadvances of
-eager/lazy and different security models is to produce a state sync
-which eagerly produces snapshots and uses light client validation. This
-approach has the performance advantages of pre-computing efficient
-snapshots which can streamed to new nodes on demand using sequential IO.
-Secondly, by using light client validation we cna validate each chunk on
-receipt and avoid the potential eclipse attack of majority of peer based
-security.
+## 提案:熱心なStateSyncと各ライトクライアントの検証
+長所と短所を包括的に検討した後に導き出された結論
+緊急性/怠惰とさまざまなセキュリティモデルが状態の同期を生成しています
+スナップショットを熱心に生成し、軽いクライアント認証を使用します。この
+この方法には、事前計算と高効率というパフォーマンス上の利点があります。
+スナップショットは、シーケンシャルIOを使用してオンデマンドで新しいノードにストリーミングできます。
+次に、ライトクライアント認証を使用することで、各ブロックを検証できます
+潜在的なピアベースの日食攻撃のほとんどを受け取り、回避する
+安全性。
 
-### Implementation
-Tendermint is responsible for downloading and verifying chunks of
-AppState from peers. ABCI Application is responsible for taking
-AppStateChunk objects from TM and constructing a valid state tree whose
-root corresponds with the AppHash of syncing block. In particular we
-will need implement:
+### 埋め込む
+Tendermintは、ダウンロードと検証を担当します
+ピアからのAppState。 ABCIアプリは取る責任があります
+TMからAppStateChunkオブジェクトを作成し、有効な状態ツリーを構築します。
+ルートは、同期されたブロックのAppHashに対応します。特に私たち
+実装する必要があります:
 
-* Build new StateSync reactor brokers message transmission between the peers
-  and the ABCI application
-* A set of ABCI Messages
-* Design SnapshotFormat as an interface which can:
-    * validate chunks
-    * read/write chunks from file
-    * read/write chunks to/from application state store
-    * convert manifests into chunkRequest ABCI messages
-* Implement SnapshotFormat for cosmos-hub with concrete implementation for:
-    * read/write chunks in a way which can be:
-        * parallelized across peers
-        * validated on receipt
-    * read/write to/from IAVL+ tree
+*プロキシノード間のメッセージ送信用に新しいStateSyncリアクタを構築する
+  そしてABCIアプリ
+* ABCIメッセージのグループ
+*スナップショットフォーマットをインターフェースとして設計します。次のことができます。
+    *検証ブロック
+    *ファイルからのブロックの読み取り/書き込み
+    *アプリケーション状態ストレージとの間のブロックの読み取り/書き込み
+    *リストをchunkRequestABCIメッセージに変換します
+* cosmos-hubのSnapshotFormatを実装します。具体的な実装は次のとおりです。
+    *ブロックの読み取り/書き込み方法は次のとおりです。
+        *ピア間で並列
+        *受領時に確認する
+    * IAVL +ツリーからの読み取り/書き込み/
 
-![StateSync Architecture Diagram](img/state-sync.png)
+！[StateSyncアーキテクチャ図](img / state-sync.png)
 
-## Implementation Path
-* Create StateSync reactor based on  [#3753](https://github.com/tendermint/tendermint/pull/3753)
-* Design SnapshotFormat with an eye towards cosmos-hub implementation
-* ABCI message to send/receive SnapshotFormat
-* IAVL+ changes to support SnapshotFormat
-* Deliver Warp sync (no chunk validation)
-* light client implementation for weak subjectivity
-* Deliver StateSync with chunk validation
+## 気付く
+* [#3753](https://github.com/tendermint/tendermint/pull/3753)に基づいてStateSyncリアクターを作成します
+* cosmos-hub実装設計に焦点を当てるSnapshotFormat
+* SnapshotFormatを送受信するABCIメッセージ
+* IAVL +がSnapshotFormatをサポートするように変更されました
+*ワープ同期を提供します(ブロック検証なし)
+*弱く主観的なライトクライアントの実装
+* StateSyncにブロック検証を提供する
 
-## Status
+## ステータス
 
-Proposed
+提案
 
-## Concequences
+## 結果として
 
-### Neutral
+### ニュートラル
 
-### Positive
-* Safe & performant state sync design substantiated with real world implementation experience
-* General interfaces allowing application specific innovation
-* Parallizable implementation trajectory with reasonable engineering effort
+### ポジティブ
+*安全で高性能な状態同期設計は、実際の実装経験に基づいています
+*汎用インターフェースにより、アプリケーション固有のイノベーションが可能になります
+*合理的なエンジニアリング作業を通じて、並列化可能な実装軌道を実現します
 
-### Negative
-* Static Scheduling lacks opportunity for real time chunk availability optimizations
+### ネガティブ
+*静的スケジューリングには、リアルタイムのブロック可用性最適化の機会がありません
 
-## References
-[sync: Sync current state without full replay for Applications](https://github.com/tendermint/tendermint/issues/828) - original issue
-[tendermint state sync proposal 2](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit) - ackratos proposal
-[proposal 2 implementation](https://github.com/tendermint/tendermint/pull/3243)  - ackratos implementation
-[WIP General/Lazy State-Sync pseudo-spec](https://github.com/tendermint/tendermint/issues/3639) - Jae Proposal
-[Warp Sync Implementation](https://github.com/tendermint/tendermint/pull/3594) - ackratos
-[Chunk Proposal](https://github.com/tendermint/tendermint/pull/3799) - Bucky proposed
+## 参照する
+[同期:現在の状態を同期します。アプリケーションを完全に再生する必要はありません](https://github.com/tendermint/tendermint/issues/828)-元の問題
+[テンダーミントステータス同期提案2](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit)-ackratos提案
+[提案2の実装](https://github.com/tendermint/tendermint/pull/3243)-ackratosの実装
+[WIP General / Lazy State-Sync pseudo-specification](https://github.com/tendermint/tendermint/issues/3639)-Jaeの提案
+[ワープ同期の実装](https://github.com/tendermint/tendermint/pull/3594)-ackratos
+[チャンク提案](https://github.com/tendermint/tendermint/pull/3799)-バッキー提案

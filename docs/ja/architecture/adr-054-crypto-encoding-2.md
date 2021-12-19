@@ -1,24 +1,24 @@
-# ADR 054: Crypto encoding (part 2)
+# ADR 054:暗号化コーディング(パート2)
 
-## Changelog
+## 変更ログ
 
-2020-2-27: Created
-2020-4-16: Update
+2020-2-27:作成
+2020-4-16:更新
 
-## Context
+## 環境
 
-Amino has been a pain point of many users in the ecosystem. While Tendermint does not suffer greatly from the performance degradation introduced by amino, we are making an effort in moving the encoding format to a widely adopted format, [Protocol Buffers](https://developers.google.com/protocol-buffers). With this migration a new standard is needed for the encoding of keys. This will cause ecosystem wide breaking changes.
+アミノは、エコシステムの多くのユーザーにとって常に問題点でした。 Tendermintは、アミノ基の導入によるパフォーマンスの低下による深刻な影響は受けませんが、エンコード形式を広く採用されている形式である[Protocol Buffers](https://developers.google.com/protocol)に移行するために懸命に取り組んでいます。 -バッファ)。この移行により、新しいキーエンコーディング標準が必要になります。これは、エコシステム内の大きな変化につながります。
 
-Currently amino encodes keys as `<PrefixBytes> <Length> <ByteArray>`.
+現在、aminoはキーを `<PrefixBytes> <Length> <ByteArray>`としてエンコードします。
 
-## Decision
+## 決定
 
-Previously Tendermint defined all the key types for use in Tendermint and the Cosmos-SDK. Going forward the Cosmos-SDK will define its own protobuf type for keys. This will allow Tendermint to only define the keys that are being used in the codebase (ed25519).
-There is the the opportunity to only define the usage of ed25519 (`bytes`) and not have it be a `oneof`, but this would mean that the `oneof` work is only being postponed to a later date. When using the `oneof` protobuf type we will have to manually switch over the possible key types and then pass them to the interface which is needed.
+以前、Tendermintは、TendermintとCosmos-SDKで使用されるすべてのキータイプを定義していました。将来を見据えて、Cosmos-SDKはキーに対して独自のprotobufタイプを定義します。これにより、Tendermintはコードベース(ed25519)で使用されるキーのみを定義できるようになります。
+`oneof`に設定する代わりに、ed25519(` bytes`)の使用法のみを定義する機会がありますが、これは、 `oneof`の作業が後日延期されることを意味します。 `oneof` protobufタイプを使用する場合、可能なキータイプを手動で切り替えてから、それらを必要なインターフェイスに渡す必要があります。
 
-The approach that will be taken to minimize headaches for users is one where all encoding of keys will shift to protobuf and where amino encoding is relied on, there will be custom marshal and unmarshal functions.
+ユーザーの頭痛の種を最小限に抑えるために採用された方法は、すべてのキーエンコーディングがprotobufに転送され、アミノエンコーディングに依存する場合は、カスタムマーシャリングおよびアンマーシャリング機能があります。
 
-Protobuf messages:
+Protobufニュース:
 
 ```proto
 message PubKey {
@@ -33,39 +33,39 @@ message PrivKey {
 }
 ```
 
-> Note: The places where backwards compatibility is needed is still unclear.
+>注:下位互換性が必要な場所は明確ではありません。
 
-All modules currently do not rely on amino encoded bytes and keys are not amino encoded for genesis, therefore a hardfork upgrade is what will be needed to adopt these changes.
+現在、すべてのモジュールはアミノエンコードされたバイトに依存しておらず、キーは作成に使用されるアミノエンコードではないため、これらの変更を採用するにはハードフォークのアップグレードが必要です。
 
-This work will be broken out into a few PRs, this work will be merged into a proto-breakage branch, all PRs will be reviewed prior to being merged:
+この作業はいくつかのPRに分割され、この作業は破損前のブランチにマージされ、すべてのPRはマージの前にレビューされます。
 
-1. Encoding of keys to protobuf and protobuf messages
-2. Move Tendermint types to protobuf, mainly the ones that are being encoded.
-3. Go one by one through the reactors and transition amino encoded messages to protobuf.
-4. Test with cosmos-sdk and/or testnets repo.
+1.protobufおよびprotobufメッセージのキーエンコーディング
+2. Tendermintタイプをprotobufに移動します。主に、コーディングされているタイプです。
+3.リアクターを介して1つずつ、アミノ基によってエンコードされた情報がprotobufに転送されます。
+4.テストにはcosmos-sdkおよび/またはtestnetsリポジトリを使用します。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-- Move keys to protobuf encoding, where backwards compatibility is needed, amino marshal and unmarshal functions will be used.
+-下位互換性が必要なprotobufエンコーディングにキーを移動すると、アミノのグループ化およびグループ化解除機能が使用されます。
 
-### Positive
+### ポジティブ
 
-- Protocol Buffer encoding will not change going forward.
-- Removing amino overhead from keys will help with the KSM.
-- Have a large ecosystem of supported languages.
+-プロトコルバッファのエンコーディングは変更されません。
+-キーからアミノオーバーヘッドを削除すると、KSMに役立ちます。
+-サポートされている言語の巨大なエコシステムを持っています。
 
-### Negative
+### ネガティブ
 
-- Hardfork is required to integrate this into running chains.
+-ランニングチェーンに統合するには、ハードフォークが必要です。
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する
 
-> Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here!
+>関連するPRコメント、この問題の原因となった問題、または特定の設計を選択した理由に関する参考記事はありますか？もしそうなら、ここにそれらをリンクしてください！
 
-- {reference link}
+-{参照リンク}

@@ -1,35 +1,35 @@
-# Consensus
+# コンセンサス
 
-Tendermint Consensus is a distributed protocol executed by validator processes to agree on
-the next block to be added to the Tendermint blockchain. The protocol proceeds in rounds, where
-each round is a try to reach agreement on the next block. A round starts by having a dedicated
-process (called proposer) suggesting to other processes what should be the next block with
-the `ProposalMessage`.
-The processes respond by voting for a block with `VoteMessage` (there are two kinds of vote
-messages, prevote and precommit votes). Note that a proposal message is just a suggestion what the
-next block should be; a validator might vote with a `VoteMessage` for a different block. If in some
-round, enough number of processes vote for the same block, then this block is committed and later
-added to the blockchain. `ProposalMessage` and `VoteMessage` are signed by the private key of the
-validator. The internals of the protocol and how it ensures safety and liveness properties are
-explained in a forthcoming document.
+テンダーミントコンセンサスは分散プロトコルであり、合意に達するためにバリデータープロセスによって実行されます
+Tendermintブロックチェーンの次のブロックに追加されます。合意はラウンドで実行され、その中で
+各ラウンドは、次のブロックで合意に達するための試みです。ラウンドの開始時に専用があります
+プロセス(提案者と呼ばれる)は、次のブロックがどうあるべきかを他のプロセスに提案します
+`ProposalMessage`。
+プロセスは、 `VoteMessage`でブロックに投票することで応答します(投票する方法は2つあります
+ニュース、事前投票および事前提出投票)。提案メッセージは単なる提案であることに注意してください
+次のブロックは次のようになります。バリデーターは「VoteMessage」を使用してさまざまなブロックに投票できます。いくつかの場合
+ラウンド、十分な数のプロセスが同じブロックに投票し、ブロックを送信してから、
+ブロックチェーンに追加します。 `ProposalMessage`と` VoteMessage`はユーザーの秘密鍵によって署名されています
+バリデーター。プロトコルの内部構造と、それが安全性と活力の特性をどのように保証するか
+これについては、次のドキュメントで説明します。
 
-For efficiency reasons, validators in Tendermint consensus protocol do not agree directly on the
-block as the block size is big, i.e., they don't embed the block inside `Proposal` and
-`VoteMessage`. Instead, they reach agreement on the `BlockID` (see `BlockID` definition in
-[Blockchain](https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md#blockid) section)
-that uniquely identifies each block. The block itself is
-disseminated to validator processes using peer-to-peer gossiping protocol. It starts by having a
-proposer first splitting a block into a number of block parts, that are then gossiped between
-processes using `BlockPartMessage`.
+効率上の理由から、Tendermintコンセンサスプロトコルの検証者は直接ではありません
+ブロックサイズが大きいため、つまり、プロポーザルにブロックが埋め込まれていないため、
+「投票メッセージ」。代わりに、彼らは「BlockID」に同意しました(の「BlockID」の定義を参照)
+[ブロックチェーン](https://github.com/tendermint/spec/blob/master/spec/core/data_structures.md#blockid)セクション)
+各ブロックを一意に識別します。ブロック自体は
+ポイントツーポイントのゴシッププロトコルを使用して、バリデータープロセスに伝播します。それは最初に持っています
+提案者は最初にブロックを複数のブロック部分に分割し、次にそれらの間でゴシップを行います
+`BlockPartMessage`を使用して処理します。
 
-Validators in Tendermint communicate by peer-to-peer gossiping protocol. Each validator is connected
-only to a subset of processes called peers. By the gossiping protocol, a validator send to its peers
-all needed information (`ProposalMessage`, `VoteMessage` and `BlockPartMessage`) so they can
-reach agreement on some block, and also obtain the content of the chosen block (block parts). As
-part of the gossiping protocol, processes also send auxiliary messages that inform peers about the
-executed steps of the core consensus algorithm (`NewRoundStepMessage` and `NewValidBlockMessage`), and
-also messages that inform peers what votes the process has seen (`HasVoteMessage`,
-`VoteSetMaj23Message` and `VoteSetBitsMessage`). These messages are then used in the gossiping
-protocol to determine what messages a process should send to its peers.
+Tendermintのバリ​​データーは、ポイントツーポイントのゴシッププロトコルを介して通信します。すべてのバリデーターが接続されています
+ピアと呼ばれるプロセスのサブセットにのみ適用されます。ゴシッププロトコルを介して、バリデーターはピアに送信します
+必要なすべての情報( `ProposalMessage`、` VoteMessage`、および `BlockPartMessage`)
+あるブロックで合意に達し、同時に選択したブロック(ブロック部分)の内容を取得しました。として
+ゴシッププロトコルの一部として、プロセスはピアに通知するための補助メッセージも送信します
+コアコンセンサスアルゴリズム( `NewRoundStepMessage`および` NewValidBlockMessage`)を実行する手順、および
+ピアプロセスにどの投票が表示されたかを通知するメッセージもあります( `HasVoteMessage`、
+`VoteSetMaj23Message`および` VoteSetBitsMessage`)。これらのメッセージはゴシップに使用されます
+プロトコルは、プロセスがピアに送信するメッセージを決定します。
 
-We now describe the content of each message exchanged during Tendermint consensus protocol.
+ここで、Tendermintコンセンサスプロトコル中に交換される各メッセージの内容について説明します。

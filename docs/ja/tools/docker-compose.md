@@ -1,20 +1,20 @@
-# Docker Compose
+# Docker構成
 
-With Docker Compose, you can spin up local testnets with a single command.
+Docker Composeを使用すると、1つのコマンドでローカルテストネットを起動できます。
 
-## Requirements
+## 必須
 
-1. [Install tendermint](../introduction/install.md)
-2. [Install docker](https://docs.docker.com/engine/installation/)
-3. [Install docker-compose](https://docs.docker.com/compose/install/)
+1. [テンダーミントのインストール](../Introduction/install.md)
+2. [Dockerのインストール](https://docs.docker.com/engine/installation/)
+3. [docker-composeをインストール](https://docs.docker.com/compose/install/)
 
-## Build
+## 我慢する
 
-Build the `tendermint` binary and, optionally, the `tendermint/localnode`
-docker image.
+`tendermint`バイナリとオプションの` tendermint/localnode`をビルドします
+Dockerイメージ。
 
-Note the binary will be mounted into the container so it can be updated without
-rebuilding the image.
+バイナリファイルはコンテナにマウントされるため、更新は必要ありません。
+画像を再構成します。
 
 ```sh
 # Build the linux binary in ./build
@@ -32,35 +32,35 @@ To start a 4 node testnet run:
 make localnet-start
 ```
 
-The nodes bind their RPC servers to ports 26657, 26660, 26662, and 26664 on the
-host.
+ノードは、RPCサーバーをポート26657、26660、26662、および26664にバインドします
+ホスト。
 
-This file creates a 4-node network using the localnode image.
+このファイルは、ローカルノードイメージを使用して4ノードネットワークを作成します。
 
-The nodes of the network expose their P2P and RPC endpoints to the host machine
-on ports 26656-26657, 26659-26660, 26661-26662, and 26663-26664 respectively.
+ネットワークノードは、P2Pお​​よびRPCエンドポイントをホストに公開します
+ポート26656-26657、26659-26660、26661-26662、および26663-26664でそれぞれ。
 
-The first node (`node0`) exposes two additional ports: 6060 for profiling using
-[`pprof`](https://golang.org/pkg/net/http/pprof), and `9090` - for Prometheus
-server (if you don't know how to start one check out ["First steps |
-Prometheus"](https://prometheus.io/docs/introduction/first_steps/)).
+最初のノード( `node0`)は、2つの追加ポートを公開します。分析用の6060
+[`pprof`](https://golang.org/pkg/net/http/pprof)および` 9090`-Prometheusの場合
+サーバー(チェックアウトの開始方法がわからない場合["最初のステップ|
+Prometheus "](https://prometheus.io/docs/introduction/first_steps/))。
 
-To update the binary, just rebuild it and restart the nodes:
+バイナリを更新するには、バイナリを再構築してノードを再起動します。
 
 ```sh
 make build-linux
 make localnet-start
 ```
 
-## Configuration
+## 構成
 
-The `make localnet-start` creates files for a 4-node testnet in `./build` by
-calling the `tendermint testnet` command.
+`make localnet-start`は、`。/build`に4ノードのテストネット用のファイルを作成します
+`tenderminttestnet`コマンドを呼び出します。
 
-The `./build` directory is mounted to the `/tendermint` mount point to attach
-the binary and config files to the container.
+`。/build`ディレクトリを`/tendermint`マウントポイントにマウントしてアタッチします
+コンテナへのバイナリファイルと構成ファイル。
 
-To change the number of validators / non-validators change the `localnet-start` Makefile target [here](../../Makefile):
+バリデーター/非バリデーターの数を変更するには、 `localnet-start` Makefileターゲットを変更してください[ここ](../../Makefile):
 
 ```makefile
 localnet-start: localnet-stop
@@ -68,9 +68,9 @@ localnet-start: localnet-stop
   docker-compose up
 ```
 
-The command now will generate config files for 5 validators and 3
-non-validators. Along with generating new config files the docker-compose file needs to be edited.
-Adding 4 more nodes is required in order to fully utilize the config files that were generated.
+このコマンドは、5つのバリデーターと3つのバリデーターの構成ファイルを生成します。
+非検証者。 新しい構成ファイルを生成することに加えて、docker-composeファイルも編集する必要があります。
+生成された構成ファイルを最大限に活用するには、さらに4つのノードを追加する必要があります。
 
 ```yml
   node3: # bump by 1 for every node
@@ -95,9 +95,9 @@ Before running it, don't forget to cleanup the old files:
 rm -rf ./build/node*
 ```
 
-## Configuring ABCI containers
+## ABCIコンテナを構成する
 
-To use your own ABCI applications with 4-node setup edit the [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml) file and add image to your ABCI application.
+4ノードのセットアップで独自のABCIアプリケーションを使用するには、[docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml)ファイルを編集して画像を追加しますABCIアプリケーションに追加します。
 
 ```yml
  abci0:
@@ -146,7 +146,7 @@ To use your own ABCI applications with 4-node setup edit the [docker-compose.yam
 
 ```
 
-Override the [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) in each node to connect to it's ABCI.
+各ノードの[コマンド](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12)を上書きして、そのABCIに接続します。
 
 ```yml
   node0:
@@ -165,16 +165,16 @@ Override the [command](https://github.com/tendermint/tendermint/blob/master/netw
         ipv4_address: 192.167.10.2
 ```
 
-Similarly do for node1, node2 and node3 then [run testnet](https://github.com/tendermint/tendermint/blob/master/docs/networks/docker-compose.md#run-a-testnet)
+node1、node2、node3についても同じことを行い、[run testnet](https://github.com/tendermint/tendermint/blob/master/docs/networks/docker-compose.md#run-a-testnet)
 
-## Logging
+## 記録
 
-Log is saved under the attached volume, in the `tendermint.log` file. If the
-`LOG` environment variable is set to `stdout` at start, the log is not saved,
-but printed on the screen.
+ログは、添付ボリュームの下の「tendermint.log」ファイルに保存されます。 もしも
+起動時に `LOG`環境変数は` stdout`に設定され、ログは保存されません。
+しかし、画面に印刷されます。
 
-## Special binaries
+## 特別なバイナリファイル
 
-If you have multiple binaries with different names, you can specify which one
-to run with the `BINARY` environment variable. The path of the binary is relative
-to the attached volume.
+異なる名前のバイナリファイルが複数ある場合は、どれを指定できますか
+`BINARY`環境変数を使用して実行します。 バイナリパスは相対的です
+付属のボリュームに。

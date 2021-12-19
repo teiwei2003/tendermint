@@ -1,53 +1,53 @@
-# ADR 051: Double Signing Risk Reduction
+# ADR 051:二重署名リスクの削減
 
-## Changelog
+## 変更ログ
 
-* 27-11-2019: Initial draft
-* 13-01-2020: Separate into 2 ADR, This ADR will only cover Double signing Protection and ADR-052 handle Tendermint Mode
-* 22-01-2020: change the title from "Double signing Protection" to "Double Signing Risk Reduction"
+* 27-11-2019:最初のドラフト
+* 13-01-2020:2つのADRに分割され、このADRはデュアル署名保護とADR-052処理テンダーミントモードのみをカバーします
+* 22-01-2020:タイトルを「ダブルシグニチャ保護」から「ダブルシグニチャリスク削減」に変更
 
-## Context
+## 環境
 
-To provide a risk reduction method for double signing incidents mistakenly executed by validators
-- Validators often mistakenly run duplicated validators to cause double-signing incident
-- This proposed feature is to reduce the risk of mistaken double-signing incident by checking recent N blocks before voting begins
-- When we think of such serious impact on double-signing incident, it is very reasonable to have multiple risk reduction algorithm built in node daemon
+検証者によって誤って実行された二重署名イベントのリスクを軽減する方法を提供します
+-ベリファイアが誤って重複ベリファイアを実行し、二重署名イベントが発生することがよくあります
+-この提案の機能は、投票を開始する前に最も近いNブロックをチェックすることにより、誤った二重署名イベントのリスクを減らすことです。
+-二重署名イベントの深刻な影響を考慮すると、ノードデーモンに複数のリスク削減アルゴリズムを組み込むことは非常に合理的です。
 
-## Decision
+## 決定
 
-We would like to suggest a double signing risk reduction method.
+二重署名のリスクを減らす方法を提案したいと思います。
 
-- Methodology : query recent consensus results to find out whether node's consensus key is used on consensus recently or not
-- When to check
-    - When the state machine starts `ConsensusReactor` after fully synced
-    - When the node is validator ( with privValidator )
-    - When `cs.config.DoubleSignCheckHeight > 0`
-- How to check
-    1. When a validator is transformed from syncing status to fully synced status, the state machine check recent N blocks (`latest_height - double_sign_check_height`) to find out whether there exists consensus votes using the validator's consensus key
-    2. If there exists votes from the validator's consensus key, exit state machine program
-- Configuration
-    - We would like to suggest by introducing `double_sign_check_height` parameter in `config.toml` and cli, how many blocks state machine looks back to check votes
-    - <span v-pre>`double_sign_check_height = {{ .Consensus.DoubleSignCheckHeight }}`</span> in `config.toml`
-    - `tendermint node --consensus.double_sign_check_height` in cli
-    - State machine ignore checking procedure when `double_sign_check_height == 0`
+-方法論:最新のコンセンサス結果をクエリして、ノードのコンセンサスキーが最近コンセンサスに使用されたかどうかを理解します
+-いつ確認するか
+    -ステートマシンが完全に同期された後に `ConsensusReactor`を起動したとき
+    -ノードがバリデーターの場合(privValidatorを使用)
+    -`cs.config.DoubleSignCheckHeight> 0`の場合
+-確認方法
+    1.ベリファイアが同期状態から完全同期状態に変わると、ステートマシンはベリファイアのコンセンサスキーを使用して、最も近いNブロック( `latest_height-double_sign_check_height`)をチェックし、コンセンサス投票があるかどうかを確認します。
+    2.検証者のコンセンサスキーに投票がある場合は、ステートマシンプログラムを終了します
+-構成
+    -`config.toml`とcliに `double_sign_check_height`パラメータを導入して、投票を確認および確認するステートマシンの数を提案します。
+    -<span v-pre> `double_sign_check_height = {{.Consensus.DoubleSignCheckHeight}}` </ span> in `config.toml`
+    -`cliのtendermintノード--consensus.double_sign_check_height`
+    -"double_sign_check_height == 0"の場合、ステートマシンはチェックプロセスを無視します
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Validators can avoid double signing incident by mistakes. (eg. If another validator node is voting on consensus, starting new validator node with same consensus key will cause panic stop of the state machine because consensus votes with the consensus key are found in recent blocks)
-- We expect this method will prevent majority of double signing incident by mistakes.
+-ベリファイアは、誤った二重署名イベントを回避できます。 (たとえば、別のバリデーターノードがコンセンサスに投票している場合、同じコンセンサスキーで新しいバリデーターノードを開始すると、コンセンサスキーが最新のブロックで見つかったため、ステートマシンがパニック停止します。コンセンサス投票)
+-この方法で、ほとんどの誤った二重署名イベントを防ぐことができることを願っています。
 
-### Negative
+### ネガティブ
 
-- When the risk reduction method is on, restarting a validator node will panic because the node itself voted on consensus with the same consensus key. So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic stop.
+-リスク低減方法がオンになっている場合、検証ノードを再起動するとパニックが発生します。これは、ノード自体が同じコンセンサスキーを使用して投票し、コンセンサスに到達するためです。したがって、バリデーターはステートマシンを停止し、いくつかのブロックを待ってから、パニック停止を回避するためにステートマシンを再起動する必要があります。
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する
 
-- Issue [#4059](https://github.com/tendermint/tendermint/issues/4059) : double-signing protection
+-問題[#4059](https://github.com/tendermint/tendermint/issues/4059):二重署名保護

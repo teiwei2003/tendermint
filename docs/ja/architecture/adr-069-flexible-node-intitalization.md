@@ -1,165 +1,165 @@
-# ADR 069: Flexible Node Initialization
+# ADR 069:柔軟なノードの初期化
 
-## Changlog
+## 長いログ
 
-- 2021-06-09: Initial Draft (@tychoish)
+-2021-06-09:最初のドラフト(@tychoish)
 
-- 2021-07-21: Major Revision (@tychoish)
+-2021-07-21:メジャーリビジョン(@tychoish)
 
-## Status
+## ステータス
 
-Proposed.
+提案しました。
 
-## Context
+## 環境
 
-In an effort to support [Go-API-Stability](./adr-060-go-api-stability.md),
-during the 0.35 development cycle, we have attempted to reduce the the API
-surface area by moving most of the interface of the `node` package into
-unexported functions, as well as moving the reactors to an `internal`
-package. Having this coincide with the 0.35 release made a lot of sense
-because these interfaces were _already_ changing as a result of the `p2p`
-[refactor](./adr-061-p2p-refactor-scope.md), so it made sense to think a bit
-more about how tendermint exposes this API.
+[Go-API-Stability](./ adr-060-go-api-stability.md)をサポートするには、
+0.35の開発サイクルでは、APIを削減しようとしています
+`node`パッケージのインターフェースのほとんどをに移動することによって
+エクスポートされていない関数、およびリアクターを「内部」に移動する
+パック。バージョン0.35と一致することは理にかなっています
+これらのインターフェースは `p2p`のために_have_変更されたため
+[リファクタリング](./ adr-061-p2p-refactor-scope.md)なので、考えるのは理にかなっています
+テンダーミントがこのAPIを公開する方法の詳細。
 
-While the interfaces of the P2P layer and most of the node package are already
-internalized, this precludes some operational patterns that are important to
-users who use tendermint as a library. Specifically, introspecting the
-tendermint node service and replacing components is not supported in the latest
-version of the code, and some of these use cases would require maintaining a
-vendor copy of the code. Adding these features requires rather extensive
-(internal/implementation) changes to the `node` and `rpc` packages, and this
-ADR describes a model for changing the way that tendermint nodes initialize, in
-service of providing this kind of functionality.
+P2Pレイヤーとほとんどのノードパッケージのインターフェースは
+一部を除外する内部化
+ライブラリのユーザーとしてtendermintを使用します。具体的には、内省
+最新バージョンは、テンダーミントノードサービスと交換用コンポーネントをサポートしていません
+コードのバージョン、いくつかのユースケースは維持する必要があります
+コードのベンダーコピー。これらの機能を追加するには、非常に広範囲にわたる必要があります
+(内部/実装) `node`および` rpc`パッケージへの変更、およびこれ
+ADRは、テンダーミントノードの初期化方法を変更するためのモデルを記述しています。
+このような機能を提供するサービス。
 
-We consider node initialization, because the current implemention
-provides strong connections between all components, as well as between
-the components of the node and the RPC layer, and being able to think
-about the interactions of these components will help enable these
-features and help define the requirements of the node package.
+現在の実装ではノードの初期化を検討します
+すべてのコンポーネント間に強力な接続を提供し、
+考えることができるノードおよびRPCレイヤーコンポーネント
+これらのコンポーネントの相互作用は、これらを達成するのに役立ちます
+機能し、ノードパッケージの要件を定義するのに役立ちます。
 
-## Alternative Approaches
+## 代替方法
 
-These alternatives are presented to frame the design space and to
-contextualize the decision in terms of product requirements. These
-ideas are not inherently bad, and may even be possible or desireable
-in the (distant) future, and merely provide additional context for how
-we, in the moment came to our decision(s).
+これらの代替案を提案して、デザインスペースを構築し、
+決定を製品要件に関連付けます。これらは
+アイデアは本質的に悪いものではなく、可能または望ましいものでさえあります
+(遠い)将来、追加の背景メモのみが提供されます
+私たちはその瞬間に決断を下しました。
 
-### Do Nothing
+### 何もしなかった
 
-The current implementation is functional and sufficient for the vast
-majority of use cases (e.g., all users of the Cosmos-SDK as well as
-anyone who runs tendermint and the ABCI application in separate
-processes). In the current implementation, and even previous versions,
-modifying node initialization or injecting custom components required
-copying most of the `node` package, which required such users
-to maintain a vendored copy of tendermint.
+現在の実装は、大部分を満たすのに十分機能的です
+ほとんどのユースケース(例:Cosmos-SDKのすべてのユーザーと
+テンダーミントとABCIアプリを個別に実行する人
+処理する)。現在の実装では、以前のバージョンでも、
+ノードの初期化を変更するか、カスタムコンポーネントを挿入する必要があります
+`node`パッケージのほとんどをコピーします。これにはそのようなユーザーが必要です
+テンダーミントの販売コピーを維持します。
 
-While this is (likely) not tenable in the long term, as users do want
-more modularity, and the current service implementation is brittle and
-difficult to maintain, in the short term it may be possible to delay
-implementation somewhat. Eventually, however, we will need to make the
-`node` package easier to maintain and reason about.
+これは(おそらく)長期的には受け入れられませんが、ユーザーが望むとおりです
+よりモジュール化され、現在のサービス実装は脆弱です
+維持が困難で、短期的に遅れる可能性があります
+少し実行します。しかし、最終的には、
+`node`パッケージは、保守と推論が簡単です。
 
-### Generic Service Pluggability
+### ユニバーサルサービスのプラグ可能性
 
-One possible system design would export interfaces (in the Golang
-sense) for all components of the system, to permit runtime dependency
-injection of all components in the system, so that users can compose
-tendermint nodes of arbitrary user-supplied components.
+考えられるシステム設計の1つは、インターフェースをエクスポートすることです(Golangで
+センス)システムのすべてのコンポーネントに対して、実行時の依存関係を許可します
+システム内のすべてのコンポーネントを挿入して、ユーザーが記述できるようにします
+ユーザー提供のコンポーネントのテンダーミントノード。
 
-Although this level of customization would provide benefits, it would be a huge
-undertaking (particularly with regards to API design work) that we do not have
-scope for at the moment.  Eventually providing support for some kinds of
-pluggability may be useful, so the current solution does not explicitly
-foreclose the possibility of this alternative.
+このレベルのカスタマイズにはメリットがありますが、非常に大きなものになります
+私たちが持っていない約束(特にAPI設計作業について)
+現在のスコープ。最終的に特定のタイプのサポートを提供します
+プラグ可能性は有用である可能性があるため、現在の解決策は明確ではありません
+この選択の可能性を排除します。
 
-### Abstract Dependency Based Startup and Shutdown
+### 抽象的な依存関係に基づく起動とシャットダウン
 
-The main proposal in this document makes tendermint node initialization simpler
-and more abstract, but the system lacks a number of
-features which daemon/service initialization could provide, such as a
-system allowing the authors of services to control initialization and shutdown order
-of components using dependency relationships.
+このドキュメントの主な提案により、テンダーミントノードの初期化が容易になります
+より抽象的なですが、システムにはいくつかが欠けています
+デーモン/サービスの初期化が提供できる機能、たとえば
+システムにより、サービスの作成者は初期化とシャットダウンのシーケンスを制御できます
+依存関係コンポーネントを使用します。
 
-Such a system could work by allowing services to declare
-initialization order dependencies to other reactors (by ID, perhaps)
-so that the node could decide the initialization based on the
-dependencies declared by services rather than requiring the node to
-encode this logic directly.
+このようなシステムは、サービス宣言を許可することで機能します
+他のreactorの初期化シーケンスへの依存(おそらくIDによる)
+ノードがに基づくことができるように
+リクエストノードではなく、サービス宣言の依存関係
+このロジックを直接コーディングします。
 
-This level of configuration is probably more complicated than is needed.  Given
-that the authors of components in the current implementation of tendermint
-already *do* need to know about other components, a dependency-based system
-would probably be overly-abstract at this stage.
+このレベルの構成は、必要以上に複雑になる可能性があります。与えられた
+テンダーミントの現在の実装におけるコンポーネントの作成者
+依存関係ベースのシステムである他のコンポーネントをすでに理解する必要があります
+この段階では抽象的すぎるかもしれません。
 
-## Decisions
+## 決定
 
-- To the greatest extent possible, factor the code base so that
-  packages are responsible for their own initialization, and minimize
-  the amount of code in the `node` package itself.
+-コードベースを可能な限り検討して、
+  パッケージは、それ自体の初期化と最小化を担当します
+  `node`パッケージ自体のコードの量。
 
-- As a design goal, reduce direct coupling and dependencies between
-  components in the implementation of `node`.
+-設計目標として、直接結合と依存関係を減らします
+  `node`の実装におけるコンポーネント。
 
-- Begin iterating on a more-flexible internal framework for
-  initializing tendermint nodes to make the initatilization process
-  less hard-coded by the implementation of the node objects.
+-より柔軟な内部フレームワークで反復を開始します
+  初期化プロセスのためにテンダーミントノードを初期化します
+  ノードオブジェクトの実現により、ハードコーディングを削減します。
 
-  - Reactors should not need to expose their interfaces *within* the
-	implementation of the node type
+  -リアクターは、インターフェースを「内部」で公開する必要はありません。
+ノードタイプの実装
 
-  - This refactoring should be entirely opaque to users.
+  -このリファクタリングは、ユーザーには完全に不透明である必要があります。
 
-  - These node initialization changes should not require a
-	reevaluation of the `service.Service` or a generic initialization
-	orchestration framework.
+  -これらのノード初期化の変更は必要ありません
+「service.Service」または一般的な初期化を再評価します
+オーケストレーションフレームワーク。
 
-- Do not proactively provide a system for injecting
-  components/services within a tendtermint node, though make it
-  possible to retrofit this kind of plugability in the future if
-  needed.
+-注射システムを積極的に提供しないでください
+  コンポーネント/サービス
+  このプラガビリティが将来改善される可能性がある場合
+  必要。
 
-- Prioritize implementation of p2p-based statesync reactor to obviate
-  need for users to inject a custom state-sync provider.
+-回避するために、p2pベースの状態同期リアクターの実装を優先します
+  ユーザーは、カスタム状態同期プロバイダーを挿入する必要があります。
 
-## Detailed Design
+## 詳細設計
 
-The [current
+[現在
 nodeImpl](https://github.com/tendermint/tendermint/blob/master/node/node.go#L47)
-includes direct references to the implementations of each of the
-reactors, which should be replaced by references to `service.Service`
-objects. This will require moving construction of the [rpc
-service](https://github.com/tendermint/tendermint/blob/master/node/node.go#L771)
-into the constructor of
-[makeNode](https://github.com/tendermint/tendermint/blob/master/node/node.go#L126). One
-possible implementation of this would be to eliminate the current
-`ConfigureRPC` method on the node package and instead [configure it
-here](https://github.com/tendermint/tendermint/pull/6798/files#diff-375d57e386f20eaa5f09f02bb9d28bfc48ac3dca18d0325f59492208219e5618R441).
+各実装への直接参照を含める
+Reactorは、「service.Service」への参照に置き換える必要があります
+物体。これにはモバイルビルドが必要になります[rpc
+サービス](https://github.com/tendermint/tendermint/blob/master/node/node.go#L771)
+コンストラクターを入力します
+[makeNode](https://github.com/tendermint/tendermint/blob/master/node/node.go#L126)。 1
+可能な実装は、現在のを排除することです
+ノードパッケージの `ConfigureRPC`メソッドですが、[Configure it
+こちら](https://github.com/tendermint/tendermint/pull/6798/files#diff-375d57e386f20eaa5f09f02bb9d28bfc48ac3dca18d0325f59492208219e5618R441)。
 
-To avoid adding complexity to the `node` package, we will add a
-composite service implementation to the `service` package
-that implements `service.Service` and is composed of a sequence of
-underlying `service.Service` objects and handles their
-startup/shutdown in the specified sequential order.
+`node`パッケージの複雑さを増すことを避けるために、
+`service`パッケージの複合サービス実装
+`service.Service`を実装し、一連の
+低レベルの `service.Service`オブジェクトとそれらを処理します
+指定された順序でオン/オフします。
 
-Consensus, blocksync (*née* fast sync), and statesync all depend on
-each other, and have significant initialization dependencies that are
-presently encoded in the `node` package. As part of this change, a
-new package/component (likely named `blocks` located at
-`internal/blocks`) will encapsulate the initialization of these block
-management areas of the code.
+コンセンサス、ブロック同期(* nee *高速同期)、および状態同期はすべて、
+相互に、そして重要な初期化の依存関係があります
+現在、 `node`パッケージにエンコードされています。この変更の一環として、
+新しいパッケージ/コンポーネント(「ブロック」という名前の場合があります。
+`internal/blocks`)はこれらのブロックの初期化をカプセル化します
+コード管理領域。
 
-### Injectable Component Option
+### 注射可能なコンポーネントオプション
 
-This section briefly describes a possible implementation for
-user-supplied services running within a node. This should not be
-implemented unless user-supplied components are a hard requirement for
-a user.
+このセクションでは、可能な実装について簡単に説明します
+ノードで実行されているユーザーによって提供されるサービス。これはすべきではありません
+ユーザー提供のコンポーネントが厳しい要件でない限り
+1人のユーザー。
 
-In order to allow components to be replaced, a new public function
-will be added to the public interface of `node` with a signature that
-resembles the following:
+コンポーネントの交換を可能にするために、新しいパブリック関数
+署名付きで `node`のパブリックインターフェースに追加されます
+次のようになります。
 
 ```go
 func NewWithServices(conf *config.Config,
@@ -170,104 +170,104 @@ func NewWithServices(conf *config.Config,
 ) (service.Service, error) {
 ```
 
-The `service.Service` objects will be initialized in the order supplied, after
-all pre-configured/default services have started (and shut down in reverse
-order).  The given services may implement additional interfaces, allowing them
-to replace specific default services. `NewWithServices` will validate input
-service lists with the following rules:
+`service.Service`オブジェクトは、指定された順序で初期化されます。その後、
+すべての事前構成済み/デフォルトのサービスが開始されました(そして逆に閉じられました)
+注文)。特定のサービスは追加のインターフェースを実装して、それらを許可することができます
+特定のデフォルトサービスを置き換えます。 `NewWithServices`は入力を検証します
+次のルールを持つサービスのリスト:
 
-- None of the services may already be running.
-- The caller may not supply more than one replacement reactor for a given
-  default service type.
+-実行中のサービスがない可能性があります。
+-発信者は、特定のリアクターに複数の代替リアクターを提供することはできません
+  デフォルトのサービスタイプ。
 
-If callers violate any of these rules, `NewWithServices` will return
-an error. To retract support for this kind of operation in the future,
-the function can be modified to *always* return an error.
+発信者がこれらのルールのいずれかに違反した場合、 `NewWithServices`は戻ります
+間違い。将来的にそのような操作のサポートを撤回するために、
+この関数は、*常に*エラーを返すように変更できます。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- The node package will become easier to maintain.
+-ノードパッケージの保守が容易になります。
 
-- It will become easier to add additional services within tendermint
-  nodes.
+-テンダーミントにサービスを追加するのが簡単になります
+  ノード。
 
-- It will become possible to replace default components in the node
-  package without vendoring the tendermint repo and modifying internal
-  code.
+-ノードのデフォルトコンポーネントを置き換えることができます
+  テンダーミントレポを販売せずにパッケージ化し、内部を変更する
+  コード。
 
-- The current end-to-end (e2e) test suite will be able to prevent any
-  regressions, and the new functionality can be thoroughly unit tested.
+-現在のエンドツーエンド(e2e)テストスイートは、
+  回帰、および新機能の徹底的な単体テストを実行できます。
 
-- The scope of this project is very narrow, which minimizes risk.
+-このプロジェクトの範囲は非常に狭く、リスクを最小限に抑えることができます。
 
-### Negative
+### ネガティブ
 
-- This increases our reliance on the `service.Service` interface which
-  is probably not an interface that we want to fully commit to.
+-これにより、 `service.Service`インターフェースへの依存度が高まります。
+  それは私たちが完全に約束したいインターフェースではないかもしれません。
 
-- This proposal implements a fairly minimal set of functionality and
-  leaves open the possibility for many additional features which are
-  not included in the scope of this proposal.
+-提案はかなり小さな機能セットを実装し、
+  それは多くの追加機能の可能性を残します
+  この提案の範囲には含まれていません。
 
-### Neutral
+### ニュートラル
 
-N/A
+適用できない
 
-## Open Questions
+## 未解決の問題
 
-- To what extent does this new initialization framework need to accommodate
-  the legacy p2p stack? Would it be possible to delay a great deal of this
-  work to the 0.36 cycle to avoid this complexity?
+-この新しい初期化フレームワークはどのくらい適応する必要がありますか
+  従来のp2pスタック？大幅に遅らせることは可能ですか
+  この複雑さを回避するために0.36サイクルで作業しますか？
 
-  - Answer: _depends on timing_, and the requirement to ship pluggable reactors in 0.35.
+  -回答:_時間に依存します_、およびプラグ可能な原子炉を0.35で出荷するための要件。
 
-- Where should additional public types be exported for the 0.35
-  release?
+-追加のパブリックタイプを0.35でエクスポートする場所
+  リリース？
 
-  Related to the general project of API stabilization we want to deprecate
-  the `types` package, and move its contents into a new `pkg` hierarchy;
-  however, the design of the `pkg` interface is currently underspecified.
-  If `types` is going to remain for the 0.35 release, then we should consider
-  the impact of using multiple organizing modalities for this code within a
-  single release.
+  非推奨になっているAPI安定化共通プロジェクトに関連して
+  `types`パッケージを作成し、その内容を新しい` pkg`階層に移動します。
+  ただし、現在、 `pkg`インターフェースの設計については詳しく説明されていません。
+  バージョン0.35で `types`を保持したい場合は、検討する必要があります
+  1つのコードで複数の編成メソッドを使用することの影響
+  単一の問題。
 
-## Future Work
+## 将来の仕事
 
-- Improve or simplify the `service.Service` interface. There are some
-  pretty clear limitations with this interface as written (there's no
-  way to timeout slow startup or shut down, the cycle between the
-  `service.BaseService` and `service.Service` implementations is
-  troubling, the default panic in `OnReset` seems troubling.)
+-`service.Service`インターフェースを改善または簡素化します。幾つかある
+  このインターフェースの制限は非常に明白です(
+  タイムアウトモードのスロースタートまたはクローズ、間のサイクル
+  `service.BaseService`と` service.Service`の実装は
+  気がかりなことに、 `OnReset`のデフォルトのパニックは気がかりなようです。 )。
 
-- As part of the refactor of `service.Service` have all services/nodes
-  respect the lifetime of a `context.Context` object, and avoid the
-  current practice of creating `context.Context` objects in p2p and
-  reactor code. This would be required for in-process multi-tenancy.
+-`service.Service`のリファクタリングの一環として、すべてのサービス/ノードを用意します
+  `context.Context`オブジェクトのライフサイクルを尊重し、回避する
+  p2pで `context.Context`オブジェクトを作成する現在の慣行と
+  リアクターコード。これは、インプロセスマルチテナンシーに必要です。
 
-- Support explicit dependencies between components and allow for
-  parallel startup, so that different reactors can startup at the same
-  time, where possible.
+-コンポーネント間の明示的な依存関係をサポートし、許可する
+  並列始動。これにより、異なる原子炉を同時に始動できます。
+  可能であれば、時間。
 
-## References
+## 参照する
 
-- [this
-  branch](https://github.com/tendermint/tendermint/tree/tychoish/scratch-node-minimize)
-  contains experimental work in the implementation of the node package
-  to unwind some of the hard dependencies between components.
+- [この
+  ブランチ](https://github.com/tendermint/tendermint/tree/tychoish/scratch-node-minimize)
+  ノードパッケージを実装するための実験的な作業が含まれています
+  コンポーネント間のいくつかのハードな依存関係を削除します。
 
-- [the component
-  graph](https://peter.bourgon.org/go-for-industrial-programming/#the-component-graph)
-  as a framing for internal service construction.
+-[成分
+  図)(https://peter.bourgon.org/go-for-industrial-programming/#the-component-graph)
+  内部サービス構築のフレームワークとして。
 
-## Appendix
+## 付録
 
-### Dependencies
+### 依存
 
-There's a relationship between the blockchain and consensus reactor
-described by the following dependency graph makes replacing some of
-these components more difficult relative to other reactors or
-components.
+ブロックチェーンとコンセンサスリアクターの間には関係があります
+次の依存関係グラフの説明は、いくつかの置き換えを行います
+これらのコンポーネントはより難しいか
+コンポーネント。
 
-![consensus blockchain dependency graph](./img/consensus_blockchain.png)
+！[コンセンサスブロックチェーン依存関係グラフ](./img/consensus_blockchain.png)

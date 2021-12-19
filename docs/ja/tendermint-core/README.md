@@ -1,17 +1,17 @@
-# Overview
+# 概要
 
-This section dives into the internals of Go-Tendermint.
+このセクションでは、Go-Tendermintの内部構造について詳しく説明します。
 
-- [Using Tendermint](./using-tendermint.md)
-- [Subscribing to events](./subscription.md)
-- [Block Structure](./block-structure.md)
-- [RPC](./rpc.md)
-- [Block Sync](./block-sync/README.md)
-- [State Sync](./state-sync/README.md)
-- [Mempool](./mempool/README.md)
-- [Light Client](./light-client.md)
-- [Consensus](./consensus/README.md)
-- [Peer Exachange (PEX)](./pex/README.md)
-- [Evidence](./evidence/README.md)
+-[テンダーミントの使用](./using-tendermint.md)
+-[サブスクリプションイベント](./subscription.md)
+-[ブロック構造](./block-structure.md)
+-[RPC](./rpc.md)
+-[ブロック同期](./block-sync/README.md)
+-[状態同期](./state-sync/README.md)
+-[メモリプール](./mempool/README.md)
+-[ライトクライアント](./light-client.md)
+-[コンセンサス](./consensus/README.md)
+-[ピア交換(PEX)](./pex/README.md)
+-[エビデンス](./evidence/README.md)
 
-For full specifications refer to the [spec repo](https://github.com/tendermint/spec).
+完全な仕様については、[仕様リポジトリ](https://github.com/tendermint/spec)を参照してください。/

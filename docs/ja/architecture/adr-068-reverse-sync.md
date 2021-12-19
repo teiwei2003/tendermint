@@ -1,24 +1,24 @@
-# ADR 068: Reverse Sync
+# ADR 068:逆同期
 
-## Changelog
+## 変更ログ
 
-- 20 April 2021: Initial Draft (@cmwaters)
+-2021年4月20日:最初のドラフト(@cmwaters)
 
-## Status
+## ステータス
 
-Accepted
+受け入れられました
 
-## Context
+## 環境
 
-The advent of state sync and block pruning gave rise to the opportunity for full nodes to participate in consensus without needing complete block history. This also introduced a problem with respect to evidence handling. Nodes that didn't have all the blocks within the evidence age were incapable of validating evidence, thus halting if that evidence was committed on chain. 
+状態の同期とブロックのプルーニングの出現により、完全なブロック履歴を必要とせずに、完全なノードがコンセンサスに参加する機会が提供されます。これはまた、証拠の取り扱いに問題を引き起こします。プルーフ時代にすべてのブロックを所有していなかったノードはプルーフを検証できないため、プルーフがチェーンに送信されると停止します。
 
-[RFC005](https://github.com/tendermint/spec/blob/master/rfc/005-reverse-sync.md) was published in response to this problem and modified the spec to add a minimum block history invariant. This predominantly sought to extend state sync so that it was capable of fetching and storing the `Header`, `Commit` and `ValidatorSet` (essentially a `LightBlock`) of the last `n` heights, where `n` was calculated based from the evidence age.
+[RFC005](https://github.com/tendermint/spec/blob/master/rfc/005-reverse-sync.md)がこの問題に対応してリリースされ、最小のブロック履歴不変条件を追加するように仕様が変更されました。 。これは主に、状態の同期を拡張して、「Header」、「Commit」、「ValidatorSet」(基本的には「LightBlock」)の最後の「n」の高さを取得して保存できるようにするためです。ここで、「n」はFromの計算に基づいています。証拠の時代。
 
-This ADR sets out to describe the design of this state sync extension as well as modifications to the light client provider and the merging of tm store.
+このADRは、この状態同期拡張機能の設計、ライトクライアントプロバイダーの変更、およびtmストレージのマージについて説明することを目的としています。
 
-## Decision
+## 決定
 
-The state sync reactor will be extended by introducing 2 new P2P messages (and a new channel). 
+状態同期リアクターは、2つの新しいP2Pメッセージ(および新しいチャネル)を導入することによって拡張されます。
 
 ```protobuf
 message LightBlockRequest {
@@ -26,17 +26,17 @@ message LightBlockRequest {
 }
 
 message LightBlockResponse {
-  tendermint.types.LightBlock light_block = 1; 
+  tendermint.types.LightBlock light_block = 1;
 }
 ```
 
-This will be used by the "reverse sync" protocol that will fetch, verify and store prior light blocks such that the node can safely participate in consensus.
+これは、ノードがコンセンサスに安全に参加できるように、以前のライトブロックを取得、検証、および保存する「逆同期」プロトコルによって使用されます。
 
-Furthermore this allows for a new light client provider which offers the ability for the `StateProvider` to use the underlying P2P stack instead of RPC.
+さらに、これにより、新しいライトクライアントプロバイダーは、RPCの代わりに基盤となるP2Pスタックを使用する機能を `StateProvider`に提供できます。
 
-## Detailed Design
+## 詳細設計
 
-This section will focus first on the reverse sync (here we call it `backfill`) mechanism as a standalone protocol and then look to decribe how it integrates within the state sync reactor and how we define the new p2p light client provider.
+このセクションでは、最初に独立したプロトコルとしての逆同期(ここでは「バックフィル」と呼びます)メカニズムに焦点を当て、次にそれが状態同期リアクターに統合される方法と、新しいp2pライトクライアントプロバイダーを定義する方法について説明します。
 
 ```go
 // Backfill fetches, verifies, and stores necessary history
@@ -44,54 +44,54 @@ This section will focus first on the reverse sync (here we call it `backfill`) m
 func (r *Reactor) backfill(state State) error {}
 ```
 
-`State` is used to work out how far to go back, namely we need all light blocks that have:
-- a height: `h >= state.LastBlockHeight - state.ConsensusParams.Evidence.MaxAgeNumBlocks`
-- a time: `t >= state.LastBlockTime - state.ConsensusParams.Evidence.MaxAgeDuration`
+`State`は、戻る距離を計算するために使用されます。つまり、次の特性を持つすべてのライトブロックが必要です。
+-高さ: `h> = state.LastBlockHeight-state.ConsensusParams.Evidence.MaxAgeNumBlocks`
+-時間: `t> = state.LastBlockTime-state.ConsensusParams.Evidence.MaxAgeDuration`
 
-Reverse Sync relies on two components: A `Dispatcher` and a `BlockQueue`. The `Dispatcher` is a pattern taken from a similar [PR](https://github.com/tendermint/tendermint/pull/4508). It is wired to the `LightBlockChannel` and allows for concurrent light block requests by shifting through a linked list of peers. This abstraction has the nice quality that it can also be used as an array of light providers for a P2P based light client.
+逆同期は、「Dispatcher」と「BlockQueue」の2つのコンポーネントに依存しています。 `Dispatcher`は、同様の[PR](https://github.com/tendermint/tendermint/pull/4508)から取得したモデルです。 「LightBlockChannel」に接続し、ピアのリンクリスト内を移動することでブロック要求を許可および発行します。この種の抽象化は非常に優れた品質を備えており、P2Pに基づくライトクライアントのライトプロバイダーのアレイとしても使用できます。
 
-The `BlockQueue` is a data structure that allows for multiple workers to fetch light blocks, serializing them for the main thread which picks them off the end of the queue, verifies the hashes and persists them.
+「BlockQueue」は、複数のワーカーが軽量ブロックを取得し、メインスレッド用にシリアル化できるようにするデータ構造です。メインスレッドは、キューの最後からそれらを選択し、ハッシュを検証して永続化します。
 
-### Integration with State Sync
+### 状態同期との統合
 
-Reverse sync is a blocking process that runs directly after syncing state and before transitioning into either fast sync or consensus.
+逆同期は、同期状態の直後で、高速同期またはコンセンサスに移行する前に実行されるブロッキングプロセスです。
 
-Prior, the state sync service was not connected to any db, instead it passed the state and commit back to the node. For reverse sync, state sync will be given access to both the `StateStore` and `BlockStore` to be able to write `Header`'s, `Commit`'s and `ValidatorSet`'s and read them so as to serve other state syncing peers.
+以前は、状態同期サービスはどのデータベースにも接続しませんでしたが、状態をノードに戻しました。逆同期の場合、状態同期には `StateStore`と` BlockStore`へのアクセスが許可され、 `Header`、` Commit`、 `ValidatorSet`に書き込み、それらを読み取って他の状態同期ピアにサービスを提供できるようになります。
 
-This also means adding new methods to these respective stores in order to persist them
+これは、これらのそれぞれのストアに新しいメソッドを追加して、それらを維持することも意味します
 
-### P2P Light Client Provider
+### P2Pライトクライアントプロバイダー
 
-As mentioned previously, the `Dispatcher` is capable of handling requests to multiple peers. We can therefore simply peel off a `blockProvider` instance which is assigned to each peer. By giving it the chain ID, the `blockProvider` is capable of doing a basic validation of the light block before returning it to the client.
+前述のように、「ディスパッチャ」は複数のピアへの要求を処理できます。したがって、各ピアに割り当てられたblockProviderインスタンスを簡単に取り除くことができます。チェーンIDを指定することで、 `blockProvider`はライトブロックをクライアントに返す前に基本的な検証を実行できます。
 
-It's important to note that because state sync doesn't have access to the evidence channel it is incapable of allowing the light client to report evidence thus `ReportEvidence` is a no op. This is not too much of a concern for reverse sync but will need to be addressed for pure p2p light clients.
+状態同期は証拠チャネルにアクセスできないため、ライトクライアントが証拠を報告することを許可できないため、「ReportEvidence」は無効であることに注意してください。これは逆同期の問題ではありませんが、純粋なp2pライトクライアントでは解決する必要があります。
 
-### Pruning
+### プルーン
 
-A final small note is with pruning. This ADR will introduce changes that will not allow an application to prune blocks that are within the evidence age.
+最後の小さなメモは剪定です。このADRは、アプリケーションが証拠の時代にブロックをプルーニングすることを許可しない変更を導入します。
 
-## Future Work
+## 将来の仕事
 
-This ADR tries to remain within the scope of extending state sync, however the changes made opens the door for several areas to be followed up:
-- Properly integrate p2p messaging in the light client package. This will require adding the evidence channel so the light client is capable of reporting evidence. We may also need to rethink the providers model (i.e. currently providers are only added on start up)
-- Merge and clean up the tendermint stores (state, block and evidence). This ADR adds new methods to both the state and block store for saving headers, commits and validator sets. This doesn't quite fit with the current struct (i.e. only `BlockMeta`s instead of `Header`s are saved). We should explore consolidating this for the sake of atomicity and the opportunity for batching. There are also other areas for changes such as the way we store block parts. See [here](https://github.com/tendermint/tendermint/issues/5383) and [here](https://github.com/tendermint/tendermint/issues/4630) for more context.
-- Explore opportunistic reverse sync. Technically we don't need to reverse sync if no evidence is observed. I've tried to design the protocol such that it could be possible to move it across to the evidence package if we see fit. Thus only when evidence is seen where we don't have the necessary data, do we perform a reverse sync. The problem with this is that imagine we are in consensus and some evidence pops up requiring us to first fetch and verify the last 10,000 blocks. There's no way a node could do this (sequentially) and vote before the round finishes. Also as we don't punish invalid evidence, a malicious node could easily spam the chain just to get a bunch of "stateless" nodes to perform a bunch of useless work.
-- Explore full reverse sync. Currently we only fetch light blocks. There might be benefits in the future to fetch and persist entire blocks especially if we give control to the application to do this.
+このADRは、拡張状態同期の範囲内にとどまろうとしますが、行われた変更により、フォローアップが必要ないくつかの領域への扉が開かれます。
+-p2pメッセージングをライトクライアントパッケージに正しく統合します。これには、ライトクライアントが証拠を報告できるように証拠チャネルを追加する必要があります。また、プロバイダーモデルを再検討する必要がある場合もあります(つまり、現在のプロバイダーは起動時にのみ追加されます)
+-ミントストレージ(ステータス、ブロック、証拠)を統合してクリーンアップします。このADRは、ヘッダー、送信、およびバリデーターセットを保存するための状態およびブロックストレージに新しいメソッドを追加します。これは現在の構造には適していません(つまり、 `Header`ではなく` BlockMeta`のみが保存されます)。アトミック性とバッチ処理の機会については、この統合のポイントを調査する必要があります。ブロックパーツの保管方法など、他にも変更があります。詳細については、[こちら](https://github.com/tendermint/tendermint/issues/5383)および[こちら](https://github.com/tendermint/tendermint/issues/4630)をご覧ください。
+-逆同期の機会を探ります。技術的に言えば、証拠が観察されない場合は、逆同期は必要ありません。私は、適切と思われる場合にエビデンスパッケージに転送できるようにプロトコルを設計しようとしました。したがって、必要なデータがない証拠が見つかった場合にのみ、逆同期を実行します。問題は、コンセンサスに到達し、最後の10,000ブロックを最初に取得して検証するように求める証拠が表示されると仮定します。ノードはこの操作を(順番に)実行して、ラウンドが終了する前に投票することはできません。さらに、無効な証拠にペナルティを課さないため、悪意のあるノードがチェーンにスパムを簡単に送信して、一連の「ステートレス」ノードに大量の無用な作業を実行させることができます。
+-完全な逆同期を調べます。現在、ライトブロックのみを取得しています。ブロック全体を取得して永続化することは、特にこの操作を実行するようにアプリケーションに制御を与える場合、将来的に有益になる可能性があります。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- All nodes should have sufficient history to validate all types of evidence
-- State syncing nodes can use the p2p layer for light client verification of state. This has better UX and could be faster but I haven't benchmarked.
+-すべてのノードには、すべてのタイプの証拠を検証するのに十分な履歴が必要です
+-状態同期ノードは、状態ライトクライアントの検証にp2pレイヤーを使用できます。これはユーザーエクスペリエンスが向上し、高速になる可能性がありますが、ベンチマークは行いませんでした。
 
-### Negative
+### ネガティブ
 
-- Introduces more code = more maintenance
+-より多くのコードを導入する=より多くのメンテナンス
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する
 
-- [Reverse Sync RFC](https://github.com/tendermint/spec/blob/master/rfc/005-reverse-sync.md)
-- [Original Issue](https://github.com/tendermint/tendermint/issues/5617)
+-[リバース同期RFC](https://github.com/tendermint/spec/blob/master/rfc/005-reverse-sync.md)
+-[元の問題](https://github.com/tendermint/tendermint/issues/5617)

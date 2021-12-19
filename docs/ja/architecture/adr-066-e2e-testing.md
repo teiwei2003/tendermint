@@ -1,140 +1,140 @@
-# ADR 66: End-to-End Testing
+# ADR 66:エンドツーエンドのテスト
 
-## Changelog
+## 変更ログ
 
-- 2020-09-07: Initial draft (@erikgrinaker)
-- 2020-09-08: Minor improvements (@erikgrinaker)
-- 2021-04-12: Renamed from RFC 001 (@tessr)
+-2020年9月7日:最初のドラフト(@erikgrinaker)
+-2020-09-08:小さな改善(@erikgrinaker)
+-2021-04-12:RFC 001(@tessr)から名前が変更されました
 
-## Authors
+## 著者
 
-- Erik Grinaker (@erikgrinaker)
+-Eric Greenac(@erikgrinaker)
 
-## Context
+## 環境
 
-The current set of end-to-end tests under `test/` are very limited, mostly focusing on P2P testing in a standard configuration. They do not test various configurations (e.g. fast sync reactor versions, state sync, block pruning, genesis vs InitChain setup), nor do they test various network topologies (e.g. sentry node architecture). This leads to poor test coverage, which has caused several serious bugs to go unnoticed.
+「test /」の下に設定されている現在のエンドツーエンドテストは非常に限られており、主に標準構成でのP2Pテストに焦点を当てています。さまざまな構成(高速同期リアクターバージョン、状態同期、ブロックプルーニング、ジェネシスとInitChain設定など)をテストしたり、さまざまなネットワークトポロジ(センチネルノードアーキテクチャなど)をテストしたりしません。これにより、テストカバレッジが低くなり、いくつかの重大なエラーが無視されることになります。
 
-We need an end-to-end test suite that can run a large number of combinations of configuration options, genesis settings, network topologies, ABCI interactions, and failure scenarios and check that the network is still functional. This ADR outlines the basic requirements and design for such a system.
+構成オプション、作成設定、ネットワークトポロジ、ABCIの相互作用、および障害シナリオの多数の組み合わせを実行し、ネットワークがまだ機能しているかどうかを確認できるエンドツーエンドのテストスイートが必要です。このADRは、そのようなシステムの基本的な要件と設計の概要を示しています。
 
-This ADR will not cover comprehensive chaos testing, only a few simple scenarios (e.g. abrupt process termination and network partitioning). Chaos testing of the core consensus algorithm should be implemented e.g. via Jepsen tests or a similar framework, or alternatively be added to these end-to-end tests at a later time. Similarly, malicious or adversarial behavior is out of scope for the first implementation, but may be added later.
+このADRは、包括的なカオステストをカバーしていませんが、いくつかの単純なシナリオ(たとえば、プロセスの突然の終了やネットワークのパーティション分割)のみをカバーしています。コアコンセンサスアルゴリズムのカオステストは、Jepsenテストや同様のフレームワークなどを介して実装するか、後でこれらのエンドツーエンドテストに追加する必要があります。同様に、悪意のあるまたは敵対的な動作は最初の実装の範囲を超えていますが、後で追加される可能性があります。
 
-## Proposal
+## 提案
 
-### Functional Coverage
+### 機能カバレッジ
 
-The following lists the functionality we would like to test:
+テストしたい機能を以下に示します。
 
-#### Environments
+#### 周辺
 
-- **Topology:** single node, 4 nodes (seeds and persistent), sentry architecture, NAT (UPnP)
-- **Networking:** IPv4, IPv6
-- **ABCI connection:** UNIX socket, TCP, gRPC
-- **PrivVal:** file, UNIX socket, TCP
+-**トポロジ:**シングルノード、4ノード(シードおよび永続)、センチネルアーキテクチャ、NAT(UPnP)
+-**ネットワーク:** IPv4、IPv6
+-** ABCI接続:** UNIXソケット、TCP、gRPC
+-** PrivVal:**ファイル、UNIXソケット、TCP
 
-#### Node/App Configurations
+#### ノード/アプリケーションの構成
 
-- **Database:** goleveldb, cleveldb, boltdb, rocksdb, badgerdb
-- **Fast sync:** disabled, v0, v2
-- **State sync:** disabled, enabled
-- **Block pruning:** none, keep 20, keep 1, keep random
-- **Role:** validator, full node
-- **App persistence:** enabled, disabled
-- **Node modes:** validator, full, light, seed
+-**データベース:** goleveldb、cleveldb、boltdb、rocksdb、badgerdb
+-**クイック同期:**無効、v0、v2
+-**ステータスの同期:**無効、有効
+-**ブロックトリム:**なし、20を維持、1を維持、ランダムを維持
+-**役割:**ベリファイア、フルノード
+-**アプリケーションの永続性:**有効、無効
+-**ノードモード:**バリデーター、コンプリート、ライト、シード
 
-#### Geneses
+#### 遺伝子
 
-- **Validators:** none (InitChain), given
-- **Initial height:** 1, 1000
-- **App state:** none, given
+-**バリデーター:**なし(InitChain)、指定
+-**初期の高さ:** 1、1000
+-**アプリケーションステータス:**なし、指定
 
-#### Behaviors
+#### 行動
 
-- **Recovery:** stop/start, power cycling, validator outage, network partition, total network loss
-- **Validators:** add, remove, change power
-- **Evidence:** injection of DuplicateVoteEvidence and LightClientAttackEvidence
+-**再開:**停止/開始、電源の入れ直し、検証者の中断、ネットワークパーティション、ネットワーク損失の合計
+-**ベリファイア:**パワーの追加、削除、変更
+-**証拠:** DuplicateVoteEvidenceとLightClientAttackEvidenceを挿入します
 
-### Functional Combinations
+### 機能の組み合わせ
 
-Running separate tests for all combinations of the above functionality is not feasible, as there are millions of them. However, the functionality can be grouped into three broad classes:
+上記の関数は数百万個あるため、上記の関数のすべての組み合わせに対して個別のテストを実行することはできません。ただし、機能は3つの主要なカテゴリに分けることができます。
 
-- **Global:** affects the entire network, needing a separate testnet for each combination (e.g. topology, network protocol, genesis settings)
+-**グローバル:**ネットワーク全体に影響します。組み合わせごとに個別のテストネットワーク(トポロジ、ネットワークプロトコル、作成設定など)が必要です。
 
-- **Local:** affects a single node, and can be varied per node in a testnet (e.g. ABCI/privval connections, database backend, block pruning)
+-**ローカル:**は単一のノードに影響し、テストネットワークの各ノードで変更できます(ABCI /プライベート接続、データベースバックエンド、ブロックプルーニングなど)
 
-- **Temporal:** can be run after each other in the same testnet (e.g. recovery and validator changes)
+-**一時的:**同じテストネットワークで順次実行できます(例:リカバリとバリデーターの変更)
 
-Thus, we can run separate testnets for all combinations of global options (on the order of 100). In each testnet, we run nodes with randomly generated node configurations optimized for broad coverage (i.e. if one node is using GoLevelDB, then no other node should use it if possible). And in each testnet, we sequentially and randomly pick nodes to stop/start, power cycle, add/remove, disconnect, and so on.
+したがって、グローバルオプションのすべての組み合わせ(約100)に対して個別のテストネットを実行できます。各テストネットでは、広範囲に最適化されたランダムに生成されたノード構成でノードを実行します(つまり、1つのノードがGoLevelDBを使用している場合、可能であれば、他のノードはそれを使用しないでください)。各テストネットでは、ノードをランダムに選択して、停止/開始、再起動、追加/削除、切断などを行います。
 
-All of the settings should be specified in a testnet configuration (or alternatively the seed that generated it) such that it can be retrieved from CI and debugged locally.
+CIから取得してローカルでデバッグできるように、すべての設定をテストネット構成(またはそれを生成したシード)で指定する必要があります。
 
-A custom ABCI application will have to be built that can exhibit the necessary behavior (e.g. make validator changes, prune blocks, enable/disable persistence, and so on).
+必要な動作(たとえば、バリデーターの変更、ブロックのトリミング、永続性の有効化/無効化など)を示すカスタムABCIアプリケーションを構築する必要があります。
 
-### Test Stages
+### テストフェーズ
 
-Given a test configuration, the test runner has the following stages:
+テスト構成を考えると、テストランナーには次の段階があります。
 
-- **Setup:** configures the Docker containers and networks, but does not start them.
+-**セットアップ:** Dockerコンテナーとネットワークを構成しますが、起動しないでください。
 
-- **Initialization:** starts the Docker containers, performs fast sync/state sync. Accomodates for different start heights.
+-**初期化:** Dockerコンテナーを起動し、高速同期/状態同期を実行します。さまざまな開始高さに適応します。
 
-- **Perturbation:** adds/removes validators, restarts nodes, perturbs networking, etc - liveness and readiness checked between each operation.
+-**妨害:**バリデーターの追加/削除、ノードの再起動、ネットワークの妨害など。-各操作間の活性と準備状況を確認します。
 
-- **Testing:** runs RPC tests independently against all network nodes, making sure data matches expectations and invariants hold.
+-**テスト:**すべてのネットワークノードに対して独立してRPCテストを実行し、データが期待を満たし、変更されていないことを確認します。
 
-### Tests
+### テスト
 
-The general approach will be to put the network through a sequence of operations (see stages above), check basic liveness and readiness after each operation, and then once the network stabilizes run an RPC test suite against each node in the network.
+一般的な方法は、ネットワークに一連の操作(上記の段階を参照)を実行させ、各操作の後に基本的なアクティビティと準備状況を確認し、ネットワークが安定した後、ネットワーク内の各ノードに対してRPCテストスイートを実行することです。
 
-The test suite will do black-box testing against a single node's RPC service. We will be testing the behavior of the network as a whole, e.g. that a fast synced node correctly catches up to the chain head and serves basic block data via RPC. Thus the tests will not send e.g. P2P messages or examine the node database, as these are considered internal implementation details - if the network behaves correctly, presumably the internal components function correctly. Comprehensive component testing (e.g. each and every RPC method parameter) should be done via unit/integration tests.
+テストスイートは、単一ノードのRPCサービスでブラックボックステストを実行します。高速同期ノードがチェーンヘッドに正しく追いつき、RPCを介して基本ブロックデータを提供するなど、ネットワーク全体の動作をテストします。したがって、テストは、たとえばP2Pメッセージを送信したり、ノードデータベースをチェックしたりしません。これらは内部実装の詳細と見なされるためです。ネットワークが正しく動作している場合、内部コンポーネントは正常に機能している可能性があります。包括的なコンポーネントテスト(たとえば、各RPCメソッドパラメータ)は、ユニット/統合テストを通じて実行する必要があります。
 
-The tests must take into account the node configuration (e.g. some nodes may be pruned, others may not be validators), and should somehow be provided access to expected data (i.e. complete block headers for the entire chain).
+テストでは、ノード構成を考慮する必要があり(たとえば、一部のノードがプルーニングされ、他のノードがバリデーターではない場合があります)、何らかの方法で期待されるデータへのアクセスを提供する必要があります(つまり、チェーン全体の完全なブロックヘッダー)。
 
-The test suite should use the Tendermint RPC client and the Tendermint light client, to exercise the client code as well.
+テストスイートでは、TendermintRPCクライアントとTendermintlightクライアントを使用してクライアントコードを練習する必要があります。
 
-### Implementation Considerations
+### 実装上の注意
 
-The testnets should run in Docker Compose, both locally and in CI. This makes it easier to reproduce test failures locally. Supporting multiple test-runners (e.g. on VMs or Kubernetes) is out of scope. The same image should be used for all tests, with configuration passed via a mounted volume.
+テストネットは、ローカルとCIを含め、DockerComposeで実行する必要があります。これにより、テストの失敗をローカルで再現しやすくなります。複数のテストランナー(VMやKubernetesなど)をサポートすることはできません。すべてのテストで同じイメージを使用し、マウントされたボリュームを介して構成をパスする必要があります。
 
-There does not appear to be any off-the-shelf solutions that would do this for us, so we will have to roll our own on top of Docker Compose. This gives us more flexibility, but is estimated to be a few weeks of work.
+これを実行できる既存のソリューションはないようです。そのため、DockerComposeの上に独自のソリューションを起動する必要があります。これにより柔軟性が高まりますが、数週間かかると推定されています。
 
-Testnets should be configured via a YAML file. These are used as inputs for the test runner, which e.g. generates Docker Compose configurations from them. An additional layer on top should generate these testnet configurations from a YAML file that specifies all the option combinations to test.
+テストネットはYAMLファイルを介して構成する必要があります。これらは、テストランナーへの入力として使用されます。たとえば、それらからDockerCompose構成を生成します。最上位の追加レイヤーは、テストするオプションのすべての組み合わせを指定するYAMLファイルからこれらのテストネット構成を生成する必要があります。
 
-Comprehensive testnets should run against master nightly. However, a small subset of representative testnets should run for each pull request, e.g. a four-node IPv4 network with state sync and fast sync.
+包括的なテストネットワークは、マスターノードに対して毎晩実行する必要があります。ただし、状態同期と高速同期を備えた4ノードのIPv4ネットワークなど、プルリクエストごとに小さな代表的なテストネットを実行する必要があります。
 
-Tests should be written using the standard Go test framework (and e.g. Testify), with a helper function to fetch info from the test configuration. The test runner will run the tests separately for each network node, and the test must vary its expectations based on the node's configuration.
+テストは、標準のGoテストフレームワーク(たとえば、Testify)を使用して作成する必要があり、ヘルパー関数を使用してテスト構成から情報を取得します。テストランナーはネットワークノードごとに個別にテストを実行し、テストはノードの構成に基づいて期待値を変更する必要があります。
 
-It should be possible to launch a specific testnet and run individual test cases from the IDE or local terminal against a it.
+特定のテストネットを起動し、IDEまたはローカル端末からそれに対して単一のテストケースを実行できるはずです。
 
-If possible, the existing `testnet` command should be extended to set up the network topologies needed by the end-to-end tests.
+可能であれば、既存の「testnet」コマンドを拡張して、エンドツーエンドのテストに必要なネットワークトポロジを設定する必要があります。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Comprehensive end-to-end test coverage of basic Tendermint functionality, exercising common code paths in the same way that users would
+-基本的なTendermint関数の包括的なエンドツーエンドのテストカバレッジ。ユーザーと同じ方法で一般的なコードパスを実行します。
 
-- Test environments can easily be reproduced locally and debugged via standard tooling
+-テスト環境はローカルに簡単にコピーでき、標準ツールでデバッグできます
 
-### Negative
+### ネガティブ
 
-- Limited coverage of consensus correctness testing (e.g. Jepsen)
+-コンセンサス正しさテストの対象範囲は限られています(例:ジェプセン)
 
-- No coverage of malicious or adversarial behavior
+-悪意のあるまたは対立的な行動を伴わない
 
-- Have to roll our own test framework, which takes engineering resources
+-エンジニアリングリソースを必要とする独自のテストフレームワークを起動する必要があります
 
-- Possibly slower CI times, depending on which tests are run
+-テストの実行によっては、CI時間が短縮される場合があります
 
-- Operational costs and overhead, e.g. infrastructure costs and system maintenance
+-インフラストラクチャコストやシステムメンテナンスなどの運用コストと管理コスト
 
-### Neutral
+### ニュートラル
 
-- No support for alternative infrastructure platforms, e.g. Kubernetes or VMs
+-Kubernetesや仮想マシンなどの代替インフラストラクチャプラットフォームをサポートしていません
 
-## References
+## 参照する
 
-- [#5291: new end-to-end test suite](https://github.com/tendermint/tendermint/issues/5291)
+-[#5291:新しいエンドツーエンドのテストスイート](https://github.com/tendermint/tendermint/issues/5291)

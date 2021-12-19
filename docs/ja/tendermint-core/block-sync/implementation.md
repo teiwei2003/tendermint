@@ -1,43 +1,43 @@
-# Implementation
+# 埋め込む
 
-## Blocksync Reactor
+## ブロック同期リアクター
 
-- coordinates the pool for syncing
-- coordinates the store for persistence
-- coordinates the playing of blocks towards the app using a sm.BlockExecutor
-- handles switching between fastsync and consensus
-- it is a p2p.BaseReactor
-- starts the pool.Start() and its poolRoutine()
-- registers all the concrete types and interfaces for serialisation
+-同期のためにプールを調整します
+-ストアの永続性を調整します
+-sm.BlockExecutorを使用して、再生ブロックをアプリケーションに調整します
+-高速同期とコンセンサスの切り替えを処理します
+-それはp2p.BaseReactorです
+-pool.Start()とそのpoolRoutine()を開始します
+-シリアル化のためにすべての具体的なタイプとインターフェースを登録します
 
 ### poolRoutine
 
-- listens to these channels:
-    - pool requests blocks from a specific peer by posting to requestsCh, block reactor then sends
-    a &bcBlockRequestMessage for a specific height
-    - pool signals timeout of a specific peer by posting to timeoutsCh
-    - switchToConsensusTicker to periodically try and switch to consensus
-    - trySyncTicker to periodically check if we have fallen behind and then catch-up sync
-        - if there aren't any new blocks available on the pool it skips syncing
-- tries to sync the app by taking downloaded blocks from the pool, gives them to the app and stores
-  them on disk
-- implements Receive which is called by the switch/peer
-    - calls AddBlock on the pool when it receives a new block from a peer
+-これらのチャネルを聞いてください:
+    -プールはrequestsChに送信することで特定のピアにブロックを要求し、ブロックリアクターは次に送信します
+    特定の高さ＆bcBlockRequestMessage
+    -プールは、timeoutsChに公開することにより、特定のピアのタイムアウトを示します
+    -switchToConsensusTickerは定期的にコンセンサスへの切り替えを試みます
+    -trySyncTickerは、遅れているかどうかを定期的にチェックしてから、同期に追いつきます
+        -プールに使用可能な新しいブロックがない場合、同期をスキップします
+-プールからダウンロードしたブロックを取得してアプリを同期し、アプリやストアに提供してみてください
+  それらはディスク上にあります
+-スイッチ/ピアによって呼び出された受信を実現します
+    -ピアから新しいブロックを受信すると、プールでAddBlockを呼び出します
 
-## Block Pool
+## ブロックプール
 
-- responsible for downloading blocks from peers
-- makeRequestersRoutine()
-    - removes timeout peers
-    - starts new requesters by calling makeNextRequester()
-- requestRoutine():
-    - picks a peer and sends the request, then blocks until:
-        - pool is stopped by listening to pool.Quit
-        - requester is stopped by listening to Quit
-        - request is redone
-        - we receive a block
-            - gotBlockCh is strange
+-ノードからブロックをダウンロードする責任があります
+-makeRequestersRoutine()
+    -タイムアウトピアを削除します
+    -makeNextRequester()を呼び出して、新しいリクエスターを開始します
+-リクエストroutine():
+    -ピアを選択してリクエストを送信し、次の状態になるまでブロックします。
+        -pool.Quitを聞いてプールを停止します
+        -Quitを聞いてリクエスターを停止します
+        -リクエストがやり直されました
+        -ブロックを受け取りました
+            -gotBlockChは奇妙です
 
-## Go Routines in Blocksync Reactor
+## BlocksyncReactorでルーチンを実行する
 
-![Go Routines Diagram](img/bc-reactor-routines.png)
+！[Go Routine Diagram](img/bc-reactor-routines.png)

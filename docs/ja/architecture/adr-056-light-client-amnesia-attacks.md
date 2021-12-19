@@ -1,114 +1,112 @@
-# ADR 056: Light client amnesia attacks
+# ADR 056:軽度のクライアント記憶喪失攻撃
 
-## Changelog
+## 変更ログ
 
-- 02.04.20: Initial Draft
-- 06.04.20: Second Draft
-- 10.06.20: Post Implementation Revision
-- 19.08.20: Short Term Amnesia Alteration
-- 01.10.20: Status of Amnesia for 0.34
+-02.04.20:最初のドラフト
+-06.04.20:2番目のドラフト
+-10.06.20:実装後に改訂
+-19.08.20:短期記憶喪失の変化
+-01.10.20:0.34健忘症
 
-## Context
+## 環境
 
-Whilst most created evidence of malicious behavior is self evident such that any individual can verify them independently there are types of evidence, known collectively as global evidence, that require further collaboration from the network in order to accumulate enough information to create evidence that is individually verifiable and can therefore be processed through consensus. [Fork Accountability](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md) has been coined to describe the entire process of detection, proving and punishing of malicious behavior. This ADR addresses specifically what a light client amnesia attack is and how it can be proven and the current decision around handling light client amnesia attacks. For information on evidence handling by the light client, it is recommended to read [ADR 47](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md).
+ほとんどの悪意のある行動の証拠の作成は自明であるため、誰でも独立して検証できますが、個別に検証可能な証拠を作成するために十分な情報を蓄積するためにさらにネットワーク協力を必要とする、グローバル証拠と総称されるいくつかの種類の証拠もありますしたがって、コンセンサスによって処理することができます。 [フォークアカウンタビリティ](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)は、悪意のある動作を検出、証明、および罰するプロセス全体を説明するために作成されました。 ADRは、ライトクライアントの記憶喪失攻撃とは何か、それを証明する方法、およびライトクライアントの記憶喪失攻撃に対処するための現在の決定について具体的に説明しています。ライトクライアントの証拠の処理については、[ADR 47](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light)を読むことをお勧めします。クライアント。md)。
 
-### Amnesia Attack
+### 健忘症の発症
 
-The schematic below explains a scenario where an amnesia attack can occur such that two sets of honest nodes, C1 and C2, commit different blocks.
+次の図は、記憶喪失攻撃が発生する可能性があるシナリオを示しています。つまり、正直なノードC1とC2の2つのグループが異なるブロックを送信します。
 
-![](../imgs/tm-amnesia-attack.png)
+！[](../imgs/tm-amnesia-attack.png)
 
-1. C1 and F send PREVOTE messages for block A.
-2. C1 sends PRECOMMIT for round 1 for block A.
-3. A new round is started, C2 and F send PREVOTE messages for a different block B.
-4. C2 and F then send PRECOMMIT messages for block B.
-5. F later on creates PRECOMMITS for block A and combines it with those from C1 to form a block
-
-
-This forged block can then be used to fool light clients trying to verify it. It must be stressed that there are a few more hurdles or dimensions to the attack to consider.For a more detailed walkthrough refer to Appendix A.
-
-## Decision
-
-The decision surrounding amnesia attacks has both a short term and long term component. In the long term, a more sturdy protocol will need to be fleshed out and implemented. There is already draft documents outlining what such a protocol would look like and the resources it would require (see references). Prior revisions however outlined a protocol which had been implemented (See Appendix B). It was agreed that it still required greater consideration and review given it's importance. It was therefore discussed, with the limited time frame set before 0.34, whether the protocol should be completely removed or if there should remain some logic in handling the aforementioned scenarios.
-
-The latter of the two options meant storing a record of all votes in any height with which there was more than one round. This information would then be accessible for applications if they wanted to perform some off-chain verification and punishment.
-
-In summary, this seemed like too much to ask of the application to implement only on a temporary basis, whilst not having the domain specific knowledge and considering such a difficult and unlikely attack. Therefore the short term decision is to identify when the attack has occurred and implement the detector algorithm highlighted in [ADR 47](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md) but to not implement any accountability protocol that would identify malicious validators and allow applications to punish them. This will hopefully change in the long term with the focus on eventually reaching a concrete and secure protocol with identifying and dealing with these attacks.
-
-## Implications
-
-- Light clients will still be able to detect amnesia attacks so long as the assumption of having at least one correct witness holds
-- Light clients will gossip the attack to witnesses and halt thus failing to validate the incorrect block (and therefore not being fooled)
-- Validators will propose and commit evidence of the amnesia attack on chain
-- No evidence will be passed to the application indicting any malicious validators, thus meaning that no malicious validators will be punished for performing the attack
-- If a light clients bubble of providers are all faulty the light client will falsely validate amnesia attacks as well as any other 1/3+ light client attack.
-
-## Status
-
-Implemented
-
-## Consequences
-
-### Positive
-
-Light clients are still able to prevent falsely validating a block.
-
-Already implemented.
-
-### Negative
-
-Light clients where all witnesses are faulty can be subject to an amnesia attack and verify a forged block that is not part of the chain.
-
-### Neutral
+1. C1とFは、ブロックAのPREVOTEメッセージを送信します。
+2. C1は、ブロックAの最初のラウンドに対してPRECOMMITを送信します。
+3.新しいラウンドの開始時に、C2とFは異なるブロックBに対してPREVOTEメッセージを送信します。
+4.次に、C2とFはブロックBのPRECOMMITメッセージを送信します。
+5. Fは後でブロックAのPRECOMMITSを作成し、それをC1のPRECOMMITSと組み合わせてブロックを形成します
 
 
-## References
+この偽のブロックは、それを検証しようとしているライトクライアントを欺くために使用できます。攻撃は、より多くの障害や次元を考慮する必要があることも強調する必要があります。詳細なウォークスルーについては、付録Aを参照してください。
 
-- [Fork accountability algorithm](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit)
-- [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
+## 決定
 
-## Appendix A: Detailed Walkthrough of Performing a Light Client Amnesia Attack
+健忘症の発症を取り巻く決定には、短期的および長期的な要素があります。長期的には、より強力な合意を具体化して実施する必要があります。そのような契約の外観とそれが必要とするリソースを概説するドラフト文書があります(「リソース」を参照)。ただし、以前の改訂では、実施された合意の概要が示されています(付録Bを参照)。その重要性を考えると、それはまださらなる検討とレビューが必要であることに誰もが同意しました。したがって、0.34より前に設定された限られた時間枠を完全に削除する必要があるのか​​、それとも上記のシナリオを処理するときに一部のロジックを保持する必要があるのか​​について議論されました。
 
-As the attacker, a prerequisite to this attack is first to observe or attempt to craft a block where a subset (less than ⅓) of correct validators sent precommit votes for a proposal in an earlier round and later received ⅔ prevotes for a different proposal thus changing their lock and correctly sending precommit votes (and later committing) for the proposal in the latter round. The second prerequisite is to have at least ⅓ validating power in that height (or enough voting power to have ⅔+ when combined with the precommits of the earlier round).
+2つのオプションの後者は、任意の高さで複数のラウンドのすべての投票記録を保存することを意味します。アプリケーションがオフチェーンの検証と罰を実行したい場合は、この情報にアクセスできます。
 
-To go back to how one may craft such a block, we begin with one of the validators in this cabal being the proposer. They propose a block with all the txs that they want to fool a light client with. The proposer then only relays this to the members of their cabal and a controlled subset of correct validators (less than ⅓). We will call ourselves f for faulty and c1 for this correct subset.
+全体として、ドメイン固有の知識がなく、この困難でありそうもない攻撃を考慮すると、アプリケーションを一時的に実装する必要があるとは思えません。したがって、短期的な決定は、攻撃がいつ発生するかを判断し、[ADR 47](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-で強調表示されている検出器アルゴリズムを実装することです。処理)-evidence-from-light-client.md)が、悪意のあるバリデーターを識別し、アプリケーションがそれらを罰することを可能にする説明責任プロトコルを実装していません。長期的には、この状況は変化すると予想されます。焦点は、これらの攻撃を特定して対処するための具体的で安全な合意に最終的に到達することです。
 
-Attackers need to rely on the assistance of some form of a network partition or on the nature of the sporadic voting to conjure their desired environment. The attackers need at least ⅓ of the validating power of the remaining correct validators, we shall denote this as c2, to not see ⅔ prevotes and thus not be locked on a block when it comes to the next round. If we have less than ⅓ remaining validators that don’t see this first proposal, then we will not have enough voting power to reach ⅔+ prevotes (the sum of f and c2) in the following round and thus change the lock of c1 such that we correctly commit the block in the latter round yet have enough precommits in the earlier round to fool the light client. Remember this is our desired scenario: to save all these precommit votes for a different (in this case earlier) proposed block.
+## 影響
 
-To try to break this down even further let’s go back to the first round. F sends c1 a proposal (and not c2), c1 in turn sends their prevotes to all whom they are connected to. This means that some will be received by c2. F then sends their prevotes just to c1. Now not all validators in c1 may be connected to each other, so perhaps some validators in c1 might not receive ⅔ (from their own cohort and from f) and thus not precommit. In other situations we may see a validator in c2 connected to all validators in c1. Therefore they too will receive ⅔ prevotes and thus precommit. We can conclude therefore that although targeting this c1 subset of validators, those that actually precommit may be somewhat different. The key is for the attackers to observe the n amount of precommits they need in round 1 where n is ⅔+ - f, whilst ensuring that n itself does not go over ⅓. If it does then less than ⅔ validators remain to be able to change the lock and commit the block in the later round.
+-少なくとも1人の正しい証人が確立されていると想定されている限り、ライトクライアントは健忘症の攻撃を検出できます
+-ライトクライアントは攻撃ゴシップを目撃者に送信して停止するため、誤ったブロックを検証できません(したがって、だまされません)
+-検証者は、チェーンに対する記憶喪失攻撃の証拠を提示して提出します
+-悪意のある検証者を非難する証拠はアプリに渡されません。つまり、悪意のある検証者が攻撃を実行したことで罰せられることはありません。
+-サプライヤのライトクライアントバブルがすべて失敗した場合、ライトクライアントは記憶喪失攻撃およびその他の1/3以上のライトクライアント攻撃を誤って検証します。
 
-An extra dimension to this puzzle is the timeouts. Whilst c1 is relaying votes to its peers and these validators count closer towards the ⅔ threshold needed to send their precommit votes at any moment the timeout could be reached and thus the nodes will precommit nil and ignore any late prevote messages.
+## ステータス
 
-This is all to say that such an attack is partly out of the attackers hands. All they can do is tweak the subset of validators that they first choose to gossip the proposal and modify the timings around when they send their prevotes until they reach the desired precondition: n precommits for an earlier proposal and ⅔ precommits for the later proposal. So this is up to the gods of non deterministic behavior to help them out with their plight. I’m not going to allocate the hours to calculate the probability but it could be in the magnitude of 1000’s of blocks trying to get this scenario before the precondition is met.
+実装
 
-Obviously, the probability becomes substantially higher as the cabal’s voting power nears ⅔. This is because both n decreases and there is greater tolerance to send prevotes to a greater amount of validators without going overboard and reaching the ⅓ precommit threshold in the first round which would mean they would have to try again.
+## 結果
 
-Once we’ve got our n, we can then forge the remaining signatures for that block (from the f) and bundle them all together and tada we have a forged signed header.
+### ポジティブ
 
-Now we’ve done that, it’s time to find some light clients to fool.
+ライトクライアントは、ブロックの誤った検証を防ぐことができます。
 
-Also critical to this type of attack is that the light client that is connected to our nodes must request a light block at that specific height with which we forged this signed header but this shouldn’t be hard to do. To bring this back to a real context, say our faulty cabal, f, bought some groceries using atoms and then wanted to prove that they did, the grocery owner whips out their phone, runs the light client and f tells them the height they committed the transaction.
+実装されています。
 
-An important note here is that because the validator sets are the same between the canonical and the forged block, this attack also works on light clients that verify sequentially. In fact, they are especially vulnerable because they currently don’t run the detector function afterwards.
+### ネガティブ
 
-However, if our grocery owner verifies using the skipping algorithm, they will then run the detector and therefore they will compare with other witness nodes. Ideally for our attackers, if f has a lot of nodes exposing their rpc endpoints, then there is a chance that all the witnesses the light client has are faulty and thus we have a successful attack and the grocery owner has been fooled into handing f a few apples and carrots.
+すべての目撃者にエラーがある軽いクライアントは、記憶喪失攻撃の対象となり、チェーンの一部ではない偽造ブロックを検証する可能性があります。
 
-However, there is a greater chance, especially if the light client is connected to quite a few other nodes that a divergence will be detected. The light client will figure out there was an amnesia attack and send the evidence to the witness to commit on chain. The grocery owner will see that verification failed and won't hand over the apples or carrots but also f won't be punished for their villainous behavior. This means that they can go over to the hairdressers and see if they can pull off the same stunt again.
+### ニュートラル
 
-So this brings to the fore the current defenses that are in place. As long as there has not been a cabal of validators with greater than 1/3 power (or the trust level), the light clients verification algorithm will prevent any attempts to deceive it. Greater than this threshold and we rely on the detector as a second layer of defense to pick up on any attack. It's security is chiefly tied with the assumption that at least one of the witnesses is correct. If this fails then as illustrated above, the light client can be suceptible to amnesia (as well as equivocation and lunatic) attacks.
 
-The outstanding problem, if we indeed consider it big enough to be one, therefore lies in the incentivisation mechanism which is how f and other malicious validators are punished. This is decided by the application but it's up to Tendermint to identify them. With other forms of attacks the evidence lies in the precommits. But because an amnesia attack uses precommits from another round, which is information that is discarded by the consensus engine once the block is committed, it is difficult to understand which validators were in fact faulty.
+## 参照する
 
-If we cast our minds back to what I previously wrote, part of an amnesia attack depends on getting n precommits from an earlier round. These are then bundled with the malicious validators' own signatures. This means that the light client nor full nodes are capable of distinguishing which of the signatures were correctly created as part of Tendermint consensus and which were forged later on.
+-[フォークアカウンタビリティアルゴリズム](https://docs.google.com/document/d/11ZhMsCj3y7zIZz4udO9l25xqb0kl7gmWqNpGVRzOeyY/edit)
+-[フォークアカウンタビリティ仕様](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
+## 付録A:軽度のクライアント記憶喪失攻撃を実行するための詳細なウォークスルー
 
-## Appendix B: Prior Amnesia Evidence Accountability Implementation
+攻撃者として、この攻撃の前提条件は、最初に、正しいバリデーターのサブセット(1/3未満)が前のラウンドで提案に対する事前投票を送信したブロックを観察または作成しようとすることです。 ⅔異なる提案に事前投票するので、ロックを変更し、次のラウンドの提案に対して事前提出投票(およびその後の提出)を正しく送信します。 2番目の前提条件は、その高さで少なくとも1/3の検証権(または、前回の事前コミットメントと組み合わせた場合に2/3以上を取得するのに十分な議決権)を持っていることです。
 
-As the distinction between these two attacks (amnesia and back to the past) can only be distinguished by confirming with all validators (to see if it is a full fork or a light fork), for the purpose of simplicity, these attacks will be treated as the same.
+このようなブロックを作成する方法の質問に戻ると、提案者としてカバールのバリデーターから始めます。彼らは、ライトクライアントをだまそうとしたすべてのトランザクションを含むブロックを提案しました。次に、提案者はそれを、その陰謀団のメンバーの管理されたサブセットと正しい検証者(1/3未満)にのみ転送します。エラーの場合はf、この正しいサブセットの場合はc1と呼びます。
 
-Currently, the evidence reactor is used to simply broadcast and store evidence. The idea of creating a new reactor for the specific task of verifying these attacks was briefly discussed, but it is decided that the current evidence reactor will be extended.
+攻撃者は、何らかの形のネットワークパーティションの助けを借りたり、散発的な投票の性質を利用して、必要な環境を呼び出す必要があります。攻撃者は、残りの正しい検証者の検証能力の少なくとも3分の1を必要とします。これは、次のラウンドに入るときにブロックにロックされないように、事前投票が表示されないようにc2と表記します。最初の提案の残りのバリデーターが1/3未満であることがわからない場合、次のラウンドで⅔+事前投票(fとc2の合計)に到達するための十分な投票権がないため、ロックが変更されますたとえば、c1の場合、ブロックは後のラウンドで正しく送信されましたが、前のラウンドではライトクライアントを欺くのに十分な事前コミットがありました。これが私たちが望むシナリオであることを忘れないでください。これらの事前コミット投票をすべて別の(この場合は以前の)提案ブロックに保存します。
 
-The process begins with a light client receiving conflicting headers (in the future this could also be a full node during fast sync or state sync), which it sends to a full node to analyze. As part of [evidence handling](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md), this is extracted into potential amnesia evidence when the validator voted in more than one round for a different block.
+さらに分解するために、最初のラウンドに戻りましょう。 Fは(c2ではなく)c1に提案を送信し、次にc1はそれらと接触しているすべての人々に承認投票を送信します。これは、一部がc2によって受信されることを意味します。次に、Fは賛成票をc1に送信します。現在、c1のすべてのバリデーターが相互に接続されているわけではないため、c1の一部のバリデーターは(独自のキューとfから)2/3を受信しない可能性があり、事前に送信されません。その他の場合、c2の1つのバリデーターがc1のすべてのバリデーターに接続されていることがあります。したがって、彼らはまた、2/3の事前投票を受け取り、したがって事前提出します。したがって、c1バリデーターのこのサブセットでは、実際の事前にコミットされたバリデーターは異なる可能性があると結論付けることができます。重要なのは、攻撃者が最初のラウンドで必要なn個の事前コミットを監視することです。nは2/3 + -fであり、n自体が1/3を超えないようにします。その場合、2/3未満のバリデーターがロックを変更し、後のラウンドでブロックを送信できます。
 
+このパズルの追加の側面はタイムアウトです。 c1は投票をピアに転送しており、これらのバリデーターは、タイムアウトに達する可能性があるときはいつでも事前コミット投票を送信するために必要なしきい値に近づいていますが、ノードはnilを事前送信し、遅延した事前コミットを無視します。投票メッセージ。
+
+これは、そのような攻撃の一部が攻撃者の手に渡っていることを意味します。彼らができることは、最初にゴシップ提案を選択するために選択したバリデーターのサブセットを調整し、必要な前提条件を満たすまで事前投票を送信する時間を変更することです。n個の事前コミットは以前の提案に使用され、2/3は事前コミットです。後の提案に使用されます。したがって、彼らがジレンマを解決するのを助けるのは、非決定論的行動の神々に依存しています。確率を計算するために時間を割り当てるつもりはありませんが、前提条件が満たされる前に、この状況を取得しようとして1000ブロックが存在する可能性があります。
+
+明らかに、カバールの投票力が2/3に近づくにつれて、確率は高くなります。これは、nが減少し、最初のラウンドでオーバーボードして1/3の事前コミットしきい値に達することなく、より多くのバリデーターに事前投票が送信される許容度が高くなるためです。つまり、再試行しないことになります。
+
+nを取得したら、そのブロックの残りの署名(fから)を偽造し、それらを結合して、偽造された署名ヘッダーを作成できます。
+
+これで、だまされる軽いクライアントを見つける時が来ました。
+
+このタイプの攻撃の鍵は、ノードに接続されているライトクライアントが、この署名ヘッダーを偽造した特定の高さのライトブロックを要求する必要があることですが、これは難しいことではありません。それを実際の状況に戻すために、間違ったカバールfがアトムを使用して食料品を購入し、それを証明したいとします。食料品店のオーナーが携帯電話を取り出し、軽いクライアントを実行し、fが彼らに話しました。彼らが約束した高度な取引。
+
+ここで重要なのは、正規ブロックと偽造ブロックの間に設定されたバリデーターが同じであるため、この攻撃は順次検証するライトクライアントにも適用されるということです。実際、それらは現在、後で検出器機能を実行しないため、特に脆弱です。
+
+ただし、食料品店の所有者が検証にスキップアルゴリズムを使用する場合、検出器を実行するため、他の監視ノードと比較されます。攻撃者にとって理想的な状況は、fの多くのノードがrpcエンドポイントを公開すると、ライトクライアントのすべての目撃者が失敗する可能性があるため、攻撃は成功し、食料品店の所有者はリンゴとニンジンにだまされました。
+
+ただし、特にライトクライアントがかなりの数の他のノードに接続されている場合は、発散が検出される可能性が高くなります。ライトクライアントは、記憶喪失攻撃が発生したことを発見し、証拠を証人に送信してチェーン上に提出します。食料品店の所有者は検証の失敗を確認し、リンゴやニンジンを引き渡すことはありませんが、彼らの悪行に対して罰せられることはありません。これは、彼らが床屋に行って、同じスタントを再び実行できるかどうかを確認できることを意味します。
+
+したがって、これは既存の防御策を浮き彫りにします。 1/3を超えるパワー(または信頼レベル)を持つ検証者の陰謀がない限り、ライトクライアント検証アルゴリズムはそれを欺こうとする試みを防ぎます。このしきい値を超えると、攻撃に対処するための防御の第2層として検出器に依存します。そのセキュリティは主に、少なくとも1人の証人が正しいという仮定に関連しています。これが失敗した場合、上記のように、ライトクライアントは記憶喪失(およびあいまいさと狂気)に対して脆弱である可能性があります。
+
+未解決の質問は、それが本当に十分に大きいと考える場合、インセンティブメカニズム、つまり、fやその他の悪意のある検証者がどのように罰せられるかにあります。これはアプリケーションによって決定されますが、Tendermintはそれらを認識します。他の形態の攻撃の場合、証拠は提出前にあります。ただし、記憶喪失攻撃は別の事前コミットを使用するため、つまり、ブロックが送信されると、コンセンサスエンジンは情報を破棄するため、どのバリデーターが実際に間違っているかを理解することは困難です。
+
+私が以前に書いたことを思い出すと、記憶喪失の一部は、前のラウンドからn個の事前コミットを取得することに依存しています。次に、これらを悪意のある検証者自身の署名とバンドルします。これは、ライトクライアントもフルノードも、Tendermintコンセンサスの一部として正しく作成された署名と、後で偽造された署名を区別できないことを意味します。
+
+## 付録B:以前の健忘症の証拠に対する説明責任の実施
+
+これら2種類の攻撃(記憶喪失と過去の過去)の違いは、すべてのバリデーターで確認することによってのみ区別できるため(フルフォークかライトフォークかを確認)、簡単にするために、これらの攻撃は同じように扱われます。
+
+現在、証拠リアクターは、証拠を単にブロードキャストして保存するために使用されています。 これらの攻撃を検証する特定のタスクのために新しいリアクターを作成するというアイデアについて簡単に説明しましたが、現在の証拠リアクターを拡張することが決定されました。
+
+このプロセスは、ライトクライアントが競合するヘッダーを受信し(将来的には、高速同期または状態同期中にフルノードになる可能性もあります)、分析のためにフルノードに送信することから始まります。 [証拠処理](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-047-handling-evidence-from-light-client.md)の一部として、これは潜在的なものとして抽出されましたバリデーターが複数のラウンドで異なるブロックに投票したときの忘れの証拠。
 ```golang
 type PotentialAmnesiaEvidence struct {
 	VoteA *types.Vote
@@ -118,18 +116,18 @@ type PotentialAmnesiaEvidence struct {
 }
 ```
 
-*NOTE: There had been an earlier notion towards batching evidence against the entire set of validators all together but this has given way to individual processing predominantly to maintain consistency with the other forms of evidence. A more extensive breakdown can be found [here](https://github.com/tendermint/tendermint/issues/4729)*
+*注:以前のアイデアは、バリデーターセット全体の証拠をまとめてバッチ処理することでしたが、これは、主に他の形式の証拠との一貫性のために、個人的な処理に取って代わられました。より広範な内訳は[ここ](https://github.com/tendermint/tendermint/issues/4729)*にあります。
 
-The evidence will contain the precommit votes for a validator that voted for both rounds. If the validator voted in more than two rounds, then they will have multiple `PotentialAmnesiaEvidence` against them hence it is possible that there is multiple evidence for a validator in a single height but not for a single round. The votes should be all valid and the height and time that the infringement was made should be within:
+証拠には、2回の投票でのバリデーターの提出前の投票が含まれます。検証者が2ラウンド以上で投票した場合、複数の「PotentialAmnesiaEvidence」が設定されるため、1つのラウンドではなく、高さに複数の検証者の証拠がある可能性があります。すべての投票は有効であり、違反の高さと時間は次のとおりです。
 
-`MaxEvidenceAge - ProofTrialPeriod`
+`MaxEvidenceAge-ProofTrialPeriod`
 
-This trial period will be discussed later.
+この試用期間については、後で説明します。
 
-Returning to the event of an amnesia attack, if we were to examine the behavior of the honest nodes, C1 and C2, in the schematic, C2 will not PRECOMMIT an earlier round, but it is likely, if a node in C1 were to receive +2/3 PREVOTE's or PRECOMMIT's for a higher round, that it would remove the lock and PREVOTE and PRECOMMIT for the later round. Therefore, unfortunately it is not a case of simply punishing all nodes that have double voted in the `PotentialAmnesiaEvidence`.
+記憶喪失攻撃に戻って、回路図で正直なノードC1とC2の動作を確認したい場合、C2は前のラウンドを事前に送信しませんが、C1のノードが+ 2 /を受信したい場合は非常に可能性があります。 3 PREVOTEまたはPRECOMMITの使用より高いラウンドでは、ロックをキャンセルし、次のラウンドでPREVOTEとPRECOMMITを解放します。したがって、残念ながら、これは「PotentialAmnesiaEvidence」で二重投票を行うすべてのノードを単に罰する状況ではありません。
 
-Instead we use the Proof of Lock Change (PoLC) referred to in the [consensus spec](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md#terms). When an honest node votes again for a different block in a later round
-(which will only occur in very rare cases), it will generate the PoLC and store it in the evidence reactor for a time equal to the `MaxEvidenceAge`
+代わりに、[コンセンサス仕様](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md#terms)に記載されているロックされた変更の証明(PoLC)を使用します。正直なノードが後のラウンドで再び別のブロックに投票したとき
+(これはまれなケースでのみ発生します)、PoLCを生成し、「MaxEvidenceAge」に等しい時間エビデンスリアクターに保存します
 
 ```golang
 type ProofOfLockChange struct {
@@ -138,10 +136,9 @@ type ProofOfLockChange struct {
 }
 ```
 
-This can be either evidence of +2/3 PREVOTES or PRECOMMITS (either warrants the honest node the right to vote) and is valid, among other checks, so long as the PRECOMMIT vote of the node in V2 came after all the votes in the `ProofOfLockChange` i.e. it received +2/3 votes for a block and then voted for that block thereafter (F is unable to prove this).
+これは、+ 2/3 PREVOTESまたはPRECOMMITS(正直なノードが投票する権利を持っていることを確認するため)の証拠である可能性があり、V2のノードのPRECOMMIT投票が「ProofOfLockChange」である限り、他のチェックでも有効です。すべての投票の後に表示されます。つまり、ブロックの+2/3に投票され、その後ブロックに投票されます(Fはこれを証明できません)。
 
-In the event that an honest node receives `PotentialAmnesiaEvidence` it will first `ValidateBasic()` and `Verify()` it and then will check if it is among the suspected nodes in the evidence. If so, it will retrieve the `ProofOfLockChange` and combine it with `PotentialAmensiaEvidence` to form `AmensiaEvidence`. All honest nodes that are part of the indicted group will have a time, measured in blocks, equal to `ProofTrialPeriod`, the aforementioned evidence paramter, to gossip their `AmnesiaEvidence` with their `ProofOfLockChange`
-
+正直なノードが「PotentialAmnesiaEvidence」を受信した場合、最初に「ValidateBasic()」と「Verify()」を受け取り、次にそれが証拠内の疑わしいノードの中にあるかどうかを確認します。 その場合、「ProofOfLockChange」を取得し、「PotentialAmensiaEvidence」と組み合わせて「AmensiaEvidence」を形成します。 訴えられたグループに属するすべての正直なノードは、上記の証拠パラメータ「ProofTrialPeriod」に等しい時間(ブロック単位)を持ちます。「ProofOfLockChange」を使用して、「AmnesiaEvidence」をゴシップします。
 ```golang
 type AmnesiaEvidence struct {
 	*types.PotentialAmnesiaEvidence
@@ -149,22 +146,22 @@ type AmnesiaEvidence struct {
 }
 ```
 
-If the node is not required to submit any proof than it will simply broadcast the `PotentialAmnesiaEvidence`, stamp the height that it received the evidence and begin to wait out the trial period. It will ignore other `PotentialAmnesiaEvidence` gossiped at the same height and round.
+ノードが証拠を提出する必要がない場合、ノードは単に「PotentialAmnesiaEvidence」をブロードキャストし、証拠を受け取った高さをマークして、試用期間の待機を開始します。同じ高さとラウンドでチャットしている他の「PotentialAmnesiaEvidence」は無視されます。
 
-If a node receives `AmnesiaEvidence` that contains a valid `ProofOfClockChange` it will add it to the evidence store and replace any PotentialAmnesiaEvidence of the same height and round. At this stage, an amnesia evidence with polc, it is ready to be submitted to the chin. If a node receives `AmnesiaEvidence` with an empty polc it will ignore it as each honest node will conduct their own trial period to be sure that time was given for any other honest nodes to respond.
+ノードが有効な「ProofOfClockChange」を含む「AmnesiaEvidence」を受信すると、ノードはそれをエビデンスストアに追加し、PotentialAmnesiaEvidenceを同じ高さと円に置き換えます。この段階で、ポーク健忘症の証拠があり、あごに提出する準備ができています。ノードが空のPLCで「AmnesiaEvidence」を受信した場合、他の正直なノードが応答する時間を確保するために、各正直なノードには独自の試用期間があるため、ノードはそれを無視します。
 
-There can only be one `AmnesiaEvidence` and one `PotentialAmneisaEvidence` stored for each attack (i.e. for each height).
+攻撃ごとに(つまり、高さごとに)1つの「AmnesiaEvidence」と1つの「PotentialAmneisaEvidence」のみを保存できます。
 
-When, `state.LastBlockHeight > PotentialAmnesiaEvidence.timestamp + ProofTrialPeriod`, nodes will upgrade the corresponding `PotentialAmnesiaEvidence` and attach an empty `ProofOfLockChange`. Then honest validators of the current validator set can begin proposing the block that contains the `AmnesiaEvidence`.
+`state.LastBlockHeight> PotentialAmnesiaEvidence.timestamp + ProofTrialPeriod`の場合、ノードは対応する` PotentialAmnesiaEvidence`をアップグレードし、空の `ProofOfLockChange`をアタッチします。次に、現在のベリファイアセットの正直なベリファイアは、「AmnesiaEvidence」を含むブロックの提案を開始できます。
 
-*NOTE: Even before the evidence is proposed and committed, the off-chain process of gossiping valid evidence could be
- enough for honest nodes to recognize the fork and halt.*
+*注:証拠が提示され提出される前であっても、ゴシップの効果的な証拠のためのオフチェーンプロセスは
+ 正直なノードがフォークとストップを認識するのに十分です。 *
 
-Other validators will vote `nil` if:
+次の条件が発生した場合、他のバリデーターは「nil」として投票します。
 
-- The Amnesia Evidence is not valid
-- The Amensia Evidence is not within their own trial period i.e. too soon.
-- They don't have the Amnesia Evidence and it is has an empty polc (each validator needs to run their own trial period of the evidence)
-- Is of an AmnesiaEvidence that has already been committed to the chain.
+-健忘症の無効な証拠
+-アルメニアの証拠は、彼ら自身の裁判期間ではなく、それは時期尚早です。
+-健忘症の証拠はなく、空のPLCがあります(各検証者は独自の証拠の試用期間を実行する必要があります)
+-それはチェーンに提出された記憶喪失の証拠に属しています。
 
-Finally it is important to stress that the protocol of having a trial period addresses attacks where a validator voted again for a different block at a later round and time. In the event, however, that the validator voted for an earlier round after voting for a later round i.e. `VoteA.Timestamp < VoteB.Timestamp && VoteA.Round > VoteB.Round` then this action is inexcusable and can be punished immediately without the need of a trial period. In this case, PotentialAmnesiaEvidence will be instantly upgraded to AmnesiaEvidence.
+最後に、試用期間のあるプロトコルは、検証者が後のラウンドと時間で別のブロックに再度投票する攻撃を解決することを強調する必要があります。ただし、バリデーターが次のラウンドに投票した後に前のラウンドに投票した場合、つまり「VoteA.Timestamp <VoteB.Timestamp && VoteA.Round> VoteB.Round」の場合、この動作は許されないため、保護観察なしで使用できます。 。この場合、PotentialAmnesiaEvidenceはすぐにAmnesiaEvidenceにアップグレードされます。

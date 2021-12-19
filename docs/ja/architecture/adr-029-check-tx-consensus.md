@@ -1,25 +1,25 @@
-# ADR 029: Check block txs before prevote
+# ADR 029:投票する前にブロックトランザクションを確認してください
 
-## Changelog
+## 変更ログ
 
-04-10-2018: Update with link to issue
-[#2384](https://github.com/tendermint/tendermint/issues/2384) and reason for rejection
-19-09-2018: Initial Draft
+2018年4月10日:更新して質問へのリンクを提供
+[#2384](https://github.com/tendermint/tendermint/issues/2384)と拒否の理由
+2018年9月19日:最初のドラフト
 
-## Context
+## 環境
 
-We currently check a tx's validity through 2 ways.
+現在、txの有効性を2つの方法でチェックしています。
 
-1. Through checkTx in mempool connection.
-2. Through deliverTx in consensus connection.
+1.mempool接続のcheckTxを介して。
+2.deliverTxコンセンサスを介して接続します。
 
-The 1st is called when external tx comes in, so the node should be a proposer this time. The 2nd is called when external block comes in and reach the commit phase, the node doesn't need to be the proposer of the block, however it should check the txs in that block.
+最初のものは外部txが入ってくるときに呼び出されるので、今回はノードがプロポーザーである必要があります。 2つ目は、外部ブロックがコミットフェーズに入り、コミットフェーズに到達したときに呼び出されます。ノードはブロックの提案者である必要はありませんが、ブロック内のtxをチェックする必要があります。
 
-In the 2nd situation, if there are many invalid txs in the block, it would be too late for all nodes to discover that most txs in the block are invalid, and we'd better not record invalid txs in the blockchain too.
+2番目のケースでは、ブロック内に無効なトランザクションが多数ある場合、すべてのノードがブロック内のほとんどのトランザクションが無効であると判断するには遅すぎます。無効なトランザクションをブロックチェーンに記録しないことをお勧めします。
 
-## Proposed solution
+## 推奨される解決策
 
-Therefore, we should find a way to check the txs' validity before send out a prevote. Currently we have cs.isProposalComplete() to judge whether a block is complete. We can have
+したがって、事前投票を発行する前に、txsの有効性を確認する方法を見つける必要があります。 現在、ブロックが完了したかどうかを判断するためのcs.isProposalComplete()があります。 我々は持つことができる
 
 ```
 func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
@@ -35,9 +35,9 @@ func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
 }
 ```
 
-such a method in BlockExecutor to check all txs' validity in that block.
+BlockExecutorのこのメソッドは、ブロック内のすべてのトランザクションの有効性をチェックします。
 
-However, this method should not be implemented like that, because checkTx will share the same state used in mempool in the app.  So we should define a new interface method checkBlock in Application to indicate it to use the same state as deliverTx.
+ただし、checkTxはアプリケーションのメモリプールで使用されるのと同じ状態を共有するため、このメソッドはこの方法で実装しないでください。 したがって、アプリケーションで新しいインターフェイスメソッドcheckBlockを定義して、deliverTxと同じ状態を使用するように指示する必要があります。
 
 ```
 type Application interface {
@@ -58,7 +58,7 @@ type Application interface {
 }
 ```
 
-All app should implement that method. For example, counter:
+すべてのアプリケーションはこのメソッドを実装する必要があります。 たとえば、カウンター:
 
 ```
 func (app *CounterApplication) CheckBlock(block types.Request_CheckBlock) types.ResponseCheckBlock {
@@ -85,7 +85,7 @@ func (app *CounterApplication) CheckBlock(block types.Request_CheckBlock) types.
 }
 ```
 
-In BeginBlock, the app should restore the state to the orignal state before checking the block:
+Begin Blockでは、アプリケーションはブロックをチェックする前に状態を元の状態に復元する必要があります。
 
 ```
 func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
@@ -97,31 +97,31 @@ func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 }
 ```
 
-The txCount is like the nonce in ethermint, it should be restored when entering the deliverTx phase. While some operation like checking the tx signature needs not to be done again. So the deliverTx can focus on how a tx can be applied, ignoring the checking of the tx, because all the checking has already been done in the checkBlock phase before.
+txCountは、ethermintのナンスに似ており、deliverTxフェーズに入るときに復元する必要があります。 tx署名のチェックなどの一部の操作は、再度実行する必要はありません。したがって、deliverTxは、txの適用方法に焦点を合わせ、txチェックを無視できます。これは、以前のすべてのチェックがcheckBlockステージで完了しているためです。
 
-An optional optimization is alter the deliverTx to deliverBlock. For the block has already been checked by checkBlock, so all the txs in it are valid. So the app can cache the block, and in the deliverBlock phase, it just needs to apply the block in the cache. This optimization can save network current in deliverTx.
+オプションの最適化は、deliveryTxをdeliveryBlockに変更することです。ブロックはcheckBlockによってチェックされているため、その中のすべてのトランザクションが有効です。そのため、アプリはブロックをキャッシュできます。deliverBlockステージでは、キャッシュにブロックを適用するだけで済みます。この最適化により、deliverTxのネットワーク電流を節約できます。
 
 
 
-## Status
+## ステータス
 
-Rejected
+ごみ
 
-## Decision
+## 決定
 
-Performance impact is considered too great. See [#2384](https://github.com/tendermint/tendermint/issues/2384)
+パフォーマンスへの影響は大きすぎると見なされます。 [#2384](https://github.com/tendermint/tendermint/issues/2384)を参照してください
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- more robust to defend the adversary to propose a block full of invalid txs.
+-無効なトランザクションでいっぱいのブロックを提案することから、より強力に対戦相手を保護します。
 
-### Negative
+### ネガティブ
 
-- add a new interface method. app logic needs to adjust to appeal to it.
-- sending all the tx data over the ABCI twice
-- potentially redundant validations (eg. signature checks in both CheckBlock and
+-新しいインターフェイスメソッドを追加します。アプリケーションロジックは、それを引き付けるために調整する必要があります。
+-ABCIを介してすべてのtxデータを2回送信します
+-潜在的な冗長検証(例:CheckBlockおよび
   DeliverTx)
 
-### Neutral
+### ニュートラル

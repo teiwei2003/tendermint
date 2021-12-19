@@ -1,51 +1,51 @@
-# Remote signer
+# リモート署名者
 
-Tendermint provides a remote signer option for validators. A remote signer enables the operator to store the validator key on a different machine minimizing the attack surface if a server were to be compromised.
+Tendermintは、検証者にリモート署名者オプションを提供します。リモート署名者を使用すると、オペレーターはバリデーターキーを別のマシンに保存できるため、サーバーが侵害された場合の攻撃対象領域を最小限に抑えることができます。
 
-The remote signer protocol implements a [client and server architecture](https://en.wikipedia.org/wiki/Client%E2%80%93server_model). When Tendermint requires the public key or signature for a proposal or vote it requests it from the remote signer.
+リモート署名者プロトコルは、[クライアントおよびサーバーアーキテクチャ](https://en.wikipedia.org/wiki/Client%E2%80%93server_model)を実装します。 Tendermintは、提案または投票のために公開鍵または署名を必要とする場合、リモート署名者にそれを要求します。
 
-To run a secure validator and remote signer system it is recommended to use a VPC (virtual private cloud) or a private connection.
+安全なバリデーターとリモート署名者システムを実行するには、VPC(仮想プライベートクラウド)またはプライベート接続を使用することをお勧めします。
 
-There are two different configurations that can be used: Raw or gRPC.
+RawまたはgRPCの2つの異なる構成を使用できます。
 
-## Raw
+## 生
 
-While both options use tcp or unix sockets the raw option uses tcp or unix sockets without http. The raw protocol sets up Tendermint as the server and the remote signer as the client. This aids in not exposing the remote signer to public network.
+どちらのオプションもtcpまたはunixソケットを使用しますが、元のオプションはhttpなしのtcpまたはunixソケットを使用します。元のプロトコルでは、Tendermintをサーバーとして設定し、リモート署名者をクライアントとして設定していました。これは、リモート署名者をパブリックネットワークに公開しないようにするのに役立ちます。
 
-> Warning: Raw will be deprecated in a future major release, we recommend implementing your key management server against the gRPC configuration.
+>警告:Rawは将来のメジャーリリースで非推奨になります。gRPC構成用にキー管理サーバーを実装することをお勧めします。
 
 ## gRPC
 
-[gRPC](https://grpc.io/) is an RPC framework built with [HTTP/2](https://en.wikipedia.org/wiki/HTTP/2), uses [Protocol Buffers](https://developers.google.com/protocol-buffers) to define services and has been standardized within the cloud infrastructure community. gRPC provides a language agnostic way to implement services. This aids developers in the writing key management servers in various different languages.
+[gRPC](https://grpc.io/)は、[HTTP/2](https://en.wikipedia.org/wiki/HTTP/2)と[Protocol Buffers](https: //developers.google.com/protocol-buffers)サービスを定義し、クラウドインフラストラクチャコミュニティで標準化されています。 gRPCは、サービスを実装するための言語に依存しない方法を提供します。これは、開発者がさまざまな異なる言語でキー管理サーバーを作成するのに役立ちます。
 
-GRPC utilizes [TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security), another widely standardized protocol, to secure connections. There are two forms of TLS to secure a connection, one-way and two-way. One way is when the client identifies the server but the server allows anyone to connect to it. Two-way is when the client identifies the server and the server identifies the client, prohibiting connections from unknown parties.
+GRPCは、別の広く標準化されたプロトコル[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security)を使用して接続を保護します。接続を保護するためのTLSには、一方向と双方向の2つの形式があります。 1つの方法は、クライアントがサーバーを認識しているが、サーバーが誰でもサーバーに接続できるようにする場合です。 2つの方法は、クライアントがサーバーを認識し、サーバーがクライアントを認識して、不明な関係者からの接続を禁止する場合です。
 
-When using gRPC Tendermint is setup as the client. Tendermint will make calls to the remote signer. We recommend not exposing the remote signer to the public network with the use of virtual private cloud.
+gRPCを使用する場合、Tendermintがクライアントとして設定されます。 Tendermintはリモート署名者を呼び出します。リモート署名者をパブリックネットワークに公開するために仮想プライベートクラウドを使用しないことをお勧めします。
 
-Securing your remote signers connection is highly recommended, but we provide the option to run it with a insecure connection.
+リモート署名者接続を保護することを強くお勧めしますが、安全でない接続を使用して実行するオプションを提供しています。
 
-### Generating Certificates
+### 証明書を生成する
 
-To run a secure connection with gRPC we need to generate certificates and keys. We will walkthrough how to self sign certificates for two-way TLS.
+gRPCとの安全な接続を実行するには、証明書とキーを生成する必要があります。相互TLSの証明書に自己署名する方法について説明します。
 
-There are two ways to generate certificates, [openssl](https://www.openssl.org/) and [certstarp](https://github.com/square/certstrap). Both of these options can be used but we will be covering `certstrap` because it provides a simpler process then openssl.
+証明書を生成するには、[openssl](https://www.openssl.org/)と[certstarp](https://github.com/square/certstrap)の2つの方法があります。どちらのオプションも使用できますが、opensslよりも単純なプロセスを提供するため、 `certstrap`を紹介します。
 
-- Install `Certstrap`:
+-`Certstrap`をインストールします。
 
 ```sh
   go get github.com/square/certstrap@v1.2.0
 ```
 
-- Create certificate authority for self signing.
+-自己署名用の認証局を作成します。
 
 ```sh
  # generate self signing ceritificate authority
  certstrap init --common-name "<name_CA>" --expires "20 years"
 ```
 
-- Request a certificate for the server.
-  - For generalization purposes we set the ip to `127.0.0.1`, but for your node please use the servers IP.
-- Sign the servers certificate with your certificate authority
+-サーバーの証明書を要求します。
+    -汎用的にはIPを「127.0.0.1」に設定していますが、ノードにはサーバーIPを使用してください。
+-認証局を使用してサーバー証明書に署名します
 
 ```sh
  # generate server cerificate
@@ -54,9 +54,9 @@ There are two ways to generate certificates, [openssl](https://www.openssl.org/)
  certstrap sign server --CA "<name_CA>" 127.0.0.1
   ```
 
-- Request a certificate for the client.
-  - For generalization purposes we set the ip to `127.0.0.1`, but for your node please use the clients IP.
-- Sign the clients certificate with your certificate authority
+-サーバーの証明書を要求します。
+    -汎用的にはIPを「127.0.0.1」に設定していますが、ノードにはサーバーIPを使用してください。
+-認証局を使用してサーバー証明書に署名します
 
 ```sh
 # generate client cerificate

@@ -1,99 +1,99 @@
-# ADR 017: Chain Versions
+# ADR 017:チェーンバージョン
 
-## TODO
+## やること
 
-- clarify how to handle slashing when ChainID changes
+-ChainIDが変更されたときにスラッシュを処理する方法を明確にしました
 
-## Changelog
+## 変更ログ
 
-- 28-07-2018: Updates from review
-  - split into two ADRs - one for protocol, one for chains
-- 16-07-2018: Initial draft - was originally joint ADR for protocol and chain
-  versions
+-28-07-2018:レビューの更新
+  -2つのADRに分割-1つはプロトコル用、もう1つはチェーン用
+-16-07-2018:初期ドラフト-最初はプロトコルとチェーンの共同ADR
+  バージョン
 
-## Context
+## 環境
 
-Software and Protocol versions are covered in a separate ADR.
+ソフトウェアとプロトコルのバージョンは、別のADRに含まれています。
 
-Here we focus on chain versions.
+ここでは、チェーンバージョンに焦点を当てます。
 
-## Requirements
+## 必須
 
-We need to version blockchains across protocols, networks, forks, etc.
-We need chain identifiers and descriptions so we can talk about a multitude of chains,
-and especially the differences between them, in a meaningful way.
+プロトコル、ネットワーク、フォークなどのブロックチェーンをバージョン管理する必要があります。
+多くのチェーンについて話し合うことができるように、チェーンの識別子と説明が必要です。
+特にそれらの間の違いは、意味のある方法で。
 
-### Networks
+### インターネット
 
-We need to support many independent networks running the same version of the software,
-even possibly starting from the same initial state.
-They must have distinct identifiers so that peers know which one they are joining and so
-validators and users can prevent replay attacks.
+同じバージョンのソフトウェアを実行している多くの独立したネットワークをサポートする必要があります。
+同じ初期状態から開始することもできます。
+ピアが参加している識別子を認識できるように、それらは異なる識別子を持っている必要があります
+検証者とユーザーは、リプレイ攻撃を防ぐことができます。
 
-Call this the `NetworkName` (note we currently call this `ChainID` in the software. In this
-ADR, ChainID has a different meaning).
-It represents both the application being run and the community or intention
-of running it.
+これを「NetworkName」と呼びます(現在、ソフトウェアでは「ChainID」と呼んでいます。これでは
+ADRとChainIDの意味は異なります)。
+実行中のアプリケーションとコミュニティまたはインテントを表します
+それを実行します。
 
-Peers only connect to other peers with the same NetworkName.
+ピアは、同じNetworkNameを持つ他のピアにのみ接続されます。
 
-### Forks
+### フォーク
 
-We need to support existing networks upgrading and forking, wherein they may do any of:
+既存のネットワークのアップグレードとフォークをサポートする必要があります。これらのネットワークでは、次のいずれかを実行できます。
 
-    - revert back to some height, continue with the same versions but new blocks
-    - arbitrarily mutate state at some height, continue with the same versions (eg. Dao Fork)
-    - change the AppVersion at some height
+    -特定の高さに戻し、同じバージョンで新しいブロックを引き続き使用します
+    -特定の高さで任意に状態を変更し、同じバージョンを引き続き使用します(例:Dao Fork)
+    -特定の高さでAppVersionを変更します
 
-Note because of Tendermint's voting power threshold rules, a chain can only be extended under the "original" rules and under the new rules
-if 1/3 or more is double signing, which is expressly prohibited, and is supposed to result in their punishment on both chains. Since they can censor
-the punishment, the chain is expected to be hardforked to remove the validators. Thus, if both branches are to continue after a fork,
-they will each require a new identifier, and the old chain identifier will be retired (ie. only useful for syncing history, not for new blocks)..
+テンダーミントの議決権のしきい値ルールにより、チェーンは「元の」ルールと新しいルールの下でのみ拡張できることに注意してください
+1/3以上が二重署名である場合、これは明示的に禁止されており、両方のチェーンで罰せられることになります。彼らはレビューできるので
+ペナルティとして、チェーンはバリデーターを削除するためにハードフォークされることが予想されます。したがって、両方のブランチがフォークの後に続く場合、
+それぞれに新しい識別子が必要であり、古いチェーン識別子は削除されます(つまり、履歴の同期にのみ役立ち、新しいブロックには役立ちません)。
 
-TODO: explain how to handle slashing when chain id changed!
+TODO:チェーンIDが変更されたときにスラッシュを処理する方法を説明してください！
 
-We need a consistent way to describe forks.
+フォークを説明するための一貫した方法が必要です。
 
-## Proposal
+## 提案
 
-### ChainDescription
+###チェーンの説明
 
-ChainDescription is a complete immutable description of a blockchain. It takes the following form:
+ChainDescriptionは、ブロックチェーンの完全な不変の説明です。次の形式を取ります。
 
 ```
 ChainDescription = <NetworkName>/<BlockVersion>/<AppVersion>/<StateHash>/<ValHash>/<ConsensusParamsHash>
 ```
 
-Here, StateHash is the merkle root of the initial state, ValHash is the merkle root of the initial Tendermint validator set,
-and ConsensusParamsHash is the merkle root of the initial Tendermint consensus parameters.
+ここで、StateHashは初期状態のメルケルルートであり、ValHashは初期テンダーミントバリデーターセットのメルケルルートです。
+ConsensusParamsHashは、初期のTendermintコンセンサスパラメーターのメルケルルートです。
 
-The `genesis.json` file must contain enough information to compute this value. It need not contain the StateHash or ValHash itself,
-but contain the state from which they can be computed with the given protocol versions.
+`genesis.json`ファイルには、この値を計算するのに十分な情報が含まれている必要があります。 StateHashまたはValHash自体を含める必要はありません。
+ただし、インクルードは、特定のプロトコルバージョンを使用してステータスを計算できます。
 
-NOTE: consider splitting NetworkName into NetworkName and AppName - this allows
-folks to independently use the same application for different networks (ie we
-could imagine multiple communities of validators wanting to put up a Hub using
-the same app but having a distinct network name. Arguably not needed if
-differences will come via different initial state / validators).
+注:NetworkNameをNetworkNameとAppNameに分割することを検討してください-これにより、
+人々は独立して、異なるネットワークに同じアプリケーションを使用します(つまり、
+複数のバリデーターコミュニティが使用するハブを構築したいとします
+同じアプリケーションですが、ネットワーク名が異なります。必要がなければないと言えます
+違いは、異なる初期状態/バリデーターから生じます)。
 
-#### ChainID
+#### チェーンID
 
-Define `ChainID = TMHASH(ChainDescriptor)`. It's the unique ID of a blockchain.
+`ChainID = TMHASH(ChainDescriptor)`を定義します。ブロックチェーンの一意のIDです。
 
-It should be Bech32 encoded when handled by users, eg. with `cosmoschain` prefix.
+ユーザーが処理する場合は、たとえばBech32でエンコードする必要があります。接頭辞 `cosmoschain`が付いています。
 
-#### Forks and Uprades
+#### フォークとアップグレード
 
-When a chain forks or upgrades but continues the same history, it takes a new ChainDescription as follows:
+チェーンがフォークまたはアップグレードしても同じ履歴が続く場合は、次のように新しいChainDescriptionが必要です。
 
 ```
 ChainDescription = <ChainID>/x/<Height>/<ForkDescription>
 ```
 
-Where
+どこ
 
-- ChainID is the ChainID from the previous ChainDescription (ie. its hash)
-- `x` denotes that a change occured
-- `Height` is the height the change occured
-- ForkDescription has the same form as ChainDescription but for the fork
-- this allows forks to specify new versions for tendermint or the app, as well as arbitrary changes to the state or validator set
+-ChainIDは、前のChainDescriptionからのChainIDです(つまり、そのハッシュ)
+-`x`は変更を意味します
+-`Height`は変更された高さです
+-ForkDescriptionの形式はChainDescriptionと同じですが、フォークに使用されます
+-これにより、フォークでテンダーミントまたはアプリケーションの新しいバージョンを指定したり、状態またはバリデーターセットを変更したりできます。

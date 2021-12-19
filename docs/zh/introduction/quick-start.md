@@ -32,7 +32,7 @@ config.toml  genesis.json  node_key.json  priv_validator.json
 
 ## 本地节点
 
-使用一个简单的进程内应用程序启动 Tendermint：
+使用一个简单的进程内应用程序启动 Tendermint:
 
 ```sh
 tendermint start --proxy-app=kvstore
@@ -40,14 +40,14 @@ tendermint start --proxy-app=kvstore
 
 > Note: `kvstore` is a non persistent app, if you would like to run an application with persistence run `--proxy-app=persistent_kvstore`
 
-并且块将开始流入：
+并且块将开始流入:
 
 ```sh
 I[01-06|01:45:15.592] Executed block                               module=state height=1 validTxs=0 invalidTxs=0
 I[01-06|01:45:15.624] Committed state                              module=state height=1 txs=0 appHash=
 ```
 
-检查状态：
+检查状态:
 
 ```sh
 curl -s localhost:26657/status
@@ -55,25 +55,25 @@ curl -s localhost:26657/status
 
 ### 发送交易
 
-运行 KVstore 应用程序后，我们可以发送交易：
+运行 KVstore 应用程序后，我们可以发送交易:
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
 ```
 
-并检查它是否适用于：
+并检查它是否适用于:
 
 ```sh
 curl -s 'localhost:26657/abci_query?data="abcd"'
 ```
 
-我们也可以发送带有键和值的交易：
+我们也可以发送带有键和值的交易:
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
 ```
 
-并查询密钥：
+并查询密钥:
 
 ```sh
 curl -s 'localhost:26657/abci_query?data="name"'
@@ -107,7 +107,7 @@ tendermint show_node_id --home ./mytestnet/node2
 tendermint show_node_id --home ./mytestnet/node3
 ```
 
-最后，在每台机器上运行：
+最后，在每台机器上运行:
 
 ```sh
 tendermint start --home ./mytestnet/node0 --proxy-app=kvstore --p2p.persistent-peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"

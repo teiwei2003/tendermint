@@ -1,33 +1,33 @@
-# ADR 039: Peer Behaviour Interface
+# ADR 039:ピアツーピア動作インターフェース
 
-## Changelog
-* 07-03-2019: Initial draft
-* 14-03-2019: Updates from feedback
+## 変更ログ
+* 07-03-2019:最初のドラフト
+* 14-03-2019:フィードバックの更新
 
-## Context
+## 環境
 
-The responsibility for signaling and acting upon peer behaviour lacks a single 
-owning component and is heavily coupled with the network stack[<sup>1</sup>](#references). Reactors
-maintain a reference to the `p2p.Switch` which they use to call 
-`switch.StopPeerForError(...)` when a peer misbehaves and 
-`switch.MarkAsGood(...)` when a peer contributes in some meaningful way. 
-While the switch handles `StopPeerForError` internally, the `MarkAsGood` 
-method delegates to another component, `p2p.AddrBook`. This scheme of delegation 
-across Switch obscures the responsibility for handling peer behaviour
-and ties up the reactors in a larger dependency graph when testing.
+ピアの行動に信号を送り、行動するための単一責任の欠如
+独自のコンポーネントであり、ネットワークスタック[<sup> 1 </ sup>](#references)と緊密に結合されています。原子炉
+彼らが呼び出していた「p2p.Switch」への参照を維持する
+ピアが誤動作しているときの `switch.StopPeerForError(...)`
+`switch.MarkAsGood(...)`ピアが意味のある方法で貢献したとき。
+スイッチは内部で `StopPeerForError`を処理しますが、` MarkAsGood`
+メソッドは別のコンポーネント `p2p.AddrBook`に委任されます。この委員会
+クロススイッチは、ピアツーピアの動作を処理する責任を覆い隠します
+また、テスト中にリアクターをより大きな依存関係グラフにバンドルします。
 
-## Decision
+## 決定
 
-Introduce a `PeerBehaviour` interface and concrete implementations which
-provide methods for reactors to signal peer behaviour without direct
-coupling `p2p.Switch`.  Introduce a ErrorBehaviourPeer to provide
-concrete reasons for stopping peers. Introduce GoodBehaviourPeer to provide
-concrete ways in which a peer contributes.
+「PeerBehaviour」インターフェースと特定の実装を紹介します
+原子炉が直接なしでピアツーピアの振る舞いを通知する方法を提供する
+`p2p.Switch`をカップルします。提供するErrorBehaviourPeerを導入します
+ピアをブロックする具体的な理由。 GoodBehaviourPeerを導入して提供する
+ピアが貢献する特定の方法。
 
-### Implementation Changes
+### 変更を実装する
 
-PeerBehaviour then becomes an interface for signaling peer errors as well
-as for marking peers as `good`.
+PeerBehaviourは、ピアエラー信号を送信するためのインターフェイスにもなります。
+ピアを「良い」とマークすることに関して。
 
 ```go
 type PeerBehaviour interface {
@@ -36,10 +36,10 @@ type PeerBehaviour interface {
 }
 ```
 
-Instead of signaling peers to stop with arbitrary reasons:
-`reason interface{}` 
+何らかの理由で停止するようにピアに通知する代わりに:
+`理由インターフェース{}`
 
-We introduce a concrete error type ErrorBehaviourPeer:
+特定のエラータイプErrorBehaviourPeerを紹介します。
 ```go
 type ErrorBehaviourPeer int
 
@@ -51,8 +51,8 @@ const (
 )
 ```
 
-To provide additional information on the ways a peer contributed, we introduce
-the GoodBehaviourPeer type.
+ピアがどのように貢献するかについての詳細を提供するために、
+GoodBehaviourPeerタイプ。
 
 ```go
 type GoodBehaviourPeer int
@@ -64,8 +64,8 @@ const (
 )
 ```
 
-As a first iteration we provide a concrete implementation which wraps
-the switch:
+最初の反復として、ラップする具体的な実装を提供します
+スイッチ:
 ```go
 type SwitchedPeerBehaviour struct {
     sw *Switch
@@ -86,8 +86,8 @@ func NewSwitchedPeerBehaviour(sw *Switch) *SwitchedPeerBehaviour {
 }
 ```
 
-Reactors, which are often difficult to unit test[<sup>2</sup>](#references) could use an implementation which exposes the signals produced by the reactor in
-manufactured scenarios:
+通常、リアクターの単体テストは困難です[<sup> 2 </ sup>](#references)リアクターによって生成された信号を
+製造シーン:
 
 ```go
 type ErrorBehaviours map[Peer][]ErrorBehaviourPeer
@@ -131,29 +131,29 @@ func (spb *StorePeerBehaviour) GetBehaved() GoodBehaviours {
 }
 ```
 
-## Status
+## ステータス
 
-Accepted
+受け入れられました
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-    * De-couple signaling from acting upon peer behaviour.
-    * Reduce the coupling of reactors and the Switch and the network
-      stack
-    * The responsibility of managing peer behaviour can be migrated to
-      a single component instead of split between the switch and the
-      address book.
+      *信号を同等の動作の動作から分離します。
+      *リアクトルとスイッチおよびネットワーク間の結合を減らす
+        ヒープ
+      *ピアの動作を管理する責任はに移すことができます
+        スイッチとスイッチを分割するのではなく、個々のコンポーネント
+        住所録。
 
-### Negative
+### ネガティブ
 
-    * The first iteration will simply wrap the Switch and introduce a
-      level of indirection.
+      *最初の反復では、スイッチをラップして、
+        間接レベル。
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する
 
-1. Issue [#2067](https://github.com/tendermint/tendermint/issues/2067): P2P Refactor
-2. PR: [#3506](https://github.com/tendermint/tendermint/pull/3506): ADR 036: Blockchain Reactor Refactor
+1.問題[#2067](https://github.com/tendermint/tendermint/issues/2067):P2Pリファクタリング
+2. PR:[#3506](https://github.com/tendermint/tendermint/pull/3506):ADR 036:ブロックチェーンリアクターの再構築

@@ -1,20 +1,20 @@
-# Subscribing to events via Websocket
+# Websocketを介してイベントをサブスクライブする
 
-Tendermint emits different events, which you can subscribe to via
-[Websocket](https://en.wikipedia.org/wiki/WebSocket). This can be useful
-for third-party applications (for analysis) or for inspecting state.
+Tendermintはさまざまなイベントを発行します。次の方法でサブスクライブできます
+[Websocket](https://en.wikipedia.org/wiki/WebSocket)。 これは便利です
+サードパーティのアプリケーション(分析用)またはステータスの確認に使用されます。
 
-[List of events](https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants)
+[イベントリスト](https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants)
 
-To connect to a node via websocket from the CLI, you can use a tool such as
-[wscat](https://github.com/websockets/wscat) and run:
+CLIからWebSocketを介してノードに接続するには、次のようなものを使用できます。
+[wscat](https://github.com/websockets/wscat)そして実行:
 
 ```sh
 wscat ws://127.0.0.1:26657/websocket
 ```
 
-You can subscribe to any of the events above by calling the `subscribe` RPC
-method via Websocket along with a valid query.
+`subscribe` RPCを呼び出すことで、上記のイベントのいずれかをサブスクライブできます。
+Websocketと効果的なクエリによるメソッド。
 
 ```json
 {
@@ -27,22 +27,22 @@ method via Websocket along with a valid query.
 }
 ```
 
-Check out [API docs](https://docs.tendermint.com/master/rpc/) for
-more information on query syntax and other options.
+[APIドキュメント](https://docs.tendermint.com/master/rpc/)を表示する
+クエリ構文およびその他のオプションに関する詳細情報。
 
-You can also use tags, given you had included them into DeliverTx
-response, to query transaction results. See [Indexing
-transactions](../app-dev/indexing-transactions.md) for details.
+DeliverTxにタグを含めていれば、タグを使用することもできます。
+応答、トランザクション結果を照会します。 [インデックス]を参照してください
+詳細については、トランザクション](../app-dev/indexing-transactions.md)を参照してください。
 
-## ValidatorSetUpdates
+## バリデーターセットの更新
 
-When validator set changes, ValidatorSetUpdates event is published. The
-event carries a list of pubkey/power pairs. The list is the same
-Tendermint receives from ABCI application (see [EndBlock
-section](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#endblock) in
-the ABCI spec).
+バリデーターセットが変更されると、ValidatorSetUpdatesイベントが通知されます。 この
+このイベントには、公開鍵と電源のペアのリストが含まれています。 リストは同じです
+テンダーミントはABCIアプリケーションから受信されます([EndBlockを参照]
+パート)(https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#endblock)
+ABCI仕様)。
 
-Response:
+返事:
 
 ```json
 {

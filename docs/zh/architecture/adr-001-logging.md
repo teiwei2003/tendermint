@@ -39,7 +39,7 @@ type Logger interface {
 
 - `Debug` - 开发人员的扩展输出
 - `Info` - 所有对用户有用的信息
-- `错误` - 错误
+- `Error` - 错误
 
 `Notice` 应该变成 `Info`、`Warn` 或者 `Error` 或 `Debug`，具体取决于消息，`Crit` -> `Error`。
 

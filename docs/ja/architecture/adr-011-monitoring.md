@@ -1,74 +1,74 @@
-# ADR 011: Monitoring
+# ADR 011:モニタリング
 
-## Changelog
+## 変更ログ
 
-08-06-2018: Initial draft
-11-06-2018: Reorg after @xla comments
-13-06-2018: Clarification about usage of labels
+2018年8月6日:最初のドラフト
+2018年11月6日:@xlaコメント後の再編成
+2018年6月13日:ラベルの使用を明確にする
 
-## Context
+## 環境
 
-In order to bring more visibility into Tendermint, we would like it to report
-metrics and, maybe later, traces of transactions and RPC queries. See
-https://github.com/tendermint/tendermint/issues/986.
+Tendermintの可視性を高めるために、レポートを作成する必要があります
+インジケーター。将来、トランザクションとRPCクエリの痕跡が残る可能性があります。見て
+https://github.com/tendermint/tendermint/issues/986。
 
-A few solutions were considered:
+いくつかの解決策が検討されました。
 
-1. [Prometheus](https://prometheus.io)
-   a) Prometheus API
-   b) [go-kit metrics package](https://github.com/go-kit/kit/tree/master/metrics) as an interface plus Prometheus
-   c) [telegraf](https://github.com/influxdata/telegraf)
-   d) new service, which will listen to events emitted by pubsub and report metrics
+1. [プロメテウス](https://prometheus.io)
+   a)Prometheus API
+   b)[go-kitメトリクスパッケージ](https://github.com/go-kit/kit/tree/master/metrics)インターフェースとしてPrometheusを追加
+   c)[Telegraf](https://github.com/influxdata/telegraf)
+   d)新しいサービス。pubsubによって送信されたイベントをリッスンし、メトリックをレポートします
 2. [OpenCensus](https://opencensus.io/introduction/)
 
-### 1. Prometheus
+### 1。プロメテウス
 
-Prometheus seems to be the most popular product out there for monitoring. It has
-a Go client library, powerful queries, alerts.
+Prometheusは最も人気のある監視製品のようです。それは持っています
+Goクライアントライブラリ、強力なクエリ、アラート。
 
-**a) Prometheus API**
+** a)Prometheus API **
 
-We can commit to using Prometheus in Tendermint, but I think Tendermint users
-should be free to choose whatever monitoring tool they feel will better suit
-their needs (if they don't have existing one already). So we should try to
-abstract interface enough so people can switch between Prometheus and other
-similar tools.
+TendermintでPrometheusを使用することを約束できますが、Tendermintユーザーは
+彼らがより適切であると考える監視ツールを自由に選択する必要があります
+彼らのニーズ(既存のニーズがない場合)。だから私たちは試してみるべきです
+人々がPrometheusやその他を使用できるように十分に抽象的なインターフェース
+同様のツール。
 
-**b) go-kit metrics package as an interface**
+** b)インターフェースとしてのGo-kitインジケーターパッケージ**
 
-metrics package provides a set of uniform interfaces for service
-instrumentation and offers adapters to popular metrics packages:
+メトリックパッケージは、サービス用の統一されたインターフェイスのセットを提供します
+人気のあるインジケーターパッケージのアダプターを検出して提供します。
 
 https://godoc.org/github.com/go-kit/kit/metrics#pkg-subdirectories
 
-Comparing to Prometheus API, we're losing customisability and control, but gaining
-freedom in choosing any instrument from the above list given we will extract
-metrics creation into a separate function (see "providers" in node/node.go).
+Prometheus APIと比較すると、カスタマイズ性と制御性は失われていますが、
+抽出することを考えると、上記のリストから任意の楽器を選択する自由
+インジケーターは別の関数で作成されます(node/node.goの「プロバイダー」を参照)。
 
-**c) telegraf**
+** c)電報**
 
-Unlike already discussed options, telegraf does not require modifying Tendermint
-source code. You create something called an input plugin, which polls
-Tendermint RPC every second and calculates the metrics itself.
+すでに説明したオプションとは異なり、telegrafはTendermintを変更する必要はありません
+ソースコード。入力プラグインと呼ばれるものを作成し、ポーリングします
+Tendermint RPCは毎秒実行され、インジケーター自体を計算します。
 
-While it may sound good, but some metrics we want to report are not exposed via
-RPC or pubsub, therefore can't be accessed externally.
+良さそうに聞こえますが、報告したい指標の一部が合格しませんでした
+RPCまたはpubsubであるため、外部からアクセスすることはできません。
 
-**d) service, listening to pubsub**
+** d)サービス、pubsubを聞く**
 
-Same issue as the above.
+上記と同じ問題。
 
-### 2. opencensus
+### 2。国勢調査を開きます
 
-opencensus provides both metrics and tracing, which may be important in the
-future. It's API looks different from go-kit and Prometheus, but looks like it
-covers everything we need.
+opencensusは、測定と追跡を提供します。
+将来。そのAPIはgo-kitやPrometheusとは異なって見えますが、よく似ています
+必要なものすべてをカバーします。
 
-Unfortunately, OpenCensus go client does not define any
-interfaces, so if we want to abstract away metrics we
-will need to write interfaces ourselves.
+残念ながら、OpenCensusgoクライアントは何も定義していません
+インターフェースなので、インジケーターを抽象化したい場合は、
+インターフェイスは自分で作成する必要があります。
 
-### List of metrics
+### インジケーターのリスト
 
 |     | Name                                 | Type   | Description                                                                   |
 | --- | ------------------------------------ | ------ | ----------------------------------------------------------------------------- |
@@ -93,24 +93,24 @@ will need to write interfaces ourselves.
 | A   | consensus_block_size                 | Gauge  | In bytes                                                                      |
 | A   | p2p_peers                            | Gauge  | Number of peers node's connected to                                           |
 
-`A` - will be implemented in the fist place.
+`A`-最初に実装されます。
 
-**Proposed solution**
+**提案された解決策**
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-Better visibility, support of variety of monitoring backends
+可視性の向上、さまざまな監視バックエンドのサポート
 
-### Negative
+### ネガティブ
 
-One more library to audit, messing metrics reporting code with business domain.
+監査用の別のライブラリは、インジケーターレポートコードをビジネスドメインと混同します。
 
-### Neutral
+### ニュートラル
 
 -

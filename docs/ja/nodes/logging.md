@@ -1,16 +1,16 @@
-## Logging
+## 記録
 
-Logging adds detail and allows the node operator to better identify what they are looking for. Tendermint supports log levels on a global and per-module basis. This allows the node operator to see only the information they need and the developer to hone in on specific changes they are working on.
+ロギングにより詳細が追加され、ノードオペレーターは探しているものをより適切に識別できます。 Tendermintは、グローバルおよびモジュールごとのログレベルをサポートします。 これにより、ノードオペレーターは必要な情報のみを確認でき、開発者は作業中の特定の変更に集中できます。
 
-## Configuring Log Levels
+## ログレベルを設定する
 
-There are three log levels, `info`, `debug` and `error`. These can be configured either through the command line via  `tendermint start --log-level ""` or within the `config.toml` file.
+ログレベルには、 `info`、` debug`、 `error`の3つがあります。 これらは、コマンドラインから `tendermint start --log-level" "`または `config.toml`ファイルで設定できます。
 
-- `info` Info represents an informational message. It is used to show that modules have started, stopped and how they are functioning.
-- `debug` Debug is used to trace various calls or problems. Debug is used widely throughout a codebase and can lead to overly verbose logging.
-- `error` Error represents something that has gone wrong. An error log can represent a potential problem that can lead to a node halt.
+-`info`情報は情報メッセージを意味します。 これは、モジュールが開始、停止、およびそれらがどのように実行されているかを示すために使用されます。
+-`debug`デバッグは、さまざまな呼び出しや問題を追跡するために使用されます。 デバッグはコードベース全体で広く使用されており、ロギングが非常に長くなる可能性があります。
+-`error`エラーは、エラーが発生したことを意味します。 エラーログは、ノードを停止させる可能性のある潜在的な問題を表している可能性があります。
 
-Within the `config.toml`:
+在 `config.toml` 中:
 
 ```toml
 # Output level for logging, including package level options
@@ -23,40 +23,40 @@ Via the command line:
 tendermint start --log-level "info"
 ```
 
-## List of modules
+## モジュールリスト
 
-Here is the list of modules you may encounter in Tendermint's log and a
-little overview what they do.
+以下は、Tendermintログで遭遇する可能性のあるモジュールのリストです。
+彼らが何をしているのかを概説することはめったにありません。
 
-- `abci-client` As mentioned in [Application Architecture Guide](../app-dev/app-architecture.md), Tendermint acts as an ABCI
-  client with respect to the application and maintains 3 connections:
-  mempool, consensus and query. The code used by Tendermint Core can
-  be found [here](https://github.com/tendermint/tendermint/tree/master/abci/client).
-- `blockchain` Provides storage, pool (a group of peers), and reactor
-  for both storing and exchanging blocks between peers.
-- `consensus` The heart of Tendermint core, which is the
-  implementation of the consensus algorithm. Includes two
-  "submodules": `wal` (write-ahead logging) for ensuring data
-  integrity and `replay` to replay blocks and messages on recovery
-  from a crash.
-  [here](https://github.com/tendermint/tendermint/blob/master/types/events.go).
-  You can subscribe to them by calling `subscribe` RPC method. Refer
-  to [RPC docs](../tendermint-core/rpc.md) for additional information.
-- `mempool` Mempool module handles all incoming transactions, whenever
-  they are coming from peers or the application.
-- `p2p` Provides an abstraction around peer-to-peer communication. For
-  more details, please check out the
-  [README](https://github.com/tendermint/spec/tree/master/spec/p2p).
-- `rpc-server` RPC server. For implementation details, please read the
-  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
-- `state` Represents the latest state and execution submodule, which
-  executes blocks against the application.
-- `statesync` Provides a way to quickly sync a node with pruned history.
+-`abci-client` [アプリケーションアーキテクチャガイド](../ app-dev/app-architecture.md)で説明されているように、TendermintはABCIとして機能します
+  クライアントはアプリケーションに関連しており、次の3つの接続を維持します。
+  メモリプール、コンセンサス、クエリ。 TendermintCoreで使用されるコードは
+  ここ(https://github.com/tendermint/tendermint/tree/master/abci/client)にあります。
+-`blockchain`は、ストレージ、プール(ピアのセット)、およびリアクターを提供します
+  ピア間でブロックを保存および交換するために使用されます。
+-`コンセンサス `テンダーミントコアのコア、
+  コンセンサスアルゴリズムの実装。 2つ含まれています
+  「サブモジュール」: `wal`(先行書き込みロギング)はデータを確保するために使用されます
+  整合性と「再生」再生ブロックおよび回復時のメッセージ
+  クラッシュから。
+  [こちら](https://github.com/tendermint/tendermint/blob/master/types/events.go)。
+  `subscribe`RPCメソッドを呼び出すことでそれらをサブスクライブできます。参照する
+  詳細については、[RPCドキュメント](../ tendermint-core/rpc.md)にアクセスしてください。
+-`mempool`メモリプールモジュールは、いつでもすべての着信トランザクションを処理します
+  それらはピアまたはアプリケーションから来ています。
+-`p2p`は、ピアツーピア通信の抽象化を提供します。にとって
+  詳しくはご確認ください
+  [Readme](https://github.com/tendermint/spec/tree/master/spec/p2p)。
+-`rpc-server`RPCサーバー。実装の詳細については、以下をお読みください
+  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go)。
+-`state`は、最新の状態と実行サブモジュールを表します。ここで、
+  アプリケーションでブロックを実行します。
+-`statesync`は、ノードをプルーニングされた履歴とすばやく同期する方法を提供します。
 
-### Walkabout example
+### ウォーキングの例
 
-We first create three connections (mempool, consensus and query) to the
-application (running `kvstore` locally in this case).
+まず、3つの接続(メモリプール、コンセンサス、クエリ)を作成します。
+アプリケーション(この場合、ローカルで `kvstore`を実行します)。
 
 ```sh
 I[10-04|13:54:27.364] Starting multiAppConn                        module=proxy impl=multiAppConn
@@ -65,7 +65,7 @@ I[10-04|13:54:27.366] Starting localClient                         module=abci-c
 I[10-04|13:54:27.367] Starting localClient                         module=abci-client connection=consensus impl=localClient
 ```
 
-Then Tendermint Core and the application perform a handshake.
+次に、TendermintCoreとアプリケーションがハンドシェイクを実行します。
 
 ```sh
 I[10-04|13:54:27.367] ABCI Handshake                               module=consensus appHeight=90 appHash=E0FBAFBF6FCED8B9786DDFEB1A0D4FA2501BADAD
@@ -73,8 +73,8 @@ I[10-04|13:54:27.368] ABCI Replay Blocks                           module=consen
 I[10-04|13:54:27.368] Completed ABCI Handshake - Tendermint and App are synced module=consensus appHeight=90 appHash=E0FBAFBF6FCED8B9786DDFEB1A0D4FA2501BADAD
 ```
 
-After that, we start a few more things like the event switch, reactors,
-and perform UPNP discover in order to detect the IP address.
+その後、イベントスイッチ、リアクター、
+そして、UPNPディスカバリーを実行してIPアドレスを検出します。
 
 ```sh
 I[10-04|13:54:27.374] Starting EventSwitch                         module=types impl=EventSwitch
@@ -94,10 +94,10 @@ I[10-04|13:54:30.387] Starting WAL                                 module=consen
 I[10-04|13:54:30.388] Starting TimeoutTicker                       module=consensus impl=TimeoutTicker
 ```
 
-Notice the second row where Tendermint Core reports that "This node is a
-validator". It also could be just an observer (regular node).
+TendermintCoreレポートの2行目に注意してください。「このノードは
+バリデーター」。単なるオブザーバー(通常のノード)にすることもできます。
 
-Next we replay all the messages from the WAL.
+次に、WALからのすべてのメッセージを再生します。
 
 ```sh
 I[10-04|13:54:30.390] Catchup by replaying consensus messages      module=consensus height=91
@@ -105,18 +105,18 @@ I[10-04|13:54:30.390] Replay: New Step                             module=consen
 I[10-04|13:54:30.390] Replay: Done                                 module=consensus
 ```
 
-"Started node" message signals that everything is ready for work.
+「開始ノード」メッセージは、すべての準備ができていることを意味します。
 
 ```sh
 I[10-04|13:54:30.391] Starting RPC HTTP server on tcp socket 0.0.0.0:26657 module=rpc-server
 I[10-04|13:54:30.392] Started node                                 module=main nodeInfo="NodeInfo{id: DF22D7C92C91082324A1312F092AA1DA197FA598DBBFB6526E, moniker: anonymous, network: test-chain-3MNw2N [remote , listen 10.0.2.15:26656], version: 0.11.0-10f361fc ([wire_version=0.6.2 p2p_version=0.5.0 consensus_version=v1/0.2.2 rpc_version=0.7.0/3 tx_index=on rpc_addr=tcp://0.0.0.0:26657])}"
 ```
 
-Next follows a standard block creation cycle, where we enter a new
-round, propose a block, receive more than 2/3 of prevotes, then
-precommits and finally have a chance to commit a block. For details,
-please refer to [Byzantine Consensus
-Algorithm](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md).
+次は標準のブロック作成サイクルです。新しいブロックを入力します
+ラウンドし、ブロックを提案し、投票の2/3以上を獲得してから、
+事前にコミットし、最終的にブロックを送信する機会があります。 詳細については、
+[ビザンチンのコンセンサスを参照してください
+アルゴリズム](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md)。
 
 ```sh
 I[10-04|13:54:30.393] enterNewRound(91/0). Current: 91/0/RoundStepNewHeight module=consensus

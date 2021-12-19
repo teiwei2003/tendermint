@@ -1,85 +1,85 @@
-# ADR 052: Tendermint Mode
+# ADR 052:テンダーミントモード
 
-## Changelog
+## 変更ログ
 
-* 27-11-2019: Initial draft from ADR-051
-* 13-01-2020: Separate ADR Tendermint Mode from ADR-051
-* 29-03-2021: Update info regarding defaults
+* 27-11-2019:ADR-051からの最初のドラフト
+* 13-01-2020:ADRTendermintモードをADR-051から分離
+* 29-03-2021:デフォルト値に関する情報を更新
 
-## Context
+## 環境
 
-- Full mode: full mode does not have the capability to become a validator.
-- Validator mode : this mode is exactly same as existing state machine behavior. sync without voting on consensus, and participate consensus when fully synced
-- Seed mode : lightweight seed node maintaining an address book, p2p like [TenderSeed](https://gitlab.com/polychainlabs/tenderseed)
+-フルモード:フルモードには、バリデーターになる機能はありません。
+-バリデーターモード:このモードは、既存のステートマシンとまったく同じ動作をします。同時に投票せずにコンセンサスを作成し、完全に同期したときにコンセンサスに参加する
+-シードモード:軽量シードノードはアドレスブックを維持します。p2pは[TenderSeed](https://gitlab.com/polychainlabs/tenderseed)に似ています。
 
-## Decision
+## 決定
 
-We would like to suggest a simple Tendermint mode abstraction. These modes will live under one binary, and when initializing a node the user will be able to specify which node they would like to create.
+テンダーミントパターンの簡単な抽象化を提案したいと思います。これらのパターンはバイナリファイルに存在し、ノードを初期化するときに、ユーザーは作成するノードを指定できます。
 
-- Which reactor, component to include for each node
-    - full
-        - switch, transport
-        - reactors
-          - mempool
-          - consensus
-          - evidence
-          - blockchain
-          - p2p/pex
-          - statesync
-        - rpc (safe connections only)
-        - *~~no privValidator(priv_validator_key.json, priv_validator_state.json)~~*
-    - validator
-        - switch, transport
-        - reactors
-          - mempool
-          - consensus
-          - evidence
-          - blockchain
-          - p2p/pex
-          - statesync
-        - rpc (safe connections only)
-        - with privValidator(priv_validator_key.json, priv_validator_state.json)
-    - seed
-        - switch, transport
-        - reactor
-           - p2p/pex
-- Configuration, cli command
-    - We would like to suggest by introducing `mode` parameter in `config.toml` and cli
-    - <span v-pre>`mode = "{{ .BaseConfig.Mode }}"`</span> in `config.toml`
-    - `tendermint start --mode validator`  in cli
-    - full | validator | seednode
-    - There will be no default. Users will need to specify when they run `tendermint init`
-- RPC modification
-    - `host:26657/status`
-        - return empty `validator_info` when in full mode
-    - no rpc server in seednode
-- Where to modify in codebase
-    - Add  switch for `config.Mode` on `node/node.go:DefaultNewNode`
-    - If `config.Mode==validator`, call default `NewNode` (current logic)
-    - If `config.Mode==full`, call `NewNode` with `nil` `privValidator` (do not load or generation)
-        - Need to add exception routine for `nil` `privValidator` to related functions
-    - If `config.Mode==seed`, call `NewSeedNode` (seed node version of `node/node.go:NewNode`)
-        - Need to add exception routine for `nil` `reactor`, `component` to related functions
+-各ノードに含まれるリアクターとコンポーネント
+    - 満杯
+        -切り替え、輸送
+        -原子炉
+          -メモリプール
+          -コンセンサス
+          - 証拠
+          -ブロックチェーン
+          -p2p/pex
+          -状態の同期
+        -rpc(安全な接続のみ)
+        -* ~~ privValidator(priv_validator_key.json、priv_validator_state.json)なし~~ *
+    -オーセンティケーター
+        -切り替え、輸送
+        -原子炉
+          -メモリプール
+          -コンセンサス
+          - 証拠
+          -ブロックチェーン
+          -p2p/pex
+          -状態の同期
+        -rpc(安全な接続のみ)
+        -privValidator(priv_validator_key.json、priv_validator_state.json)を使用します
+    -シード
+        -切り替え、輸送
+        -原子炉
+           -p2p/pex
+-構成、cliコマンド
+    -`config.toml`とcliに `mode`パラメータを導入することをお勧めします
+    -<span v-pre> `mode =" {{.BaseConfig.Mode}} "` </ span> in `config.toml`
+    -CLIの `tendermint start --modevalidator`
+    -フル|バリデーター|シードノード
+    -デフォルト値はありません。ユーザーは、 `tendermintinit`をいつ実行するかを指定する必要があります
+-RPCの変更
+    -`ホスト:26657 /ステータス `
+        -フルモードで空の `validator_info`を返します
+    -シードノードにrpcサーバーがありません
+-コードベースの変更された場所
+    -`node/node.go:DefaultNewNode`に `config.Mode`のスイッチを追加します
+    -`config.Mode == validator`の場合、デフォルトの `NewNode`(現在のロジック)を呼び出します
+    -`config.Mode == full`の場合は、 `NewNode`と` nil` `privValidator`を呼び出します(ロードまたは生成しないでください)
+        -関連する関数に `nil``privValidator`の例外ルーチンを追加する必要があります
+    -`config.Mode == seed`の場合、 `NewSeedNode`(` node/node.go:NewNode`のシードノードバージョン)を呼び出します
+        -`nil`、 `reactor`、` component`の関連関数に例外ルーチンを追加する必要があります
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Node operators can choose mode when they run state machine according to the purpose of the node.
-- Mode can prevent mistakes because users have to specify which mode they want to run via flag. (eg. If a user want to run a validator node, she/he should explicitly write down validator as mode)
-- Different mode needs different reactors, resulting in efficient resource usage.
+-ノードオペレータは、ノードの目的に応じてステートマシンの実行モードを選択できます。
+-ユーザーはフラグを介して実行するモードを指定する必要があるため、モードはエラーを防ぐことができます。 (たとえば、ユーザーがバリデーターノードを実行したい場合、ユーザーはバリデーターをパターンとして明示的に記述する必要があります)
+-異なるモデルでは、効率的なリソース利用を実現するために異なるリアクターが必要です。
 
-### Negative
+### ネガティブ
 
-- Users need to study how each mode operate and which capability it has.
+-ユーザーは、各モードがどのように機能し、どのような機能を備えているかを調べる必要があります。
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する
 
-- Issue [#2237](https://github.com/tendermint/tendermint/issues/2237) : Tendermint "mode"
-- [TenderSeed](https://gitlab.com/polychainlabs/tenderseed) : A lightweight Tendermint Seed Node.
+-問題[#2237](https://github.com/tendermint/tendermint/issues/2237):テンダーミントの「モード」
+-[TenderSeed](https://gitlab.com/polychainlabs/tenderseed):軽量のTendermintシードノード。

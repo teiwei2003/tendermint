@@ -1,287 +1,286 @@
-# Running in production
+# 本番環境で実行
 
-If you are building Tendermint from source for use in production, make sure to check out an appropriate Git tag instead of a branch.
+本番環境で使用するためにソースからTendermintを構築している場合は、ブランチではなく、適切なGitタグを確認してください。
 
-## Database
+## データベース
 
-By default, Tendermint uses the `syndtr/goleveldb` package for its in-process
-key-value database. If you want maximal performance, it may be best to install
-the real C-implementation of LevelDB and compile Tendermint to use that using
-`make build TENDERMINT_BUILD_OPTIONS=cleveldb`. See the [install
-instructions](../introduction/install.md) for details.
+デフォルトでは、Tendermintはインプロセスとして `syndtr/goleveldb`パッケージを使用します
+Key-Valueデータベース。最大のパフォーマンスが必要な場合は、インストールするのが最適です
+LevelDBの実際のC実装と、それを使用するためのTendermintのコンパイル
+`ビルドTENDERMINT_BUILD_OPTIONS = cleveldb`を作成します。 [インストール
+詳細については、[説明](../Introduction/install.md)を参照してください。
 
-Tendermint keeps multiple distinct databases in the `$TMROOT/data`:
+Tendermintは、いくつかの異なるデータベースを `$ TMROOT/data`に保存します。
 
-- `blockstore.db`: Keeps the entire blockchain - stores blocks,
-  block commits, and block meta data, each indexed by height. Used to sync new
-  peers.
-- `evidence.db`: Stores all verified evidence of misbehaviour.
-- `state.db`: Stores the current blockchain state (ie. height, validators,
-  consensus params). Only grows if consensus params or validators change. Also
-  used to temporarily store intermediate results during block processing.
-- `tx_index.db`: Indexes txs (and their results) by tx hash and by DeliverTx result events.
+-`blockstore.db`:ブロックチェーン全体を保持します-ストレージブロック、
+  ブロック送信とブロックメタデータ。それぞれ高さでインデックスが付けられます。新規の同期に使用
+  ピア。
+-`evidence.db`:不正行為の検証済みの証拠をすべて保存します。
+-`state.db`:現在のブロックチェーンの状態(つまり、高さ、バリデーター、
+  コンセンサスパラメータ)。コンセンサスパラメータまたはバリデーターが変更された場合にのみ大きくなります。また
+  ブロック処理中に中間結果を一時的に保存するために使用されます。
+-`tx_index.db`:txハッシュとDeliverTx結果イベントによってtxs(およびその結果)にインデックスを付けます。
 
-By default, Tendermint will only index txs by their hash and height, not by their DeliverTx
-result events. See [indexing transactions](../app-dev/indexing-transactions.md) for
-details.
+デフォルトでは、Tendermintは、DeliverTxではなく、ハッシュと高さに基づいてtxにのみインデックスを付けます。
+結果イベント。 [インデックストランザクション](../app-dev/indexing-transactions.md)を参照して理解してください
+詳細。
 
-Applications can expose block pruning strategies to the node operator. Please read the documentation of your application
-to find out more details.
+アプリケーションは、ブロックプルーニング戦略をノードオペレーターに開示できます。アプリケーションのドキュメントをお読みください
+もっと詳しく知る。
 
-Applications can use [state sync](state-sync.md) to help nodes bootstrap quickly.
+アプリケーションは[statesync](state-sync.md)を使用して、ノードをすばやく起動できるようにします。
 
-## Logging
+## 記録
 
-Default logging level (`log-level = "info"`) should suffice for
-normal operation mode. Read [this
-post](https://blog.cosmos.network/one-of-the-exciting-new-features-in-0-10-0-release-is-smart-log-level-flag-e2506b4ab756)
-for details on how to configure `log-level` config variable. Some of the
-modules can be found [here](logging.md#list-of-modules). If
-you're trying to debug Tendermint or asked to provide logs with debug
-logging level, you can do so by running Tendermint with
-`--log-level="debug"`.
+デフォルトのログレベル( `log-level =" info "`)で十分です。
+通常動作モード。これを読む
+投稿](https://blog.cosmos.network/one-of-the-exciting-new-features-in-0-10-0-release-is-smart-log-level-flag-e2506b4ab756)
+「ログレベル」構成変数の構成方法の詳細。いくつかの
+モジュールは[ここ](logging.md#list-of-modules)にあります。もしも
+Tendermintをデバッグするか、デバッグログを要求しようとしています
+ロギングレベル、Tendermintを実行することで達成できます
+`--log-level =" Debug "`。
 
-### Consensus WAL
+### コンセンサスWAL
 
-Tendermint uses a write ahead log (WAL) for consensus. The `consensus.wal` is used to ensure we can recover from a crash at any point
-in the consensus state machine. It writes all consensus messages (timeouts, proposals, block part, or vote)
-to a single file, flushing to disk before processing messages from its own
-validator. Since Tendermint validators are expected to never sign a conflicting vote, the
-WAL ensures we can always recover deterministically to the latest state of the consensus without
-using the network or re-signing any consensus messages. The consensus WAL max size of 1GB and is automatically rotated.
+Tendermintは、コンセンサスに達するために先行書き込みログ(WAL)を使用します。 `consensus.wal`は、クラッシュからいつでも回復できるようにするために使用されます
+コンセンサスステートマシン。すべてのコンセンサスメッセージ(タイムアウト、提案、ブロック部分、または投票)を書き込みます
+単一のファイルに、それ自体からのメッセージを処理する前にディスクにフラッシュします
+バリデーター。テンダーミントの検証者は、相反する投票に署名することは決してないと予想されるため、
+WALは、必要がなくても常に決定論的にコンセンサスの最新状態に復元できることを保証します
+ネットワークを使用するか、コンセンサスメッセージに再署名します。 WALの最大サイズは1GBであり、自動的にローテーションされることが合意されています。
 
-If your `consensus.wal` is corrupted, see [below](#wal-corruption).
+`consensus.wal`が破損している場合は、[下記](#wal-corruption)を参照してください。
+## DOSの露出と軽減
 
-## DOS Exposure and Mitigation
+バリデーターは[SentryNodeに設定する必要があります
+アーキテクチャ](./validators.md)
+サービス拒否攻撃を防ぐため。
 
-Validators are supposed to setup [Sentry Node
-Architecture](./validators.md)
-to prevent Denial-of-service attacks.
+### ピアツーピア
 
-### P2P
+Tendermintのピアツーピアシステムの中核は「MConnection」です。各
+接続には、最大のパケットである `MaxPacketMsgPayloadSize`があります
+サイズと制限付きの送信キューと受信キュー。一人で制限を課すことができます
+各接続の送受信レート( `SendRate`、` RecvRate`)。
 
-The core of the Tendermint peer-to-peer system is `MConnection`. Each
-connection has `MaxPacketMsgPayloadSize`, which is the maximum packet
-size and bounded send & receive queues. One can impose restrictions on
-send & receive rate per connection (`SendRate`, `RecvRate`).
-
-The number of open P2P connections can become quite large, and hit the operating system's open
-file limit (since TCP connections are considered files on UNIX-based systems). Nodes should be
-given a sizable open file limit, e.g. 8192, via `ulimit -n 8192` or other deployment-specific
-mechanisms.
+開いているP2P接続の数が非常に多くなり、オペレーティングシステムのオープンに影響します
+ファイルの制限(TCP接続はUNIXベースのシステムではファイルとして扱われるため)。ノードは
+8192など、かなり大きなオープンファイル制限がある場合は、 `ulimit -n8192`またはその他のデプロイメント固有のものを渡します。
+機構。
 
 ### RPC
 
-Endpoints returning multiple entries are limited by default to return 30
-elements (100 max). See the [RPC Documentation](https://docs.tendermint.com/master/rpc/)
-for more information.
+複数のエントリを返すエンドポイントは、デフォルトで30を返すように制限されています
+要素(最大100)。 [RPCドキュメント](https://docs.tendermint.com/master/rpc/)を参照してください
+詳細情報が必要です。
 
-Rate-limiting and authentication are another key aspects to help protect
-against DOS attacks. Validators are supposed to use external tools like
-[NGINX](https://www.nginx.com/blog/rate-limiting-nginx/) or
+レート制限と認証は、保護に役立つもう1つの重要な側面です
+DOS攻撃に抵抗します。バリデーターは、次のような外部ツールを使用する必要があります
+[NGINX](https://www.nginx.com/blog/rate-limiting-nginx/)または
 [traefik](https://docs.traefik.io/middlewares/ratelimit/)
-to achieve the same things.
+同じ目的を達成するため。
 
-## Debugging Tendermint
+## テンダーミントをデバッグする
 
-If you ever have to debug Tendermint, the first thing you should probably do is
-check out the logs. See [Logging](../nodes/logging.md), where we
-explain what certain log statements mean.
+Tendermintをデバッグする必要がある場合、最初にすべきことは
+ログを確認してください。 [Logging](../ノード/logging.md)を参照してください。
+特定のログステートメントの意味を説明します。
 
-If, after skimming through the logs, things are not clear still, the next thing
-to try is querying the `/status` RPC endpoint. It provides the necessary info:
-whenever the node is syncing or not, what height it is on, etc.
+ログを閲覧した後も状況が不明な場合は、次は何ですか
+`/status`RPCエンドポイントをクエリしてみてください。必要な情報を提供します。
+ノードが同期されているかどうかに関係なく、ノードの高さなどはどのくらいですか。
 
 ```bash
 curl http(s)://{ip}:{rpcPort}/status
 ```
 
-`/dump_consensus_state` will give you a detailed overview of the consensus
-state (proposer, latest validators, peers states). From it, you should be able
-to figure out why, for example, the network had halted.
+`/dump_consensus_state`は、コンセンサスの詳細な概要を示します
+ステータス(提案者、最新のバリデーター、ピアステータス)。 それから、あなたはできるはずです
+たとえば、ネットワークがダウンしている理由を調べます。
 
 ```bash
 curl http(s)://{ip}:{rpcPort}/dump_consensus_state
 ```
 
-There is a reduced version of this endpoint - `/consensus_state`, which returns
-just the votes seen at the current height.
+このエンドポイントの簡略化されたバージョンがあります-` /consensus_state`、これは
+現在の高さで見られる投票のみ。
 
-If, after consulting with the logs and above endpoints, you still have no idea
-what's happening, consider using `tendermint debug kill` sub-command. This
-command will scrap all the available info and kill the process. See
-[Debugging](../tools/debugging/README.md) for the exact format.
+ログと上記のエンドポイントを調べた後でも、まだわからない場合
+何が起こったのか、「tendermintdebugkill」サブコマンドの使用を検討してください。この
+このコマンドは、利用可能なすべての情報を破棄し、プロセスを終了します。見て
+[デバッグ](../tools /debugging /README.md)正確な形式を取得します。
 
-You can inspect the resulting archive yourself or create an issue on
-[Github](https://github.com/tendermint/tendermint). Before opening an issue
-however, be sure to check if there's [no existing
-issue](https://github.com/tendermint/tendermint/issues) already.
+生成されたアーカイブは、自分で確認することも、
+[Github](https://github.com/tendermint/tendermint)。質問を開く前に
+ただし、[存在しない
+問題](https://github.com/tendermint/tendermint/issues)すでに。
 
-## Monitoring Tendermint
+## テンダーミントの監視
 
-Each Tendermint instance has a standard `/health` RPC endpoint, which responds
-with 200 (OK) if everything is fine and 500 (or no response) - if something is
-wrong.
+各Tendermintインスタンスには、応答する標準の `/health`RPCエンドポイントがあります
+200(OK)すべてがOKの場合、500(または応答なし)-何かがある場合
+正しくない。
 
-Other useful endpoints include mentioned earlier `/status`, `/net_info` and
-`/validators`.
+その他の有用なエンドポイントには、前述の `/status`、` /net_info`および
+`/Validator`。
 
-Tendermint also can report and serve Prometheus metrics. See
-[Metrics](./metrics.md).
+Tendermintは、Prometheusメトリックをレポートおよび提供することもできます。見て
+[メトリクス](./metrics.md)。
 
-`tendermint debug dump` sub-command can be used to periodically dump useful
-information into an archive. See [Debugging](../tools/debugging/README.md) for more
-information.
+`tendermint debug dump`サブコマンドを使用して、有用なものを定期的にダンプできます
+情報アーカイブ。詳細については、[デバッグ](../tools /debugging /README.md)を参照してください。
+情報。
 
-## What happens when my app dies
+## アプリが停止するとどうなりますか
 
-You are supposed to run Tendermint under a [process
-supervisor](https://en.wikipedia.org/wiki/Process_supervision) (like
-systemd or runit). It will ensure Tendermint is always running (despite
-possible errors).
+あなたは[プロセスにいるはずです
+スーパーバイザー)(https://en.wikipedia.org/wiki/Process_supervision)(例:
+systemdまたはrunit)。これにより、Tendermintが常に実行されていることが保証されます(ただし
+考えられるエラー)。
 
-Getting back to the original question, if your application dies,
-Tendermint will panic. After a process supervisor restarts your
-application, Tendermint should be able to reconnect successfully. The
-order of restart does not matter for it.
+元の質問に戻ります。アプリケーションが停止した場合は、
+テンダーミントはパニックになります。プロセススーパーバイザーで再起動します
+アプリケーション、Tendermintは正常に再接続できるはずです。この
+再起動シーケンスは重要ではありません。
 
-## Signal handling
+## 信号処理
 
-We catch SIGINT and SIGTERM and try to clean up nicely. For other
-signals we use the default behavior in Go: [Default behavior of signals
-in Go
-programs](https://golang.org/pkg/os/signal/#hdr-Default_behavior_of_signals_in_Go_programs).
+SIGINTとSIGTERMをキャプチャし、クリーンアップを試みます。ほかの人のため
+Goでのシグナルのデフォルトの動作を使用します:(シグナルのデフォルトの動作
+Goで
+プログラム](https://golang.org/pkg/os/signal/#hdr-Default_behavior_of_signals_in_Go_programs)。
 
-## Corruption
+## 腐敗
 
-**NOTE:** Make sure you have a backup of the Tendermint data directory.
+**注:** Tendermintデータディレクトリのバックアップがあることを確認してください。
 
-### Possible causes
+### 考えられる理由
 
-Remember that most corruption is caused by hardware issues:
+ほとんどの損傷はハードウェアの問題によって引き起こされることに注意してください。
 
-- RAID controllers with faulty / worn out battery backup, and an unexpected power loss
-- Hard disk drives with write-back cache enabled, and an unexpected power loss
-- Cheap SSDs with insufficient power-loss protection, and an unexpected power-loss
-- Defective RAM
-- Defective or overheating CPU(s)
+-RAIDコントローラのバックアップバッテリが故障/摩耗していて、予期せず電源がオフになっている
+-ライトバックキャッシュが有効になっていて、予期せず電源が切れたハードドライブ
+-低価格のソリッドステートハードドライブ、不十分な電源オフ保護、予期しない電源オフ
+-欠陥のあるメモリ
+-CPUに欠陥があるか、過熱しています
 
-Other causes can be:
+その他の理由は次のとおりです。
 
-- Database systems configured with fsync=off and an OS crash or power loss
-- Filesystems configured to use write barriers plus a storage layer that ignores write barriers. LVM is a particular culprit.
-- Tendermint bugs
-- Operating system bugs
-- Admin error (e.g., directly modifying Tendermint data-directory contents)
+-fsync = offで構成されたデータベースシステムとオペレーティングシステムのクラッシュまたは電源障害
+-ファイルシステムは、書き込みバリアと書き込みバリアを無視するストレージレイヤーを使用するように構成されています。 LVMは特定の原因です。
+-テンダーミントエラー
+-オペレーティングシステムエラー
+-管理者エラー(たとえば、Tendermintデータディレクトリの内容を直接変更する)
 
-(Source: <https://wiki.postgresql.org/wiki/Corruption>)
+(出典:<https://wiki.postgresql.org/wiki/Corruption>)
 
-### WAL Corruption
+### WALの破損
 
-If consensus WAL is corrupted at the latest height and you are trying to start
-Tendermint, replay will fail with panic.
+コンセンサスWALが最新の高さで破損していて、開始しようとしている場合
+テンダーミント、パニックのためリプレイは失敗します。
 
-Recovering from data corruption can be hard and time-consuming. Here are two approaches you can take:
+データ破損からの回復は困難で時間がかかる場合があります。次の2つの方法を使用できます。
 
-1. Delete the WAL file and restart Tendermint. It will attempt to sync with other peers.
-2. Try to repair the WAL file manually:
+1. WALファイルを削除し、Tendermintを再起動します。他のピアとの同期を試みます。
+2.WALファイルを手動で修復してみてください。
 
-1) Create a backup of the corrupted WAL file:
-
-    ```sh
-    cp "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal_backup
-    ```
-
-2) Use `./scripts/wal2json` to create a human-readable version:
+1)破損したWALファイルのバックアップを作成します。
 
     ```sh
-    ./scripts/wal2json/wal2json "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal
+    cp "$TMHOME/data/cs.wal/wal" >/tmp/corrupted_wal_backup
     ```
 
-3) Search for a "CORRUPTED MESSAGE" line.
-4) By looking at the previous message and the message after the corrupted one
-   and looking at the logs, try to rebuild the message. If the consequent
-   messages are marked as corrupted too (this may happen if length header
-   got corrupted or some writes did not make it to the WAL ~ truncation),
-   then remove all the lines starting from the corrupted one and restart
-   Tendermint.
+2) `。/scripts /wal2json`を使用して、人間が読める形式のバージョンを作成します。
 
     ```sh
-    $EDITOR /tmp/corrupted_wal
+    ./scripts/wal2json/wal2json "$TMHOME/data/cs.wal/wal" >/tmp/corrupted_wal
     ```
 
-5) After editing, convert this file back into binary form by running:
+3)「CORRUPTEDMESSAGE」の行を検索します。
+4)前のメッセージと破損したメッセージを表示する
+     そして、ログを確認して、メッセージを再構築してみてください。 次の場合
+     メッセージも破損としてマークされます(長さヘッダーの場合)
+     破損しているか、一部の書き込みがWALに入力されていません〜切り捨てられました)、
+     次に、破損した行から始まるすべての行を削除して再起動します
+     肌の若返り。
 
     ```sh
-    ./scripts/json2wal/json2wal /tmp/corrupted_wal  $TMHOME/data/cs.wal/wal
+    $EDITOR/tmp/corrupted_wal
     ```
 
-## Hardware
+5)編集後、次のコマンドを実行して、このファイルをバイナリ形式に変換し直します。
 
-### Processor and Memory
+    ```sh
+    ./scripts/json2wal/json2wal/tmp/corrupted_wal  $TMHOME/data/cs.wal/wal
+    ```
 
-While actual specs vary depending on the load and validators count, minimal
-requirements are:
+## ハードウェア
 
-- 1GB RAM
-- 25GB of disk space
-- 1.4 GHz CPU
+### プロセッサとメモリ
 
-SSD disks are preferable for applications with high transaction throughput.
+実際の仕様は負荷やバリデーターの数によって異なりますが、最小
+要件は次のとおりです。
 
-Recommended:
+-1GB RAM
+-25GBのディスク容量
+-1.4 GHz CPU
 
-- 2GB RAM
-- 100GB SSD
-- x64 2.0 GHz 2v CPU
+SSDディスクは、トランザクションスループットが高いアプリケーションに適しています。
 
-While for now, Tendermint stores all the history and it may require significant
-disk space over time, we are planning to implement state syncing (See [this
-issue](https://github.com/tendermint/tendermint/issues/828)). So, storing all
-the past blocks will not be necessary.
+尊敬される:
 
-### Validator signing on 32 bit architectures (or ARM)
+-2GBのRAM
+-100GBソリッドステートドライブ
+-x64 2.0 GHz 2v CPU
 
-Both our `ed25519` and `secp256k1` implementations require constant time
-`uint64` multiplication. Non-constant time crypto can (and has) leaked
-private keys on both `ed25519` and `secp256k1`. This doesn't exist in hardware
-on 32 bit x86 platforms ([source](https://bearssl.org/ctmul.html)), and it
-depends on the compiler to enforce that it is constant time. It's unclear at
-this point whenever the Golang compiler does this correctly for all
-implementations.
+今のところ、テンダーミントはすべての履歴を保存しており、多くの履歴が必要になる場合があります
+時間の経過とともにディスク容量を増やし、状態の同期を実現する予定です([this
+問題](https://github.com/tendermint/tendermint/issues/828))。だから、すべてを保存します
+過去のブロックは不要になります。
 
-**We do not support nor recommend running a validator on 32 bit architectures OR
-the "VIA Nano 2000 Series", and the architectures in the ARM section rated
-"S-".**
+### ベリファイアは32ビットアーキテクチャ(またはARM)で署名されています
 
-### Operating Systems
+`ed25519`と` secp256k1`の実装には両方とも一定の時間が必要です
+`uint64`乗算。非一定時間の暗号化がリークされる可能性があります(そしてリークされています)
+`ed25519`と` secp256k1`の秘密鍵。これはハードウェアには存在しません
+32ビットx86プラットフォーム([ソース](https://bearssl.org/ctmul.html))では、
+それを強制するのはコンパイラに依存する一定の時間です。よくわからない
+Golangコンパイラがすべての人に対してこれを正しく行うときはいつでも
+達成。
 
-Tendermint can be compiled for a wide range of operating systems thanks to Go
-language (the list of \$OS/\$ARCH pairs can be found
-[here](https://golang.org/doc/install/source#environment)).
+** 32ビットアーキテクチャでのバリデーターの実行はサポートも推奨もされていません。
+ARMパーツのアーキテクチャを評価した「VIANano2000シリーズ」
+「S-」。**
 
-While we do not favor any operation system, more secure and stable Linux server
-distributions (like Centos) should be preferred over desktop operation systems
-(like Mac OS).
+### オペレーティング・システム
 
-Native Windows support is not provided. If you are using a windows machine, you can try using the [bash shell](https://docs.microsoft.com/en-us/windows/wsl/install-win10).
+Goのおかげで、Tendermintはさまざまなオペレーティングシステム用にコンパイルできます
+言語のリスト(\ $ OS /\ $ ARCHペアは、
+[ここ](https://golang.org/doc/install/source#environment))。
 
-### Miscellaneous
+オペレーティングシステムは好みませんが、より安全で安定したLinuxサーバー
+ディストリビューション(Centosなど)は、デスクトップオペレーティングシステムよりも優先する必要があります
+(Macオペレーティングシステムなど)。
 
-NOTE: if you are going to use Tendermint in a public domain, make sure
-you read [hardware recommendations](https://cosmos.network/validators) for a validator in the
-Cosmos network.
+ネイティブのWindowsサポートは提供されていません。 Windowsマシンを使用している場合は、[bashシェル](https://docs.microsoft.com/en-us/windows/wsl/install-win10)を試すことができます。
 
-## Configuration parameters
+### さまざまなタイプ
 
-- `p2p.flush-throttle-timeout`
-- `p2p.max-packet-msg-payload-size`
-- `p2p.send-rate`
-- `p2p.recv-rate`
+注:パブリックドメインでTendermintを使用する場合は、次のことを確認してください。
+[ハードウェアの推奨事項](https://cosmos.network/validators)でバリデーターを読みます
+宇宙ネットワーク。
 
-If you are going to use Tendermint in a private domain and you have a
-private high-speed network among your peers, it makes sense to lower
-flush throttle timeout and increase other params.
+## 構成パラメーター
+
+-`p2p.flush-throttle-timeout`
+-`p2p.max-packet-msg-payload-size`
+-`p2p.send-rate`
+-`p2p.recv-rate`
+
+プライベートドメインでTendermintを使用する予定で、
+ピア間の専用高速ネットワーク、削減
+スロットルタイムアウトを更新し、他のパラメーターを増やします。
 
 ```toml
 [p2p]
@@ -291,63 +290,74 @@ flush-throttle-timeout=10
 max-packet-msg-payload-size=10240 # 10KB
 ```
 
-- `mempool.recheck`
+-`mempool.recheck`
 
-After every block, Tendermint rechecks every transaction left in the
-mempool to see if transactions committed in that block affected the
-application state, so some of the transactions left may become invalid.
-If that does not apply to your application, you can disable it by
-setting `mempool.recheck=false`.
+##ハードウェア
 
-- `mempool.broadcast`
+###プロセッサとメモリ
 
-Setting this to false will stop the mempool from relaying transactions
-to other peers until they are included in a block. It means only the
-peer you send the tx to will see it until it is included in a block.
+実際の仕様は負荷やバリデーターの数によって異なりますが、最小
+要件は次のとおりです。
 
-- `consensus.skip-timeout-commit`
+-1GB RAM
+-25GBのディスク容量
+-1.4 GHz CPU
 
-We want `skip-timeout-commit=false` when there is economics on the line
-because proposers should wait to hear for more votes. But if you don't
-care about that and want the fastest consensus, you can skip it. It will
-be kept false by default for public deployments (e.g. [Cosmos
-Hub](https://hub.cosmos.network/main/hub-overview/overview.html)) while for enterprise
-applications, setting it to true is not a problem.
+SSDディスクは、トランザクションスループットが高いアプリケーションに適しています。
 
-- `consensus.peer-gossip-sleep-duration`
+尊敬される:
 
-You can try to reduce the time your node sleeps before checking if
-theres something to send its peers.
+-2GBのRAM
+-100GBソリッドステートドライブ
+-x64 2.0 GHz 2v CPU
 
-- `consensus.timeout-commit`
+今のところ、テンダーミントはすべての履歴を保存しており、多くの履歴が必要になる場合があります
+時間の経過とともにディスク容量を増やし、状態の同期を実現する予定です([this
+問題](https://github.com/tendermint/tendermint/issues/828))。だから、すべてを保存します
+過去のブロックは不要になります。
 
-You can also try lowering `timeout-commit` (time we sleep before
-proposing the next block).
+###ベリファイアは32ビットアーキテクチャ(またはARM)で署名されています
 
-- `p2p.addr-book-strict`
+`ed25519`と` secp256k1`の実装には両方とも一定の時間が必要です
+`uint64`乗算。非一定時間の暗号化がリークされる可能性があります(そしてリークされています)
+`ed25519`と` secp256k1`の秘密鍵。これはハードウェアには存在しません
+32ビットx86プラットフォーム([ソース](https://bearssl.org/ctmul.html))では、
+それを強制するのはコンパイラに依存する一定の時間です。よくわからない
+Golangコンパイラがすべての人に対してこれを正しく行うときはいつでも
+達成。
 
-By default, Tendermint checks whenever a peer's address is routable before
-saving it to the address book. The address is considered as routable if the IP
-is [valid and within allowed
-ranges](https://github.com/tendermint/tendermint/blob/27bd1deabe4ba6a2d9b463b8f3e3f1e31b993e61/p2p/netaddress.go#L209).
+** 32ビットアーキテクチャでのバリデーターの実行はサポートも推奨もされていません。
+ARMパーツのアーキテクチャを評価した「VIANano2000シリーズ」
+「S-」。**
 
-This may not be the case for private or local networks, where your IP range is usually
-strictly limited and private. If that case, you need to set `addr-book-strict`
-to `false` (turn it off).
+### オペレーティング・システム
 
-- `rpc.max-open-connections`
+Goのおかげで、Tendermintはさまざまなオペレーティングシステム用にコンパイルできます
+言語のリスト(\ $ OS /\ $ ARCHペアは、
+[ここ](https://golang.org/doc/install/source#environment))。
 
-By default, the number of simultaneous connections is limited because most OS
-give you limited number of file descriptors.
+オペレーティングシステムは好みませんが、より安全で安定したLinuxサーバー
+ディストリビューション(Centosなど)は、デスクトップオペレーティングシステムよりも優先する必要があります
+(Macオペレーティングシステムなど)。
 
-If you want to accept greater number of connections, you will need to increase
-these limits.
+ネイティブのWindowsサポートは提供されていません。 Windowsマシンを使用している場合は、[bashシェル](https://docs.microsoft.com/en-us/windows/wsl/install-win10)を試すことができます。
 
-[Sysctls to tune the system to be able to open more connections](https://github.com/satori-com/tcpkali/blob/master/doc/tcpkali.man.md#sysctls-to-tune-the-system-to-be-able-to-open-more-connections)
+###さまざまなタイプ
 
-The process file limits must also be increased, e.g. via `ulimit -n 8192`.
+注:パブリックドメインでTendermintを使用する場合は、次のことを確認してください。
+[ハードウェアの推奨事項](https://cosmos.network/validators)でバリデーターを読みます
+宇宙ネットワーク。
 
-...for N connections, such as 50k:
+##構成パラメーター
+
+-`p2p.flush-throttle-timeout`
+-`p2p.max-packet-msg-payload-size`
+-`p2p.send-rate`
+-`p2p.recv-rate`
+
+プライベートドメインでTendermintを使用する予定で、
+ピア間の専用高速ネットワーク、削減
+スロットルタイムアウトを更新し、他のパラメーターを増やします。
 
 ```md
 kern.maxfiles=10000+2*N         # BSD
@@ -365,8 +375,8 @@ net.inet.tcp.maxtcptw=2*N       # BSD
 
 # If using netfilter on Linux:
 net.netfilter.nf_conntrack_max=N
-echo $((N/8)) > /sys/module/nf_conntrack/parameters/hashsize
+echo $((N/8)) >/sys/module/nf_conntrack/parameters/hashsize
 ```
 
-The similar option exists for limiting the number of gRPC connections -
-`rpc.grpc-max-open-connections`.
+gRPC接続の数を制限するための同様のオプションがあります-
+`rpc.grpc-max-open-connections`。

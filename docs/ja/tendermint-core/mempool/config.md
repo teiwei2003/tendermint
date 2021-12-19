@@ -1,11 +1,11 @@
-# Configuration
+# 構成
 
-Here we describe configuration options around mempool.
-For the purposes of this document, they are described
-in a toml file, but some of them can also be passed in as
-environmental variables.
+ここでは、メモリプールを取り巻く構成オプションについて説明します。
+このドキュメントの目的上、これらは次のように説明されています。
+tomlファイルにありますが、それらのいくつかは次のように使用することもできます
+環境変数。
 
-Config:
+構成:
 
 ```toml
 [mempool]
@@ -44,58 +44,58 @@ max-batch-bytes = 0
 
 Environment: `TM_MEMPOOL_RECHECK=false` -->
 
-## Recheck
+## 再確認
 
-Recheck determines if the mempool rechecks all pending
-transactions after a block was committed. Once a block
-is committed, the mempool removes all valid transactions
-that were successfully included in the block.
+再チェックして、メモリプールがすべてのハングを再チェックするかどうかを判断します
+ブロックが送信された後のトランザクション。一度にブロック
+送信されると、メモリプールはすべての有効なトランザクションを削除します
+ブロックに正常に含まれています。
 
-If `recheck` is true, then it will rerun CheckTx on
-all remaining transactions with the new block state.
+`recheck`がtrueの場合、CheckTxが再実行されます
+新しいブロックステータスを持つ残りのすべてのトランザクション。
 
-## Broadcast
+## ブロードキャスト
 
-Determines whether this node gossips any valid transactions
-that arrive in mempool. Default is to gossip anything that
-passes checktx. If this is disabled, transactions are not
-gossiped, but instead stored locally and added to the next
-block this node is the proposer.
+このノードが有効なトランザクションについてチャットしているかどうかを確認します
+メモリプールに到達します。デフォルトはゴシップすべてです
+checktxを介して。このオプションが無効になっている場合、トランザクションは無効になります
+ゴシップですが、ローカルに保存され、次のものに追加されます
+このノードが提案者にならないようにします。
 
 ## WalDir
 
-This defines the directory where mempool writes the write-ahead
-logs. These files can be used to reload unbroadcasted
-transactions if the node crashes.
+これは、メモリプールの先行書き込みディレクトリを定義します
+ログ。これらのファイルを使用して、ブロードキャストされていないファイルをリロードできます
+ノードがクラッシュしたときのトランザクション。
 
-If the directory passed in is an absolute path, the wal file is
-created there. If the directory is a relative path, the path is
-appended to home directory of the tendermint process to
-generate an absolute path to the wal directory
-(default `$HOME/.tendermint` or set via `TM_HOME` or `--home`)
+着信ディレクトリが絶対パスの場合、walファイルは次のようになります。
+そこで作成します。ディレクトリが相対パスの場合、パスは
+テンダーミントプロセスのホームディレクトリに添付します
+walディレクトリの絶対パスを生成します
+(デフォルトの `$ HOME/ .tendermint`または` TM_HOME`または `--home`によって設定されます)
 
-## Size
+## サイズ
 
-Size defines the total amount of transactions stored in the mempool. Default is `5_000` but can be adjusted to any number you would like. The higher the size the more strain on the node.
+サイズは、メモリプールに保存されるトランザクションの合計量を定義します。デフォルト値は「5_000」ですが、任意の数に調整できます。サイズが大きいほど、ノードへの負担が大きくなります。
 
-## Max Transactions Bytes
+## 最大トランザクションバイト
 
-Max transactions bytes defines the total size of all the transactions in the mempool. Default is 1 GB.
+トランザクションバイトの最大数は、メモリプール内のすべてのトランザクションの合計サイズを定義します。デフォルト値は1GBです。
 
-## Cache size
+## キャッシュサイズ
 
-Cache size determines the size of the cache holding transactions we have already seen. The cache exists to avoid running `checktx` each time we receive a transaction.
+キャッシュサイズは、私たちが見たキャッシュトランザクションのサイズを決定します。キャッシュは、トランザクションが受信されるたびに `checktx`が実行されないようにするために存在します。
 
-## Keep Invalid Transactions In Cache
+## 無効なトランザクションをキャッシュに保持する
 
-Keep invalid transactions in cache determines wether a transaction in the cache, which is invalid, should be evicted. An invalid transaction here may mean that the transaction may rely on a different tx that has not been included in a block.
+無効なトランザクションをキャッシュに保持して、キャッシュ内の無効なトランザクションを削除する必要があるかどうかを判断します。ここでの無効なトランザクションは、トランザクションがブロックに含まれていない別のtxに依存している可能性があることを意味している可能性があります。
 
-## Max Transaction Bytes
+## 最大トランザクションバイト
 
-Max transaction bytes defines the max size a transaction can be for your node. If you would like your node to only keep track of smaller transactions this field would need to be changed. Default is 1MB.
+最大トランザクションバイト数は、ノードで使用できるトランザクションの最大サイズを定義します。ノードでより小さなトランザクションのみを追跡する場合は、このフィールドを変更する必要があります。デフォルトは1MBです。
 
-## Max Batch Bytes
+## 最大バッチバイト
 
-Max batch bytes defines the amount of bytes the node will send to a peer. Default is 0.
+最大バッチバイト数は、ノードがピアに送信するバイト数を定義します。デフォルト値は0です。
 
-> Note: Unused due to https://github.com/tendermint/tendermint/issues/5796
+>注:https://github.com/tendermint/tendermint/issues/5796のため使用されていません

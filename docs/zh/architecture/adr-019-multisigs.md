@@ -62,7 +62,7 @@ type ThresholdMultiSignaturePubKey struct { // K of N threshold multisig
 例如 对于大小为“24”的“n”，对于“k < 3”，这只会更节省空间。
 这似乎不太可能，并且不应该针对这种情况进行优化。
 
-####加权阈值签名
+#### 加权阈值签名
 
 公钥是以下结构:
 

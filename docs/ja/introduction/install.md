@@ -1,89 +1,89 @@
-# Install Tendermint
+# Tendermintをインストールする
 
-## From Binary
+## バイナリから
 
-To download pre-built binaries, see the [releases page](https://github.com/tendermint/tendermint/releases).
+ビルド済みのバイナリをダウンロードするには、[リリースページ](https://github.com/tendermint/tendermint/releases)を参照してください。
 
-## Using Homebrew
+## 自作を使用する
 
-You can also install the Tendermint binary by simply using homebrew,
+自作ソフトウェアを使用するだけでTendermintバイナリをインストールすることもできます。
 
 ```
 brew install tendermint
 ```
 
-## From Source
+## ソースコードから
 
-You'll need `go` [installed](https://golang.org/doc/install) and the required
-environment variables set, which can be done with the following commands:
+`go` [インストール済み](https://golang.org/doc/install)と必要なものが必要です
+環境変数を設定するには、次のコマンドを使用して完了します。
 
 ```sh
 echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
 ```
 
-Get the source code:
+ソースコードを取得します。
 
 ```sh
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
 ```
 
-Then run:
+次に、以下を実行します。
 
 ```sh
 make install
 ```
 
-to put the binary in `$GOPATH/bin` or use:
+バイナリファイルを `$ GOPATH/bin`に入れるか、次を使用します。
 
 ```sh
 make build
 ```
 
-to put the binary in `./build`.
+バイナリファイルを `。/build`に置きます。
 
-_DISCLAIMER_ The binary of Tendermint is build/installed without the DWARF
-symbol table. If you would like to build/install Tendermint with the DWARF
-symbol and debug information, remove `-s -w` from `BUILD_FLAGS` in the make
-file.
+_免責事項_Tendermintのバイナリは、DWARFなしでビルド/インストールされます
+シンボルテーブル。 DWARFを使用してTendermintをビルド/インストールする場合
+シンボルとデバッグ情報、makeの `BUILD_FLAGS`から` -s-w`を削除します
+資料。
 
-The latest Tendermint is now installed. You can verify the installation by
-running:
+最新のテンダーミントがインストールされました。 インストールを確認するには、
+ランニング:
 
 ```sh
 tendermint version
 ```
 
-## Run
+## 走る
 
-To start a one-node blockchain with a simple in-process application:
+単純なインプロセスアプリケーションを使用してシングルノードブロックチェーンを開始するには:
 
 ```sh
 tendermint init validator
 tendermint start --proxy-app=kvstore
 ```
 
-## Reinstall
+##再インストール
 
-If you already have Tendermint installed, and you make updates, simply
+すでにTendermintをインストールしていて、更新している場合は、
 
 ```sh
 make install
 ```
 
-To upgrade, run
+アップグレードするには、
 
 ```sh
 git pull origin master
 make install
 ```
 
-## Compile with CLevelDB support
+## コンパイルをサポートするためにCLevelDBを使用する
 
-Install [LevelDB](https://github.com/google/leveldb) (minimum version is 1.7).
+[LevelDB](https://github.com/google/leveldb)をインストールします(最小バージョンは1.7です)。
 
-Install LevelDB with snappy (optionally). Below are commands for Ubuntu:
+snappy(オプション)を使用してLevelDBをインストールします。 以下はUbuntuのコマンドです。
 
 ```sh
 sudo apt-get update
@@ -102,20 +102,20 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
   rm -f v1.20.tar.gz
 ```
 
-Set a database backend to `cleveldb`:
+データベースバックエンドを `cleveldb`に設定します。
 
 ```toml
 # config/config.toml
 db_backend = "cleveldb"
 ```
 
-To install Tendermint, run:
+Tendermintをインストールするには、次のコマンドを実行します。
 
 ```sh
 CGO_LDFLAGS="-lsnappy" make install TENDERMINT_BUILD_OPTIONS=cleveldb
 ```
 
-or run:
+または実行:
 
 ```sh
 CGO_LDFLAGS="-lsnappy" make build TENDERMINT_BUILD_OPTIONS=cleveldb

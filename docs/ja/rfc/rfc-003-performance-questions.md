@@ -1,283 +1,283 @@
-# RFC 003: Taxonomy of potential performance issues in Tendermint 
+# RFC 003:Tendermintの潜在的なパフォーマンス問題の分類
 
-## Changelog
+## 変更ログ
 
-- 2021-09-02: Created initial draft (@wbanfield)
-- 2021-09-14: Add discussion of the event system (@wbanfield)
+-2021-09-02:最初のドラフトを作成します(@wbanfield)
+-2021-09-14:イベントシステムのディスカッションを追加(@wbanfield)
 
-## Abstract
+## 概要
 
-This document discusses the various sources of performance issues in Tendermint and
-attempts to clarify what work may be required to understand and address them.
+このドキュメントでは、テンダーミントと
+これらの問題を理解して解決するために何が必要かを明確にするようにしてください。
 
-## Background
+## バックグラウンド
 
-Performance, loosely defined as the ability of a software process to perform its work
-quickly and efficiently under load and within reasonable resource limits, is a frequent
-topic of discussion in the Tendermint project.
-To effectively address any issues with Tendermint performance we need to
-categorize the various issues, understand their potential sources, and gauge their
-impact on users.
+パフォーマンス。ソフトウェアプロセスがその作業を実行する能力として大まかに定義されます。
+負荷の範囲内で高速かつ効率的であり、合理的なリソースの制約が一般的です
+Tendermintプロジェクトのディスカッショントピック。
+テンダーミントのパフォーマンスに関する問題を効果的に解決するには、
+さまざまな問題を分類し、それらの潜在的な原因を理解し、それらを測定します
+ユーザーへの影響。
 
-Categorizing the different known performance issues will allow us to discuss and fix them
-more systematically. This document proposes a rough taxonomy of performance issues
-and highlights areas where more research into potential performance problems is required.
+さまざまな既知のパフォーマンスの問題を分類することで、それらについて話し合い、修正することができます
+より体系的。このドキュメントは、パフォーマンスの問題の大まかな分類を示しています
+また、潜在的なパフォーマンスの問題についてさらに調査が必要な領域についても説明します。
 
-Understanding Tendermint's performance limitations will also be critically important
-as we make changes to many of its subsystems. Performance is a central concern for
-upcoming decisions regarding the `p2p` protocol, RPC message encoding and structure,
-database usage and selection, and consensus protocol updates.
+Tendermintのパフォーマンスの制限を理解することも重要です
+そのサブシステムの多くに変更を加えるとき。パフォーマンスが中心的な関心事です
+「p2p」プロトコル、RPCメッセージのエンコーディング、および構造に関する決定が行われようとしています。
+データベースの使用と選択、およびコンセンサスプロトコルの更新。
 
 
-## Discussion
+## 議論する
 
-This section attempts to delineate the different sections of Tendermint functionality
-that are often cited as having performance issues. It raises questions and suggests
-lines of inquiry that may be valuable for better understanding Tendermint's performance issues.
+このセクションでは、Tendermintの機能のさまざまな部分について説明します。
+パフォーマンスの問題としてよく引用されます。質問をし、推奨事項を作成します
+Tendermintのパフォーマンスの問題をよりよく理解するのに役立つ可能性のあるクエリ行。
 
-As a note: We should avoid quickly adding many microbenchmarks or package level benchmarks. 
-These are prone to being worse than useless as they can obscure what _should_ be
-focused on: performance of the system from the perspective of a user. We should,
-instead, tune performance with an eye towards user needs and actions users make. These users comprise
-both operators of Tendermint chains and the people generating transactions for
-Tendermint chains. Both of these sets of users are largely aligned in wanting an end-to-end
-system that operates quickly and efficiently.
+注:多くのマイクロベンチマークやパッケージレベルのベンチマークをすぐに追加することは避けてください。
+これらは、それがどうあるべきかを曖昧にする可能性があるため、役に立たないよりも悪いです
+焦点:ユーザーの観点からシステムのパフォーマンスを確認します。我々はすべき、
+代わりに、ユーザーのニーズとユーザーが実行する操作に基づいてパフォーマンスを調整します。これらのユーザーには以下が含まれます
+テンダーミントチェーンの運営者と取引を行う者
+テンダーミントチェーン。大体において、これら2つのユーザーグループはエンドツーエンドを望んでいます
+迅速かつ効率的に実行されるシステム。
 
-REQUEST: The list below may be incomplete, if there are additional sections that are often
-cited as creating poor performance, please comment so that they may be included.
+リクエスト:頻繁に表示される追加のパーツがある場合、以下のリストは不完全な場合があります
+パフォーマンスの低下を引き起こしていると言われていますが、コメントを残してください。
 
-### P2P
+### ピアツーピア
 
-#### Claim: Tendermint cannot scale to large numbers of nodes
+#### 免責事項:Tendermintは多数のノードに拡張できません
 
-A complaint has been reported that Tendermint networks cannot scale to large numbers of nodes.
-The listed number of nodes a user reported as causing issue was in the thousands.
-We don't currently have evidence about what the upper-limit of nodes that Tendermint's
-P2P stack can scale to.
+報告によると、Tendermintネットワークは多数のノードに拡張することはできません。
+何千ものノードが、問題を引き起こしているとリストされているユーザーから報告されています。
+現在、テンダーミントのノードの上限が何であるかを示す証拠はありません
+P2Pスタックはに拡張できます。
 
-We need to more concretely understand the source of issues and determine what layer
-is causing a problem. It's possible that the P2P layer, in the absence of any reactors
-sending data, is perfectly capable of managing thousands of peer connections. For
-a reasonable networking and application setup, thousands of connections should not present any
-issue for the application.
+問題の根本をより具体的に理解し、それがどのレベルであるかを判断する必要があります
+問題を引き起こします。反応器がなくても、P2P層が可能です
+データの送信は、何千ものピアツーピア接続を完全に管理できます。にとって
+合理的なネットワークとアプリケーションの設定、何千もの接続が表示されるべきではありません
+アプリケーションの問題。
 
-We need more data to understand the problem directly. We want to drive the popularity
-and adoption of Tendermint and this will mean allowing for chains with more validators.
-We should follow up with users experiencing this issue. We may then want to add
-a series of metrics to the P2P layer to better understand the inefficiencies it produces.
+問題を直接理解するには、より多くのデータが必要です。人気を高めたい
+そして、テンダーミントの採用は、より多くのバリデーターのチェーンを許可することを意味します。
+この問題が発生したユーザーをフォローアップする必要があります。次に、追加することができます
+P2Pレイヤーが生み出す非効率性をよりよく理解するための、P2Pレイヤーの一連のインジケーター。
 
-The following metrics can help us understand the sources of latency in the Tendermint P2P stack:
+次のメトリックは、TendermintP2Pスタックの遅延の原因を理解するのに役立ちます。
 
-* Number of messages sent and received per second
-* Time of a message spent on the P2P layer send and receive queues
+* 1秒あたりに送受信されたメッセージの数
+*メッセージがキューの送受信に費やす時間
 
-The following metrics exist and should be leveraged in addition to those added:
+追加されたインジケーターに加えて、次のインジケーターも使用する必要があります。
 
-* Number of peers node's connected to
-* Number of bytes per channel sent and received from each peer
+*接続されているピアの数
+*各ピアとの間で送受信されるチャネルあたりのバイト数
 
-### Sync
+### 同期する
 
-#### Claim: Block Syncing is slow
+#### 免責事項:ブロックの同期が遅い
 
-Bootstrapping a new node in a network to the height of the rest of the network is believed to
-take longer than users would like. Block sync requires fetching all of the blocks from
-peers and placing them into the local disk for storage. A useful line of inquiry
-is understanding how quickly a perfectly tuned system _could_ fetch all of the state
-over a network so that we understand how much overhead Tendermint actually adds.
+ネットワーク内の新しいノードがネットワークの残りの部分に誘導される高さが考慮されます
+ユーザーの予想よりも時間がかかりました。ブロック同期はからである必要があります
+ピアを作成し、ストレージ用にローカルディスクに配置します。便利なクエリ行
+完全に調整されたsystem_can_getすべての状態の速度を理解する
+ネットワークを介して、Tendermintが実際にどれだけのオーバーヘッドを増やしたかを理解できるようにします。
 
-The operation is likely to be _incredibly_ dependent on the environment in which
-the node is being run. The factors that will influence syncing include:
-1. Number of peers that a syncing node may fetch from.
-2. Speed of the disk that a validator is writing to.
-3. Speed of the network connection between the different peers that node is
-syncing from.
+操作は_信じられないほど_依存している可能性が非常に高いです
+ノードは実行中です。同期に影響を与える要因は次のとおりです。
+1.同期ノードが同期ノードから取得できるピアの数。
+2.バリデーターがディスクに書き込む速度。
+3.ノードが配置されている異なるピア間のネットワーク接続速度
+から同期。
 
-We should calculate how quickly this operation _could possibly_ complete for common chains and nodes.
-To calculate how quickly this operation could possibly complete, we should assume that
-a node is reading at line-rate of the NIC and writing at the full drive speed to its
-local storage. Comparing this theoretical upper-limit to the actual sync times
-observed by node operators will give us a good point of comparison for understanding
-how much overhead Tendermint incurs.
+通常のチェーンとノードでこの操作が完了する速度を計算する必要があります。
+この操作が完了するまでの時間を計算するには、次のように仮定する必要があります。
+ノードはNICのワイヤ速度で読み取り、フルドライブ速度で書き込みを行っています。
+ローカルストレージ。この理論上の上限を実際の同期時間と比較します
+ノード演算子の観察は、理解するための比較の良いポイントを提供します
+Tendermintはどのくらいのオーバーヘッドを被りますか。
 
-We should additionally add metrics to the blocksync operation to more clearly pinpoint
-slow operations. The following metrics should be added to the block syncing operation:
+さらに明確に調べるために、同期操作をブロックするインジケーターを追加する必要があります
+動作が遅い。次のインジケータをブロック同期操作に追加する必要があります。
 
-* Time to fetch and validate each block
-* Time to execute a block
-* Blocks sync'd per unit time
+*各ブロックを取得して検証する時間
+*ブロックを実行する時間
+*単位時間ごとに同期されたブロック
 
-### Application
+### 応用
 
-Applications performing complex state transitions have the potential to bottleneck
-the Tendermint node.
+複雑な状態遷移を実行するアプリケーションがボトルネックになる可能性があります
+テンダーミントノード。
 
-#### Claim: ABCI block delivery could cause slowdown
+#### 免責事項:ABCIブロックの配信が遅くなる可能性があります
 
-ABCI delivers blocks in several methods: `BeginBlock`, `DeliverTx`, `EndBlock`, `Commit`.
+ABCIは、 `BeginBlock`、` DeliverTx`、 `EndBlock`、` Commit`などのさまざまな方法でブロックを配信します。
 
-Tendermint delivers transactions one-by-one via the `DeliverTx` call. Most of the 
-transaction delivery in Tendermint occurs asynchronously and therefore appears unlikely to
-form a bottleneck in ABCI.
+Tendermintは、 `DeliverTx`を介して1対1の配信トランザクションを呼び出します。ほとんど
+Tendermintでのトランザクション配信は非同期で行われるため、可能性は低いようです。
+ABCIでボトルネックが発生します。
 
-After delivering all transactions, Tendermint then calls the `Commit` ABCI method.
-Tendermint [locks all access to the mempool][abci-commit-description] while `Commit`
-proceeds. This means that an application that is slow to execute all of its
-transactions or finalize state during the `Commit` method will prevent any new
-transactions from being added to the mempool.  Apps that are slow to commit will
-prevent consensus from proceeded to the next consensus height since Tendermint
-cannot validate block proposals or produce block proposals without the
-AppHash obtained from the `Commit` method. We should add a metric for each
-step in the ABCI protocol to track the amount of time that a node spends communicating
-with the application at each step.
+すべてのトランザクションを配信した後、Tendermintは `Commit`ABCIメソッドを呼び出します。
+Tendermint [メモリプールへのすべてのアクセスをロックする] [abci-commit-description]そして `Commit`
+所得。これは、アプリケーションがそのすべてを実行することを意味します
+Commitメソッド中のトランザクションまたは完了ステータスは、新しいものを防ぎます
+トランザクションはメモリプールに追加されます。提出が遅い申請書は
+テンダーミント以降、コンセンサスが次のコンセンサスの高さに進むのを防ぐ
+ブロック提案を検証またはブロック提案を生成できません
+`Commit`メソッドから取得したAppHash。各インジケーターにインジケーターを追加する必要があります
+ノードが通信に費やす時間を追跡するためのABCIプロトコルのステップ
+すべてのステップでアプリ。
 
-#### Claim: ABCI serialization overhead causes slowdown
+#### 免責事項:ABCIシリアル化のオーバーヘッドにより、速度が低下します
 
-The most common way to run a Tendermint application is using the Cosmos-SDK.
-The Cosmos-SDK runs the ABCI application within the same process as Tendermint.
-When an application is run in the same process as Tendermint, a serialization penalty
-is not paid. This is because the local ABCI client does not serialize method calls
-and instead passes the protobuf type through directly. This can be seen
-in [local_client.go][abci-local-client-code].
+Tendermintアプリケーションを実行する最も一般的な方法は、Cosmos-SDKを使用することです。
+Cosmos-SDKは、Tendermintと同じプロセスでABCIアプリケーションを実行します。
+アプリケーションがTendermintと同じプロセスで実行されている場合、シリアル化のペナルティ
+支払っていない。これは、ローカルABCIクライアントがメソッド呼び出しをシリアル化しないためです。
+代わりに、protobufタイプが直接渡されます。これは見ることができます
+[local_client.go] [abci-local-client-code]内。
 
-Serialization and deserialization in the gRPC and socket protocol ABCI methods
-may cause slowdown. While these may cause issue, they are not part of the primary
-usecase of Tendermint and do not necessarily need to be addressed at this time.
+gRPCとソケットプロトコルのABCIメソッドでのシリアル化と逆シリアル化
+減速の原因となります。これらは問題を引き起こす可能性がありますが、
+Tendermintのユースケースは、現時点で必ずしも解決する必要はありません。
 
 ### RPC
 
-#### Claim: The Query API is slow.
+#### 免責事項:クエリAPIは非常に低速です。
 
-The query API locks a mutex across the ABCI connections. This causes consensus to
-slow during queries, as ABCI is no longer able to make progress. This is known
-to be causing issue in the cosmos-sdk and is being addressed [in the sdk][sdk-query-fix]
-but a more robust solution may be required. Adding metrics to each ABCI client connection
-and message as described in the Application section of this document would allow us
-to further introspect the issue here. 
+クエリAPIは、ABCI接続間でミューテックスをロックします。これはコンセンサスにつながります
+ABCIは進行できなくなったため、クエリ中は遅くなります。それは、よく知られています
+cosmos-sdkで問題が発生し、[in sdk] [sdk-query-fix]で解決されます
+ただし、より強力なソリューションが必要になる場合があります。各ABCIクライアント接続にメトリックを追加します
+そして、このドキュメントのアプリケーションセクションで説明されているメッセージは私たちを可能にします
+ここでこの問題をさらに詳しく調べます。
 
-#### Claim: RPC Serialization may cause slowdown
+#### 免責事項:RPCシリアル化が遅くなる可能性があります
 
-The Tendermint RPC uses a modified version of JSON-RPC. This RPC powers the `broadcast_tx_*` methods,
-which is a critical method for adding transactions to Tendermint at the moment. This method is
-likely invoked quite frequently on popular networks. Being able to perform efficiently
-on this common and critical operation is very important. The current JSON-RPC implementation
-relies heavily on type introspection via reflection, which is known to be very slow in
-Go. We should therefore produce benchmarks of this method to determine how much overhead
-we are adding to what, is likely to be, a very common operation.
+Tendermint RPCは、JSON-RPCの修正バージョンを使用します。このRPCは、 `broadcast_tx _ *`メソッドを強化します。
+これは現在、Tendermintにトランザクションを追加するための重要な方法です。この方法は
+人気のあるネットワークで頻繁に呼び出される可能性があります。効率的に実行できる
+この一般的で重要な操作にとって非常に重要です。現在のJSON-RPC実装
+非常に遅いことが知られている反射による型のイントロスペクションに大きく依存します
+と一緒に行きます。したがって、このメソッドのベンチマークを生成して、どのくらいのオーバーヘッドがあるかを判断する必要があります
+非常に一般的な操作を追加しています。
 
-The other JSON-RPC methods are much less critical to the core functionality of Tendermint.
-While there may other points of performance consideration within the RPC, methods that do not
-receive high volumes of requests should not be prioritized for performance consideration.
+他のJSON-RPCメソッドは、Tendermintのコア機能にとってそれほど重要ではありません。
+RPCには他のパフォーマンスの考慮事項があるかもしれませんが、考慮されていないメソッド
+パフォーマンス上の理由から、多数のリクエストを受信することを優先するべきではありません。
 
-NOTE: Previous discussion of the RPC framework was done in [ADR 57][adr-57] and 
-there is ongoing work to inspect and alter the JSON-RPC framework in [RFC 002][rfc-002]. 
-Much of these RPC-related performance considerations can either wait until the work of RFC 002 work is done or be
-considered concordantly with the in-flight changes to the JSON-RPC.
+注:RPCフレームワークに関する以前の説明は、[ADR 57] [adr-57]および
+[RFC 002] [rfc-002]のJSON-RPCフレームワークは、レビューおよび変更されています。
+これらのRPC関連のパフォーマンスに関する考慮事項のほとんどは、RFC002の作業が完了するまで待つことができます。
+JSON-RPCの動的な変更と一致していることを考慮してください。
 
-### Protocol
+### 合意
 
-#### Claim: Gossiping messages is a slow process
+#### 免責事項:ゴシップメッセージングは​​遅いプロセスです
 
-Currently, for any validator to successfully vote in a consensus _step_, it must
-receive votes from greater than 2/3 of the validators on the network. In many cases,
-it's preferable to receive as many votes as possible from correct validators.
+現在、バリデーターがconsensus_step_で正常に投票するには、
+ネットワーク上のバリデーターの2/3以上から投票を取得します。多くの場合、
+正しいバリデーターからできるだけ多くの票を獲得するのが最善です。
 
-This produces a quadratic increase in messages that are communicated as more validators join the network.
-(Each of the N validators must communicate with all other N-1 validators).
+より多くのバリデーターがネットワークに参加すると、配信されるメッセージが2番目に増加します。
+(N個のバリデーターのそれぞれは、他のすべてのN-1バリデーターと通信する必要があります)。
 
-This large number of messages communicated per step has been identified to impact
-performance of the protocol. Given that the number of messages communicated has been
-identified as a bottleneck, it would be extremely valuable to gather data on how long
-it takes for popular chains with many validators to gather all votes within a step.
+各ステップで伝達される多数のメッセージは、影響を与えると判断されています
+契約の実施。伝達されたメッセージの数を考えると
+ボトルネックとして特定され、どのくらいの期間が非常に価値があるかに関するデータを収集する
+多くのバリデーターを持つ人気のあるチェーンは、すべての投票を1つのステップで収集する必要があります。
 
-Metrics that would improve visibility into this include:
+この可視性を向上させることができるメトリックは次のとおりです。
 
-* Amount of time for a node to gather votes in a step.
-* Amount of time for a node to gather all block parts.
-* Number of votes each node sends to gossip (i.e. not its own votes, but votes it is
-transmitting for a peer).
-* Total number of votes each node sends to receives (A node may receive duplicate votes
-so understanding how frequently this occurs will be valuable in evaluating the performance
-of the gossip system).
+*ノードが1つのステップで投票を収集する時間。
+*ノードがすべてのブロックパーツを収集する時間。
+*各ノードがゴシップに送信する投票数(つまり、それはそれ自体の投票ではなく、その投票数)
+ピアツーピア伝送の場合)。
+*各ノードから送信された投票の総数(ノードは重複した投票を受け取る場合があります)
+したがって、これがどのくらいの頻度で発生するかを知ることは、パフォーマンスを評価するために価値があります
+ゴシップシステム)。
 
-#### Claim: Hashing Txs causes slowdown in Tendermint
+#### ステートメント:Txをハッシュすると、Tendermintの速度が低下します
 
-Using a faster hash algorithm for Tx hashes is currently a point of discussion
-in Tendermint. Namely, it is being considered as part of the [modular hashing proposal][modular-hashing].
-It is currently unknown if hashing transactions in the Mempool forms a significant bottleneck.
-Although it does not appear to be documented as slow, there are a few open github
-issues that indicate a possible user preference for a faster hashing algorithm,
-including [issue 2187][issue-2187] and [issue 2186][issue-2186]. 
+Txハッシュに高速ハッシュアルゴリズムを使用することが現在の議論のポイントです
+テンダーミントで。つまり、[Modular Hash Proposal] [ModularHash]の一部と見なされます。
+Mempoolでのハッシュトランザクションが主要なボトルネックを構成するかどうかは明らかではありません。
+遅いとは思われませんが、オープンなgithubがいくつかあります
+ユーザーがより高速なハッシュアルゴリズムを好む可能性があることを示します。
+[issue 2187] [issue-2187]と[issue2186] [issue-2186]を含めます。
 
-It is likely worth investigating what order of magnitude Tx hashing takes in comparison to other
-aspects of adding a Tx to the mempool. It is not currently clear if the rate of adding Tx
-to the mempool is a source of user pain. We should not endeavor to make large changes to
-consensus critical components without first being certain that the change is highly
-valuable and impactful.
+他のハッシュと比較して、Txハッシュの大きさのオーダーは研究する価値があるかもしれません
+Txアスペクトをメモリプールに追加します。 Txレートを上げる方法が明確ではありません
+メモリプールはユーザーの苦痛の原因です。私たちはしようとすべきではありません
+変更が高度であると最初に判断せずにコンセンサスに到達するための重要なコンポーネント
+価値と影響。
 
-### Digital Signatures
+### デジタル署名
 
-#### Claim: Verification of digital signatures may cause slowdown in Tendermint
+#### 免責事項:デジタル署名の検証により、Tendermintの速度が低下する可能性があります
 
-Working with cryptographic signatures can be computationally expensive. The cosmos
-hub uses [ed25519 signatures][hub-signature]. The library performing signature
-verification in Tendermint on votes is [benchmarked][ed25519-bench] to be able to perform an `ed25519`
-signature in 75μs on a decently fast CPU. A validator in the Cosmos Hub performs
-3 sets of verifications on the signatures of the 140 validators in the Hub
-in a consensus round, during block verification, when verifying the prevotes, and
-when verifying the precommits. With no batching, this would be roughly `3ms` per
-round. It is quite unlikely, therefore, that this accounts for any serious amount
-of the ~7 seconds of block time per height in the Hub.
+暗号化署名を使用すると、計算コストが高くなる可能性があります。宇宙
+ハブは[ed25519署名] [ハブ署名]を使用します。ライブラリ実行署名
+Tendermintでの投票の検証は、[benchmark] [ed25519-bench]が `ed25519`を実行できることです。
+かなり高速なCPUで75μsで署名されています。 CosmosHubでのバリデーターの実行
+ハブ内の140の検証者の署名に対して3セットの検証を実行します
+コンセンサスラウンドでは、ブロック検証期間中、事前投票を検証するとき、および
+事前コミットを確認するとき。バッチ処理がない場合、これはほぼ「3ms」ごとになります
+円形。したがって、これが深刻な金額を引き起こす可能性は低いです
+ハブ内の各高さのブロック時間は約7秒です。
 
-This may cause slowdown when syncing, since the process needs to constantly verify
-signatures. It's possible that improved signature aggregation will lead to improved
-light client or other syncing performance. In general, a metric should be added
-to track block rate while blocksyncing.
+プロセスには継続的な検証が必要なため、同期が遅くなる可能性があります
+サイン。シグニチャ集約の改善は、改善につながる可能性があります
+ライトクライアントまたはその他の同期機能。一般的に、メトリックを追加する必要があります
+ブロック同期中のブロックレートを追跡します。
 
-#### Claim: Our use of digital signatures in the consensus protocol contributes to performance issue
+#### 免責事項:コンセンサスプロトコルでデジタル署名を使用すると、パフォーマンスの問題が発生します
 
-Currently, Tendermint's digital signature verification requires that all validators
-receive all vote messages. Each validator must receive the complete digital signature
-along with the vote message that it corresponds to. This means that all N validators
-must receive messages from at least 2/3 of the N validators in each consensus
-round. Given the potential for oddly shaped network topologies and the expected
-variable network roundtrip times of a few hundred milliseconds in a blockchain,
-it is highly likely that this amount of gossiping is leading to a significant amount
-of the slowdown in the Cosmos Hub and in Tendermint consensus.
+現在、Tendermintのデジタル署名検証にはすべての検証者が必要です
+すべての投票メッセージを受信します。各検証者は完全なデジタル署名を受け取る必要があります
+対応する投票メッセージと一緒に。これは、N個のバリデーターすべてが
+各コンセンサスのN個のバリデーターの少なくとも2/3からメッセージを受信する必要があります
+円形。奇妙な形のネットワークトポロジの可能性と期待を考慮する
+ブロックチェーン内の数百ミリ秒の可変ネットワークラウンドトリップ時間、
+この種のゴシップは多くの原因となる可能性があります
+コスモスハブとテンダーミントのコンセンサスは鈍化しました。
 
-### Tendermint Event System
+### テンダーミントイベントシステム
 
-#### Claim: The event system is a bottleneck in Tendermint
+#### ステートメント:イベントシステムはテンダーミントのボトルネックです
 
-The Tendermint Event system is used to communicate and store information about
-internal Tendermint execution. The system uses channels internally to send messages
-to different subscribers. Sending an event [blocks on the internal channel][event-send].
-The default configuration is to [use an unbuffered channel for event publishes][event-buffer-capacity].
-Several consumers of the event system also use an unbuffered channel for reads.
-An example of this is the [event indexer][event-indexer-unbuffered], which takes an
-unbuffered subscription to the event system. The result is that these unbuffered readers
-can cause writes to the event system to block or slow down depending on contention in the
-event system. This has implications for the consensus system, which [publishes events][consensus-event-send].
-To better understand the performance of the event system, we should add metrics to track the timing of
-event sends. The following metrics would be a good start for tracking this performance:
+テンダーミントイベントシステムは、通信およびストレージ関連に使用されます
+内部テンダーミントの実行。システムはチャネルを使用してメッセージを内部的に送信します
+別の加入者に。イベントの送信[内部チャネルのブロック] [イベントの送信]。
+デフォルトの設定は、[イベントの公開にバッファなしのチャネルを使用する] [イベントバッファ容量]です。
+イベントシステムの一部のコンシューマーも、読み取りにバッファーなしのチャネルを使用します。
+この例は、[event indexer] [event-indexer-unbuffered]であり、これには
+イベントシステムへのバッファなしサブスクリプション。結果は、これらのバッファリングされていないリーダーです
+場合によっては、イベントシステムへの書き込みがブロックまたは遅くなる可能性があります
+イベントシステム。これは、[リリースイベント] [コンセンサス-イベント-送信]のコンセンサスシステムに影響を与えます。
+イベントシステムのパフォーマンスをよりよく理解するために、イベントがいつ発生したかを追跡するためのメトリックを追加する必要があります
+イベントが送信されました。次のメトリックは、このパフォーマンスを追跡するための良いスタートになります。
 
-* Time in event send, labeled by Event Type
-* Time in event receive, labeled by subscriber
-* Event throughput, measured in events per unit time.
+*イベントタイプでマークされたイベント送信時間
+*加入者によってマークされたイベント受信時間
+*イベントスループット。単位時間あたりのイベント数で測定されます。
 
-### References
-[modular-hashing]: https://github.com/tendermint/tendermint/pull/6773
-[issue-2186]: https://github.com/tendermint/tendermint/issues/2186
-[issue-2187]: https://github.com/tendermint/tendermint/issues/2187
-[rfc-002]: https://github.com/tendermint/tendermint/pull/6913
-[adr-57]: https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md
-[issue-1319]: https://github.com/tendermint/tendermint/issues/1319
-[abci-commit-description]: https://github.com/tendermint/spec/blob/master/spec/abci/apps.md#commit
-[abci-local-client-code]: https://github.com/tendermint/tendermint/blob/511bd3eb7f037855a793a27ff4c53c12f085b570/abci/client/local_client.go#L84
-[hub-signature]: https://github.com/cosmos/gaia/blob/0ecb6ed8a244d835807f1ced49217d54a9ca2070/docs/resources/genesis.md#consensus-parameters
-[ed25519-bench]: https://github.com/oasisprotocol/curve25519-voi/blob/d2e7fc59fe38c18ca990c84c4186cba2cc45b1f9/PERFORMANCE.md
-[event-send]: https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/libs/pubsub/pubsub.go#L338
-[event-buffer-capacity]: https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/types/event_bus.go#L14
-[event-indexer-unbuffered]: https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/state/indexer/indexer_service.go#L39
-[consensus-event-send]: https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/internal/consensus/state.go#L1573
-[sdk-query-fix]: https://github.com/cosmos/cosmos-sdk/pull/10045
+### 参照する
+[モジュラーハッシュ]:https://github.com/tendermint/tendermint/pull/6773
+[issue-2186]:https://github.com/tendermint/tendermint/issues/2186
+[issue-2187]:https://github.com/tendermint/tendermint/issues/2187
+[rfc-002]:https://github.com/tendermint/tendermint/pull/6913
+[adr-57]:https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-057-RPC.md
+[issue-1319]:https://github.com/tendermint/tendermint/issues/1319
+[abci-commit-description]:https://github.com/tendermint/spec/blob/master/spec/abci/apps.md#commit
+[abci-local-client-code]:https://github.com/tendermint/tendermint/blob/511bd3eb7f037855a793a27ff4c53c12f085b570/abci/client/local_client.go#L84
+[中央署名]:https://github.com/cosmos/gaia/blob/0ecb6ed8a244d835807f1ced49217d54a9ca2070/docs/resources/genesis.md#consensus-parameters
+[ed25519-ベンチ]:https://github.com/oasisprotocol/curve25519-voi/blob/d2e7fc59fe38c18ca990c84c4186cba2cc45b1f9/PERFORMANCE.md
+[イベント送信]:https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/libs/pubsub/pubsub.go#L338
+[イベントバッファ容量]:https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/types/event_bus.go#L14
+[イベントインデクサーはバッファリングされません]:https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/state/indexer/indexer_service.go#L39
+[コンセンサスイベント送信]:https://github.com/tendermint/tendermint/blob/5bd3b286a2b715737f6d6c33051b69061d38f8ef/internal/consensus/state.go#L1573
+[sdk-query-fix]:https://github.com/cosmos/cosmos-sdk/pull/10045

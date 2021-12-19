@@ -1,1 +1,1 @@
-# Building Applications
+# アプリケーションをビルドする

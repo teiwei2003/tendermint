@@ -1,55 +1,54 @@
-# ADR 058: Event hashing
+# ADR 058:イベントハッシュ
 
-## Changelog
+## 変更ログ
 
-- 2020-07-17: initial version
-- 2020-07-27: fixes after Ismail and Ethan's comments
-- 2020-07-27: declined
+-2020-07-17:初期バージョン
+-2020-07-27:IsmailとEthanのコメントを修正しました
+-2020-07-27:辞退
 
-## Context
+## 環境
 
-Before [PR#4845](https://github.com/tendermint/tendermint/pull/4845),
-`Header#LastResultsHash` was a root of the Merkle tree built from `DeliverTx`
-results. Only `Code`, `Data` fields were included because `Info` and `Log`
-fields are non-deterministic.
+[PR#4845](https://github.com/tendermint/tendermint/pull/4845)の前、
+`Header#LastResultsHash`は、` DeliverTx`から構築されたマークルツリーのルートです。
+結果。 「情報」と「ログ」のため、「コード」フィールドと「データ」フィールドのみが含まれます
+フィールドは未定義です。
 
-At some point, we've added events to `ResponseBeginBlock`, `ResponseEndBlock`,
-and `ResponseDeliverTx` to give applications a way to attach some additional
-information to blocks / transactions.
+ある時点で、 `ResponseBeginBlock`、` ResponseEndBlock`、にイベントを追加しました。
+また、 `ResponseDeliverTx`は、アプリケーションに追加のメソッドを提供します
+ブロック/トランザクション情報。
 
-Many applications seem to have started using them since.
+それ以来、多くのアプリケーションがそれらを使い始めたようです。
 
-However, before [PR#4845](https://github.com/tendermint/tendermint/pull/4845)
-there was no way to prove that certain events were a part of the result
-(_unless the application developer includes them into the state tree_).
+ただし、[PR#4845](https://github.com/tendermint/tendermint/pull/4845)の前
+特定のイベントが結果の一部であることを証明する方法はありません
+(_アプリケーション開発者がそれらを状態ツリーに含めない限り_)。
 
-Hence, [PR#4845](https://github.com/tendermint/tendermint/pull/4845) was
-opened. In it, `GasWanted` along with `GasUsed` are included when hashing
-`DeliverTx` results. Also, events from `BeginBlock`, `EndBlock` and `DeliverTx`
-results are hashed into the `LastResultsHash` as follows:
+したがって、[PR#4845](https://github.com/tendermint/tendermint/pull/4845)は
+開ける。その中で、ハッシュには `GasWanted`と` GasUsed`が含まれています
+`DeliverTx`の結果。さらに、 `BeginBlock`、` EndBlock`、および `DeliverTx`からのイベント
+結果は、以下に示すように `LastResultsHash`にハッシュされます。
 
-- Since we do not expect `BeginBlock` and `EndBlock` to contain many events,
-  these will be Protobuf encoded and included in the Merkle tree as leaves.
-- `LastResultsHash` therefore is the root hash of a Merkle tree w/ 3 leafs:
-  proto-encoded `ResponseBeginBlock#Events`, root hash of a Merkle tree build
-  from `ResponseDeliverTx` responses (Log, Info and Codespace fields are
-  ignored), and proto-encoded `ResponseEndBlock#Events`.
-- Order of events is unchanged - same as received from the ABCI application.
+-`BeginBlock`と `EndBlock`に多くのイベントを含めたくないので、
+  これらはProtobufによってエンコードされ、Merkleツリーに葉として含まれます。
+-したがって、 `LastResultsHash`は、3枚の葉を持つマークルツリーのルートハッシュです。
+  プロトタイプでコード化された `ResponseBeginBlock#Events`、Merkelツリー構築のルートハッシュ
+  `ResponseDeliverTx`からの応答(ログ、情報、コードスペースのフィールドは
+  無視)、プロトタイプは `ResponseEndBlock#Events`をコーディングしました。
+-イベントのシーケンスは変更されません-ABCIアプリケーションから受信したものと同じです。
 
-[Spec PR](https://github.com/tendermint/spec/pull/97/files)
+[仕様PR](https://github.com/tendermint/spec/pull/97/files)
 
-While it's certainly good to be able to prove something, introducing new events
-or removing such becomes difficult because it breaks the `LastResultsHash`. It
-means that every time you add, remove or update an event, you'll need a
-hard-fork. And that is undoubtedly bad for applications, which are evolving and
-don't have a stable events set.
+もちろん良いことは証明できますが、新しいイベントを紹介します
+または、「LastResultsHash」が破棄されるため、このクラスの削除が困難になります。それ
+イベントを追加、削除、または更新するたびに、
+ハードフォーク。これは、進化するアプリケーションにとって間違いなく悪いことです
+安定した一連のイベントはありません。
 
-## Decision
+## 決定
 
-As a middle ground approach, the proposal is to add the
-`Block#LastResultsEvents` consensus parameter that is a list of all events that
-are to be hashed in the header.
-
+妥協案として、提案は増加することです
+`Block#LastResultsEvents`コンセンサスパラメータはすべてのイベントのリストです
+ヘッダーでハッシュされます。
 ```
 @ proto/tendermint/abci/types.proto:295 @ message BlockParams {
   int64 max_bytes = 1;
@@ -60,10 +59,10 @@ are to be hashed in the header.
 }
 ```
 
-Initially the list is empty. The ABCI application can change it via `InitChain`
-or `EndBlock`.
+最初はリストは空です。 ABCIアプリケーションは `InitChain`を介してそれを変更することができます
+または `EndBlock`。
 
-Example:
+例:
 
 ```go
 func (app *MyApp) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
@@ -80,43 +79,43 @@ func (app *MyApp) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx 
 }
 ```
 
-For "transfer" event to be hashed, the `LastResultsEvents` must contain a
-string "transfer".
+「送信」イベントをハッシュするには、 `LastResultsEvents`に
+文字列「転送」。
 
-## Status
+## ステータス
 
-Declined
+ごみ
 
-**Until there's more stability/motivation/use-cases/demand, the decision is to
-push this entirely application side and just have apps which want events to be
-provable to insert them into their application-side merkle trees. Of course
-this puts more pressure on their application state and makes event proving
-application specific, but it might help built up a better sense of use-cases
-and how this ought to ultimately be done by Tendermint.**
+**より多くの安定性/動機/ユースケース/要件があるまで、決定は
+この完全にアプリケーション側を宣伝します。イベントが必要なアプリケーションのみを宣伝します。
+それらをアプリケーション側のMerkelツリーに挿入することが証明できます。もちろん
+これにより、アプリケーションの状態にさらに圧力がかかり、インシデントが証明されます
+アプリケーションに固有ですが、ユースケースの認識を高めるのに役立つ場合があります
+そして、テンダーミントが最終的にそれをどのように行うべきか。 ****
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-1. networks can perform parameter change proposals to update this list as new events are added
-2. allows networks to avoid having to do hard-forks
-3. events can still be added at-will to the application w/o breaking anything
+1.ネットワークは、新しいイベントが追加されたときにこのリストを更新するためのパラメーター変更の提案を実装できます
+2.ネットワークがハードフォークを回避できるようにします
+3.イベントは、何も中断することなく、アプリケーションに自由に追加できます。
 
-### Negative
+### ネガティブ
 
-1. yet another consensus parameter
-2. more things to track in the tendermint state
+1.別のコンセンサスパラメータ
+2.テンダーミント状態でより多くのものを追跡する
 
-## References
+## 参照する
 
-- [ADR 021](./adr-021-abci-events.md)
-- [Indexing transactions](../app-dev/indexing-transactions.md)
+-[ADR 021](./ adr-021-abci-events.md)
+-[インデックス作成トランザクション](../ app-dev / indexing-transactions.md)
 
-## Appendix A. Alternative proposals
+## 付録A.代替案
 
-The other proposal was to add `Hash bool` flag to the `Event`, similarly to
-`Index bool` EventAttribute's field. When `true`, Tendermint would hash it into
-the `LastResultsEvents`. The downside is that the logic is implicit and depends
-largely on the node's operator, who decides what application code to run. The
-above proposal makes it (the logic) explicit and easy to upgrade via
-governance.
+別の提案は、次のように、 `Hashbool`フラグを` Event`に追加することです。
+`Index bool`EventAttributeフィールド。 trueの場合、Tendermintはそれを次のようにハッシュします
+`LastResultsEvents`。欠点は、ロジックが暗黙的であり、依存していることです。
+これは主に、実行するアプリケーションコードを決定するノードのオペレーターに依存します。この
+上記の提案により、(論理的に)明確で簡単にアップグレードできます
+ガバナンス。

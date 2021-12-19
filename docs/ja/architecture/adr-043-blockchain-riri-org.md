@@ -1,47 +1,47 @@
-# ADR 043: Blockhchain Reactor Riri-Org
+# ADR 043:Blockhchain Reactor Riri-Org
 
-## Changelog
+## 変更ログ
 
-- 18-06-2019: Initial draft
-- 08-07-2019: Reviewed
-- 29-11-2019: Implemented
-- 14-02-2020: Updated with the implementation details
+-18-06-2019:最初のドラフト
+-08-07-2019:監査
+-29-11-2019:実装
+-14-02-2020:実装の詳細を更新
 
-## Context
+## 環境
 
-The blockchain reactor is responsible for two high level processes:sending/receiving blocks from peers and FastSync-ing blocks to catch upnode who is far behind. The goal of [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) was to refactor these two processes by separating business logic currently wrapped up in go-channels into pure `handle*` functions. While the ADR specified what the final form of the reactor might look like it lacked guidance on intermediary steps to get there.
-The following diagram illustrates the state of the [blockchain-reorg](https://github.com/tendermint/tendermint/pull/3561) reactor which will be referred to as `v1`.
+ブロックチェーンリアクターは、ピアからのブロックの送受信と、ブロックをすばやく同期してアップノードのはるか後ろに追いつくという2つの高レベルのプロセスを担当します。 [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md)目標は、ビジネスを分離することにより、これら2つをリファクタリングすることです。純粋な `handle *`関数へのgo-channelsに現在含まれているフローのロジック。 ADRは、リアクターの最終的な形式がどのように見えるかを指定しますが、中間ステップの実装に関するガイダンスが不足しています。
+次の図は、[blockchain-reorg](https://github.com/tendermint/tendermint/pull/3561)リアクターの状態を示しています。これは「v1」と呼ばれます。
 
-![v1 Blockchain Reactor Architecture
-Diagram](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689bdadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v1.png)
+！[v1ブロックチェーンリアクタアーキテクチャ
+図)(https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689b​​ dadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v1.png)
 
-While `v1` of the blockchain reactor has shown significant improvements in terms of simplifying the concurrency model, the current PR has run into few roadblocks.
+ブロックチェーンリアクターの「v1」は、並行性モデルを単純化する上で大幅な改善を示していますが、現在のPRにはいくつかの障害があります。
 
-- The current PR large and difficult to review.
-- Block gossiping and fast sync processes are highly coupled to the shared `Pool` data structure.
-- Peer communication is spread over multiple components creating complex dependency graph which must be mocked out during testing.
-- Timeouts modeled as stateful tickers introduce non-determinism in tests
+-現在の広報活動は大きく、レビューが困難です。
+-ブロックゴシップと高速同期プロセスは、共有「プール」データ構造と高度に結合されています。
+-ピアツーピア通信は複数のコンポーネントに分散され、テスト中にシミュレートする必要がある複雑な依存関係グラフを作成します。
+-ステートフルコードとしてモデル化されたタイムアウトは、テストに不確実性をもたらします
 
-This ADR is meant to specify the missing components and control necessary to achieve [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md).
+このADRは、実装[ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.MD)を指定することを目的としています。
 
-## Decision
+## 決定
 
-Partition the responsibilities of the blockchain reactor into a set of components which communicate exclusively with events. Events will contain timestamps allowing each component to track time as internal state. The internal state will be mutated by a set of `handle*` which will produce event(s). The integration between components will happen in the reactor and reactor tests will then become integration tests between components. This design will be known as `v2`.
+ブロックチェーンリアクターの責任は、イベントとの通信専用の一連のコンポーネントに分割されます。イベントにはタイムスタンプが含まれ、各コンポーネントが内部状態として時間を追跡できるようにします。内部状態は、イベントを生成する一連の `handle *`によって変更されます。コンポーネント間の統合はリアクター内で発生し、リアクターテストはコンポーネント間の統合テストになります。このデザインは「v2」と呼ばれます。
 
-![v2 Blockchain Reactor Architecture
-Diagram](https://github.com/tendermint/tendermint/blob/584e67ac3fac220c5c3e0652e3582eca8231e814/docs/architecture/img/blockchain-reactor-v2.png)
+！[v2ブロックチェーンリアクターアーキテクチャ
+図)(https://github.com/tendermint/tendermint/blob/584e67ac3fac220c5c3e0652e3582eca8231e8​​14/docs/architecture/img/blockchain-reactor-v2.png)
 
-### Fast Sync Related Communication Channels
+### 関連する通信チャネルをすばやく同期する
 
-The diagram below shows the fast sync routines and the types of channels and queues used to communicate with each other.
-In addition the per reactor channels used by the sendRoutine to send messages over the Peer MConnection are shown.
+次の図は、高速同期ルーチンと、相互の通信に使用されるチャネルとキューのタイプを示しています。
+さらに、sendRoutineがPeerMConnectionを介してメッセージを送信するために使用する各リアクタチャネルが表示されます。
 
-![v2 Blockchain Channels and Queues
-Diagram](https://github.com/tendermint/tendermint/blob/5cf570690f989646fb3b615b734da503f038891f/docs/architecture/img/blockchain-v2-channels.png)
+！[v2ブロックチェーンチャネルとキュー
+図)(https://github.com/tendermint/tendermint/blob/5cf570690f989646fb3b615b734da503f038891f/docs/architecture/img/blockchain-v2-channels.png)
 
-### Reactor changes in detail
+### リアクターの詳細の変更
 
-The reactor will include a demultiplexing routine which will send each message to each sub routine for independent processing. Each sub routine will then select the messages it's interested in and call the handle specific function specified in [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md). The demuxRoutine acts as "pacemaker" setting the time in which events are expected to be handled.
+リアクタには、独立した処理のために各メッセージを各サブルーチンに送信する逆多重化プログラムが含まれます。次に、各サブルーチンは関心のあるメッセージを選択し、[ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain)で指定されたハンドルを呼び出します。 function-reactor-refactor.md)。 demuxRoutineは「ペースメーカー」として機能し、イベントを処理するための予想時間を設定します。
 
 ```go
 func demuxRoutine(msgs, scheduleMsgs, processorMsgs, ioMsgs) {
@@ -97,9 +97,9 @@ func scheduleRoutine(input chan Message, output chan Message) {
 }
 ```
 
-## Lifecycle management
+## ライフサイクル管理
 
-A set of routines for individual processes allow processes to run in parallel with clear lifecycle management. `Start`, `Stop`, and `AddPeer` hooks currently present in the reactor will delegate to the sub-routines allowing them to manage internal state independent without further coupling to the reactor.
+各プロセスの一連のルーチンにより、プロセスを明確なライフサイクル管理と並行して実行できます。 現在reactorに存在する `Start`、` Stop`、および `AddPeer`フックはサブルーチンに委任され、reactorにさらに結合することなく内部状態を独立して管理できるようになります。
 
 ```go
 func (r *BlockChainReactor) Start() {
@@ -142,9 +142,9 @@ func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
 
 ```
 
-## IO handling
+## IO処理
 
-An io handling routine within the reactor will isolate peer communication. Message going through the ioRoutine will usually be one way, using `p2p` APIs. In the case in which the `p2p` API such as `trySend` return errors, the ioRoutine can funnel those message back to the demuxRoutine for distribution to the other routines. For instance errors from the ioRoutine can be consumed by the scheduler to inform better peer selection implementations.
+リアクターのIO処理ルーチンは、ピアツーピア通信を分離します。 ioRoutineを介したメッセージは通常、 `p2p`APIを使用する方法です。 「trySend」などの「p2p」APIがエラーを返す場合、ioRoutineはこれらのメッセージを集約してdemuxRoutineに戻し、他のルーチンに配布できます。 たとえば、ioRoutineからのエラーは、より適切なピア選択の実装を通知するためにスケジューラーによって消費される可能性があります。
 
 ```go
 func (r *BlockchainReacor) ioRoutine(ioMesgs chan Message, outMsgs chan Message) {
@@ -171,9 +171,9 @@ func (r *BlockchainReacor) ioRoutine(ioMesgs chan Message, outMsgs chan Message)
 
 ```
 
-### Processor Internals
+### プロセッサ内部
 
-The processor is responsible for ordering, verifying and executing blocks. The Processor will maintain an internal cursor `height` refering to the last processed block. As a set of blocks arrive unordered, the Processor will check if it has `height+1` necessary to process the next block. The processor also maintains the map `blockPeers` of peers to height, to keep track of which peer provided the block at `height`. `blockPeers` can be used in`handleRemovePeer(...)` to reschedule all unprocessed blocks provided by a peer who has errored.
+プロセッサは、ブロックの並べ替え、検証、および実行を担当します。 プロセッサは、最後に処理されたブロックを参照して、内部カーソルの「高さ」を維持します。 ブロックのグループが順不同で到着すると、プロセッサは次のブロックを処理するために必要な「高さ+1」があるかどうかを確認します。 プロセッサは、ピアから高さへのマッピング「blockPeers」も維持して、「高さ」でブロックを提供したピアを追跡します。 `blockPeers`を` handleRemovePeer(...) `で使用して、障害のあるピアによって提供されたすべての未処理のブロックを再配置できます。
 
 ```go
 type Processor struct {
@@ -230,14 +230,14 @@ func handleTimeCheckEv(time) {
 }
 ```
 
-## Schedule
+## スケジュール
 
-The Schedule maintains the internal state used for scheduling blockRequestMessages based on some scheduling algorithm. The schedule needs to maintain state on:
+Scheduleは、いくつかのスケジューリングアルゴリズムに従って、blockRequestMessagesをスケジューリングするための内部状態を維持します。 スケジュールは、次の領域で維持する必要があります。
 
-- The state `blockState` of every block seem up to height of maxHeight
-- The set of peers and their peer state `peerState`
-- which peers have which blocks
-- which blocks have been requested from which peers
+-各ブロックの状態 `blockState`はmaxHeightの高さに達しているようです
+-ピアのセットとそのピア状態 `peerState`
+-どのピアがどのブロックを持っているか
+-どのブロックがどのピアから要求されたか
 
 ```go
 type blockState int
@@ -310,12 +310,12 @@ type scPeer struct {
 
 ```
 
-# Scheduler
+## スケジューラ
 
-The scheduler is configured to maintain a target `n` of in flight
-messages and will use feedback from `_blockResponseMessage`,
-`_statusResponseMessage` and `_peerError` produce an optimal assignment
-of scBlockRequestMessage at each `timeCheckEv`.
+スケジューラーは、飛行中のターゲット `n`を維持するように構成されています
+メッセージと `_blockResponseMessage`からのフィードバックを使用します。
+`_statusResponseMessage`と` _peerError`が最適な割り当てを生成します
+`timeCheckEv`のすべてのscBlockRequestMessageで。
 
 ```
 
@@ -357,9 +357,9 @@ func handleTimeCheckEv(time) {
 }
 ```
 
-## Peer
+## ピア
 
-The Peer Stores per peer state based on messages received by the scheduler.
+ピアは、スケジューラが受信したメッセージに従って、各ピアのステータスを保存します。
 
 ```go
 type Peer struct {
@@ -375,30 +375,30 @@ type Peer struct {
 }
 ```
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Test become deterministic
-- Simulation becomes a-termporal: no need wait for a wall-time timeout
-- Peer Selection can be independently tested/simulated
-- Develop a general approach to refactoring reactors
+-テストは決定論的になります
+-シミュレーションは一時的になります:壁掛けの時間がタイムアウトするのを待つ必要はありません
+-ピアの選択は、個別にテスト/シミュレーションできます
+-原子炉をリファクタリングするための一般的な方法を開発する
 
-### Negative
+### ネガティブ
 
-### Neutral
+### ニュートラル
 
-### Implementation Path
+### 気付く
 
-- Implement the scheduler, test the scheduler, review the rescheduler
-- Implement the processor, test the processor, review the processor
-- Implement the demuxer, write integration test, review integration tests
+-スケジューラー、テストスケジューラー、レビュー再スケジューラーを実装します
+-実装プロセッサ、テストプロセッサ、レビュープロセッサ
+-スプリッターの実装、統合テストの作成、統合テストのレビュー
 
-## References
+## 参照する
 
-- [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md): The original blockchain reactor re-org proposal
-- [Blockchain re-org](https://github.com/tendermint/tendermint/pull/3561): The current blockchain reactor re-org implementation (v1)
+-[ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md):元のブロックチェーンリアクター再構築の提案
+-[Blockchain re-org](https://github.com/tendermint/tendermint/pull/3561):ブロックチェーンreactor re-org(v1)の現在の実装

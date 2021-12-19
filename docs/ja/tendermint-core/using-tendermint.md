@@ -1,85 +1,84 @@
-# Using Tendermint
+# テンダーミントを使用する
 
-This is a guide to using the `tendermint` program from the command line.
-It assumes only that you have the `tendermint` binary installed and have
-some rudimentary idea of what Tendermint and ABCI are.
+これは、コマンドラインから「tendermint」プログラムを使用するためのガイドです。
+テンダーミントバイナリがインストールされていることを前提としています。
+TendermintとABCIとは何かに関するいくつかの基本的な概念。
 
-You can see the help menu with `tendermint --help`, and the version
-number with `tendermint version`.
+`tendermint --help`を使用して、ヘルプメニューとバージョンを表示できます
+ナンバー「テンダーミントバージョン」付き。
 
-## Directory Root
+## ディレクトリルート
 
-The default directory for blockchain data is `~/.tendermint`. Override
-this by setting the `TMHOME` environment variable.
+ブロックチェーンデータのデフォルトディレクトリは `〜/.tendermint`です。 カバー
+これは、 `TMHOME`環境変数を設定することで実現されます。
 
-## Initialize
+## 初期化
 
-Initialize the root directory by running:
+次のコマンドを実行して、ルートディレクトリを初期化します。
 
 ```sh
 tendermint init validator
 ```
 
-This will create a new private key (`priv_validator_key.json`), and a
-genesis file (`genesis.json`) containing the associated public key, in
-`$TMHOME/config`. This is all that's necessary to run a local testnet
-with one validator.
+これにより、新しい秘密鍵( `priv_validator_key.json`)が作成され、
+関連する公開鍵を含むジェネシスファイル( `genesis.json`)
+`$ TMHOME/config`。 ローカルテストネットを実行するために必要なのはこれだけです
+バリデーターがあります。
 
-For more elaborate initialization, see the testnet command:
-
+初期化の詳細については、testnetコマンドを参照してください。
 ```sh
 tendermint testnet --help
 ```
 
-### Genesis
+### 創世記
 
-The `genesis.json` file in `$TMHOME/config/` defines the initial
-TendermintCore state upon genesis of the blockchain ([see
-definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.go)).
+`$ TMHOME/config/`の `genesis.json`ファイルはイニシャルを定義します
+ブロックチェーンの起点でのTendermintCoreの状態([参照
+定義](https://github.com/tendermint/tendermint/blob/master/types/genesis.go))。
 
-#### Fields
+#### 分野
 
-- `genesis_time`: Official time of blockchain start.
-- `chain_id`: ID of the blockchain. **This must be unique for
-  every blockchain.** If your testnet blockchains do not have unique
-  chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
-- `initial_height`: Height at which Tendermint should begin at. If a blockchain is conducting a network upgrade,
-    starting from the stopped height brings uniqueness to previous heights.
-- `consensus_params` [spec](https://github.com/tendermint/spec/blob/master/spec/core/state.md#consensusparams)
-    - `block`
-        - `max_bytes`: Max block size, in bytes.
-        - `max_gas`: Max gas per block.
-        - `time_iota_ms`: Unused. This has been deprecated and will be removed in a future version.
-    - `evidence`
-        - `max_age_num_blocks`: Max age of evidence, in blocks. The basic formula
-      for calculating this is: MaxAgeDuration / {average block time}.
-        - `max_age_duration`: Max age of evidence, in time. It should correspond
-      with an app's "unbonding period" or other similar mechanism for handling
-      [Nothing-At-Stake
-      attacks](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed).
-        - `max_num`: This sets the maximum number of evidence that can be committed
-      in a single block. and should fall comfortably under the max block
-      bytes when we consider the size of each evidence.
-    - `validator`
-        - `pub_key_types`: Public key types validators can use.
-    - `version`
-        - `app_version`: ABCI application version.
-- `validators`: List of initial validators. Note this may be overridden entirely by the
-  application, and may be left empty to make explicit that the
-  application will initialize the validator set with ResponseInitChain.
-    - `pub_key`: The first element specifies the `pub_key` type. 1
-    == Ed25519. The second element are the pubkey bytes.
-    - `power`: The validator's voting power.
-    - `name`: Name of the validator (optional).
-- `app_hash`: The expected application hash (as returned by the
-  `ResponseInfo` ABCI message) upon genesis. If the app's hash does
-  not match, Tendermint will panic.
-- `app_state`: The application state (e.g. initial distribution
-  of tokens).
+-`genesis_time`:ブロックチェーンが開始された公式の時刻。
+-`chain_id`:ブロックチェーンのID。 **これは一意である必要があります
+  すべてのブロックチェーン。 **テストネットブロックチェーンが一意でない場合
+  チェーンID、あなたは悪い時間を過ごすでしょう。 ChainIDは50シンボル未満である必要があります。
+-`initial_height`:テンダーミントが開始する高さ。ブロックチェーンでネットワークのアップグレードが行われている場合は、
+    ストップの高さから開始すると、前の高さに独自性がもたらされます。
+-`consensus_params` [仕様](https://github.com/tendermint/spec/blob/master/spec/core/state.md#consensusparams)
+    -`ブロック `
+        -`max_bytes`:最大ブロックサイズ(バイト単位)。
+        -`max_gas`:各ブロックの最大ガス。
+        -`time_iota_ms`:使用されません。これは非推奨であり、将来のバージョンで削除される予定です。
+    -`証拠 `
+        -`max_age_num_blocks`:証拠の最大年齢(ブロック単位)。基本式
+      これを計算すると、MaxAgeDuration/{平均ブロック時間}になります。
+        -`max_age_duration`:証拠の最大年齢、タイムリー。対応する必要があります
+      アプリケーションまたは他の同様の処理メカニズムの「バインド解除期間」を使用する
+      [興味なし
+      攻撃](https://github.com/ethereum/wiki/wiki/Proof-of-Stake-FAQ#what-is-the-nothing-at-stake-problem-and-how-can-it-be-fixed )。
+        -`max_num`:提出できる証拠の最大数を設定します
+      単一のブロックで。そして、最大のブロックの下に快適に収まるはずです
+      各証拠のサイズを検討するとき。
+    -`ベリファイア `
+        -`pub_key_types`:オーセンティケーターが使用できる公開鍵のタイプ。
+    -`バージョン `
+        -`app_version`:ABCIアプリケーションのバージョン。
+-`validators`:初期バリデーターリスト。これは完全にカバーされている可能性があることに注意してください
+  アプリケーション、およびそれを明確にするために空白のままにすることができます
+  アプリケーションはResponseInitChainを使用してバリデーターセットを初期化します。
+    -`pub_key`:最初の要素は `pub_key`のタイプを指定します。 1
+    == Ed25519。 2番目の要素は公開鍵バイトです。
+    -`power`:検証者の投票権。
+    -`name`:オーセンティケーターの名前(オプション)。
+-`app_hash`:期待されるアプリケーションハッシュ値(
+  作成時の `ResponseInfo` ABCIメッセージ)。アプリケーションのハッシュ値の場合
+  一致しない場合、テンダーミントはパニックになります。
+-`app_state`:アプリケーションの状態(例:初期配布
+  トークン)。
 
-> :warning: **ChainID must be unique to every blockchain. Reusing old chainID can cause issues**
+>:warning:** ChainIDはブロックチェーンごとに一意である必要があります。古いchainIDを再利用すると、問題が発生する可能性があります**
 
-#### Sample genesis.json
+#### 例genesis.json
 
 ```json
 {
@@ -120,47 +119,47 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 
 ## Run
 
-To run a Tendermint node, use:
+Tendermintノードを実行するには、次を使用します。
 
 ```bash
 tendermint start
 ```
 
-By default, Tendermint will try to connect to an ABCI application on
-`127.0.0.1:26658`. If you have the `kvstore` ABCI app installed, run it in
-another window. If you don't, kill Tendermint and run an in-process version of
-the `kvstore` app:
+デフォルトでは、TendermintはABCIアプリケーションへの接続を試みます
+`127.0.0.1:26658`。 `kvstore` ABCIアプリケーションをインストールしている場合は、次のWebサイトにアクセスしてください。
+別のウィンドウ。 そうでない場合は、Tendermintを強制終了し、次のインプロセスバージョンを実行してください。
+`kvstore`アプリケーション:
 
 ```bash
 tendermint start --proxy-app=kvstore
 ```
 
-After a few seconds, you should see blocks start streaming in. Note that blocks
-are produced regularly, even if there are no transactions. See _No Empty
-Blocks_, below, to modify this setting.
+数秒後、ブロックが流入し始めるのが見えるはずです。 注意ブロック
+取引がなくても定期的に生産されます。 _NoEmptyを参照してください
+この設定を変更するには、次のBlocks_を使用します。
 
-Tendermint supports in-process versions of the `counter`, `kvstore`, and `noop`
-apps that ship as examples with `abci-cli`. It's easy to compile your app
-in-process with Tendermint if it's written in Go. If your app is not written in
-Go, run it in another process, and use the `--proxy-app` flag to specify the
-address of the socket it is listening on, for instance:
+Tendermintは、 `counter`、` kvstore`、および `noop`のインプロセスバージョンをサポートします
+例として `abci-cli`を使用してリリースされたアプリケーション。 アプリケーションをコンパイルするのは簡単です
+TendermintがGoで書かれている場合、それは進行中です。 アプリケーションが書き込みを行わない場合
+移動して、別のプロセスで実行し、 `--proxy-app`フラグを使用して指定します
+リッスンしているソケットのアドレス。例:
 
 ```bash
 tendermint start --proxy-app=/var/run/abci.sock
 ```
 
-You can find out what flags are supported by running `tendermint start --help`.
+`tendermint start --help`を実行して、サポートされているフラグを確認できます。
 
-## Transactions
+## トレード
 
-To send a transaction, use `curl` to make requests to the Tendermint RPC
-server, for example:
+トランザクションを送信するには、 `curl`を使用してTendermintRPCにリクエストを送信します
+サーバー、例:
 
 ```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=\"abcd\"
 ```
 
-We can see the chain's status at the `/status` end-point:
+`/status`エンドポイントでチェーンのステータスを確認できます。
 
 ```sh
 curl http://localhost:26657/status | json_pp
@@ -172,58 +171,58 @@ and the `latest_app_hash` in particular:
 curl http://localhost:26657/status | json_pp | grep latest_app_hash
 ```
 
-Visit `http://localhost:26657` in your browser to see the list of other
-endpoints. Some take no arguments (like `/status`), while others specify
-the argument name and use `_` as a placeholder.
+他のリストを表示するには、ブラウザで `http://localhost:26657`にアクセスしてください
+終点。 パラメータを受け取らないもの( `/status`など)もあれば、指定するものもあります
+パラメータ名とプレースホルダーとして `_`を使用します。
 
 
-> TIP: Find the RPC Documentation [here](https://docs.tendermint.com/master/rpc/)
+>ヒント:RPCドキュメントを[ここ](https://docs.tendermint.com/master/rpc/)で検索します
 
-### Formatting
+### フォーマット
 
-When sending transactions to the RPC interface, the following formatting rules
-must be followed:
+トランザクションをRPCインターフェースに送信する場合、次のフォーマット規則が適用されます
+従わなければなりません:
 
-Using `GET` (with parameters in the URL):
+`GET`を使用します(URLのパラメーターを使用):
 
-To send a UTF8 string as transaction data, enclose the value of the `tx`
-parameter in double quotes:
+UTF8文字列をトランザクションデータとして送信するには、 `tx`の値を囲んでください
+二重引用符で囲まれたパラメーター:
 
 ```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="hello"'
 ```
 
-which sends a 5-byte transaction: "h e l l o" \[68 65 6c 6c 6f\].
+5バイトのトランザクション "h e l l o" \ [68 65 6c 6c 6f \]を送信します。
 
-Note that the URL in this example is enclosed in single quotes to prevent the
-shell from interpreting the double quotes. Alternatively, you may escape the
-double quotes with backslashes:
+この例のURLは、防止のために一重引用符で囲まれていることに注意してください
+シェルは二重引用符を解釈します。 またはあなたは逃げることができます
+バックスラッシュ付きの二重引用符:
 
 ```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=\"hello\"
 ```
 
-The double-quoted format works with for multibyte characters, as long as they
-are valid UTF8, for example:
+二重引用符形式は、マルチバイト文字である限り、それらに適しています。
+有効なUTF8です。例:
 
 ```sh
 curl 'http://localhost:26657/broadcast_tx_commit?tx="€5"'
 ```
 
-sends a 4-byte transaction: "€5" (UTF8) \[e2 82 ac 35\].
+4バイトのトランザクションを送信します: "€5"(UTF8)\ [e2 82 ac 35 \]。
 
-Arbitrary (non-UTF8) transaction data may also be encoded as a string of
-hexadecimal digits (2 digits per byte). To do this, omit the quotation marks
-and prefix the hex string with `0x`:
+(UTF8以外の)トランザクションデータも文字列としてエンコードできます
+16進数(1バイトあたり2桁)。 これを行うには、引用符を省略します
+そして、16進文字列の前に `0x`を追加します。
 
 ```sh
 curl http://localhost:26657/broadcast_tx_commit?tx=0x68656C6C6F
 ```
 
-which sends the 5-byte transaction: \[68 65 6c 6c 6f\].
+5バイトのトランザクションを送信します:\ [68 65 6c 6c 6f \]。
 
-Using `POST` (with parameters in JSON), the transaction data are sent as a JSON
-string in base64 encoding:
+「POST」(JSONのパラメーターを使用)を使用して、トランザクションデータはJSONとして送信されます
+Base64でエンコードされた文字列:
 
 ```sh
 curl http://localhost:26657 -H 'Content-Type: application/json' --data-binary '{
@@ -236,48 +235,47 @@ curl http://localhost:26657 -H 'Content-Type: application/json' --data-binary '{
 }'
 ```
 
-which sends the same 5-byte transaction: \[68 65 6c 6c 6f\].
+同じ5バイトのトランザクション\ [68 65 6c 6c 6f \]を送信します。
 
-Note that the hexadecimal encoding of transaction data is _not_ supported in
-JSON (`POST`) requests.
+トランザクションデータの16進エンコーディングはサポートされていないことに注意してください
+JSON( `POST`)リクエスト。
 
-## Reset
+## 再起動
 
-> :warning: **UNSAFE** Only do this in development and only if you can
-afford to lose all blockchain data!
+>:warning:**安全ではない**これは開発時にのみ、可能な場合にのみ行ってください
+すべてのブロックチェーンデータを失うコストを負担してください！
 
 
-To reset a blockchain, stop the node and run:
-
+ブロックチェーンをリセットするには、ノードを停止して次のコマンドを実行します。
 ```sh
 tendermint unsafe_reset_all
 ```
 
-This command will remove the data directory and reset private validator and
-address book files.
+このコマンドは、データディレクトリを削除し、プライベートバリデーターをリセットします。
+名簿ファイル。
 
-## Configuration
+## 構成
 
-Tendermint uses a `config.toml` for configuration. For details, see [the
-config specification](./configuration.md).
+Tendermintは設定に `config.toml`を使用します。 詳細については、[
+構成仕様](./configuration.md)。
 
-Notable options include the socket address of the application
-(`proxy-app`), the listening address of the Tendermint peer
-(`p2p.laddr`), and the listening address of the RPC server
-(`rpc.laddr`).
+注目すべきオプションには、アプリケーションのソケットアドレスが含まれます
+( `proxy-app`)、Tendermintピアのリスニングアドレス
+( `p2p.laddr`)、およびRPCサーバーのリスニングアドレス
+( `rpc.laddr`)。
 
-Some fields from the config file can be overwritten with flags.
+構成ファイルの一部のフィールドは、フラグでオーバーライドできます。
 
-## No Empty Blocks
+## 空のブロックはありません
 
-While the default behavior of `tendermint` is still to create blocks
-approximately once per second, it is possible to disable empty blocks or
-set a block creation interval. In the former case, blocks will be
-created when there are new transactions or when the AppHash changes.
+`tendermint`のデフォルトの動作はまだブロックを作成することですが
+約1秒に1回、空のブロックを無効にするか、
+ブロックの作成間隔を設定します。 前者の場合、ブロックは
+新しいトランザクションがあるか、AppHashが変更されたときに作成されます。
 
-To configure Tendermint to not produce empty blocks unless there are
-transactions or the app hash changes, run Tendermint with this
-additional flag:
+存在しない限り空のブロックを生成しないようにTendermintを構成します
+トランザクションまたはアプリケーションのハッシュ変更。これを使用してTendermintを実行します
+追加の兆候:
 
 ```sh
 tendermint start --consensus.create_empty_blocks=false
@@ -290,37 +288,37 @@ or set the configuration via the `config.toml` file:
 create_empty_blocks = false
 ```
 
-Remember: because the default is to _create empty blocks_, avoiding
-empty blocks requires the config option to be set to `false`.
+记住:因为默认是_创建空块_，避免
+空块需要将配置选项设置为 `false`。
 
-The block interval setting allows for a delay (in time.Duration format [ParseDuration](https://golang.org/pkg/time/#ParseDuration)) between the
-creation of each new empty block. It can be set with this additional flag:
+块间隔设置允许延迟(以 time.Duration 格式 [ParseDuration](https://golang.org/pkg/time/#ParseDuration))
+创建每个新的空块。 可以使用此附加标志设置它:
 
 ```sh
 --consensus.create_empty_blocks_interval="5s"
 ```
 
-or set the configuration via the `config.toml` file:
+或通过 `config.toml` 文件设置配置:
 
 ```toml
 [consensus]
 create_empty_blocks_interval = "5s"
 ```
 
-With this setting, empty blocks will be produced every 5s if no block
-has been produced otherwise, regardless of the value of
-`create_empty_blocks`.
+この設定では、ブロックがない場合、5秒ごとに空のブロックが生成されます
+その価値に関係なく、他の方法で生産された
+`create_empty_blocks`。
 
-## Broadcast API
+## ブロードキャストAPI
 
-Earlier, we used the `broadcast_tx_commit` endpoint to send a
-transaction. When a transaction is sent to a Tendermint node, it will
-run via `CheckTx` against the application. If it passes `CheckTx`, it
-will be included in the mempool, broadcasted to other peers, and
-eventually included in a block.
+以前は、 `broadcast_tx_commit`エンドポイントを使用して
+トレード。 トランザクションがTendermintノードに送信されると、
+「CheckTx」を介してアプリケーションに対して実行します。 `CheckTx`に合格すると、
+メモリプールに含まれ、他のノードにブロードキャストされ、
+最後にブロックに含まれます。
 
-Since there are multiple phases to processing a transaction, we offer
-multiple endpoints to broadcast a transaction:
+取引の処理には複数の段階があるため、
+ブロードキャストトランザクションの複数のエンドポイント:
 
 ```md
 /broadcast_tx_async
@@ -328,34 +326,34 @@ multiple endpoints to broadcast a transaction:
 /broadcast_tx_commit
 ```
 
-These correspond to no-processing, processing through the mempool, and
-processing through a block, respectively. That is, `broadcast_tx_async`,
-will return right away without waiting to hear if the transaction is
-even valid, while `broadcast_tx_sync` will return with the result of
-running the transaction through `CheckTx`. Using `broadcast_tx_commit`
-will wait until the transaction is committed in a block or until some
-timeout is reached, but will return right away if the transaction does
-not pass `CheckTx`. The return value for `broadcast_tx_commit` includes
-two fields, `check_tx` and `deliver_tx`, pertaining to the result of
-running the transaction through those ABCI messages.
+これらは、処理なし、メモリプールを介した処理、および
+それぞれがブロックを介して処理されます。言い換えれば、 `broadcast_tx_async`、
+トランザクションが成功したかどうかを聞くのを待たずにすぐに戻ります
+でも機能し、 `broadcast_tx_sync`は結果を返します
+「CheckTx」を介してトランザクションを実行します。 `broadcast_tx_commit`を使用します
+トランザクションがブロックでコミットされるまで、または一部のトランザクションがコミットされるまで待機します
+タイムアウトに達しましたが、トランザクションが完了すると、すぐに戻ります
+`CheckTx`を渡さないでください。 `broadcast_tx_commit`の戻り値には次のものが含まれます
+`check_tx`と` deliver_tx`の2つのフィールドが結果に関連しています
+これらのABCIメッセージを介してトランザクションを実行します。
 
-The benefit of using `broadcast_tx_commit` is that the request returns
-after the transaction is committed (i.e. included in a block), but that
-can take on the order of a second. For a quick result, use
-`broadcast_tx_sync`, but the transaction will not be committed until
-later, and by that point its effect on the state may change.
+`broadcast_tx_commit`を使用する利点は、リクエストが
+トランザクションがコミットされた後(つまり、ブロックに含まれた後)、ただし
+1秒のオーダーを取ることができます。迅速な結果を得るには、
+`broadcast_tx_sync`、ただしトランザクションまでコミットしません
+その後、状態への影響はそれまでに変わる可能性があります。
 
-Note the mempool does not provide strong guarantees - just because a tx passed
-CheckTx (ie. was accepted into the mempool), doesn't mean it will be committed,
-as nodes with the tx in their mempool may crash before they get to propose.
-For more information, see the [mempool
-write-ahead-log](../tendermint-core/running-in-production.md#mempool-wal)
+txが渡されたという理由だけで、メモリプールは強力な保証を提供しないことに注意してください
+CheckTx(つまり、メモリプールに受け入れられる)は、送信されることを意味するものではありません。
+メモリプールにtxがあるノードは、推奨を行う前にクラッシュする可能性があるためです。
+詳細については、[mempool
+ログ先行書き込み](../tendermint-core/running-in-production.md#mempool-wal)
 
-## Tendermint Networks
+## テンダーミントネットワーク
 
-When `tendermint init` is run, both a `genesis.json` and
-`priv_validator_key.json` are created in `~/.tendermint/config`. The
-`genesis.json` might look like:
+`tendermint init`が実行されると、` genesis.json`と
+`priv_validator_key.json`は`〜/.tendermint/config`に作成されます。この
+`genesis.json`は次のようになります。
 
 ```json
 {
@@ -394,85 +392,85 @@ And the `priv_validator_key.json`:
 }
 ```
 
-The `priv_validator_key.json` actually contains a private key, and should
-thus be kept absolutely secret; for now we work with the plain text.
-Note the `last_` fields, which are used to prevent us from signing
-conflicting messages.
+`priv_validator_key.json`には実際には秘密鍵が含まれているため、
+したがって、これは完全に機密です。現在はプレーンテキストを使用しています。
+署名できないように、 `last_`フィールドに注意してください
+相反するニュース。
 
-Note also that the `pub_key` (the public key) in the
-`priv_validator_key.json` is also present in the `genesis.json`.
+また、 `pub_key`(公開鍵)が
+`priv_validator_key.json`は` genesis.json`にも存在します。
 
-The genesis file contains the list of public keys which may participate
-in the consensus, and their corresponding voting power. Greater than 2/3
-of the voting power must be active (i.e. the corresponding private keys
-must be producing signatures) for the consensus to make progress. In our
-case, the genesis file contains the public key of our
-`priv_validator_key.json`, so a Tendermint node started with the default
-root directory will be able to make progress. Voting power uses an int64
-but must be positive, thus the range is: 0 through 9223372036854775807.
-Because of how the current proposer selection algorithm works, we do not
-recommend having voting powers greater than 10\^12 (ie. 1 trillion).
+ジェネシスファイルには、参加する可能性のある公開鍵のリストが含まれています
+コンセンサス、およびそれらに対応する議決権。 2/3より大きい
+の議決権は有効である必要があります(つまり、対応する秘密鍵
+進展を遂げるためには、合意に達するために署名を生成する必要があります。私たちの中で
+この場合、ジェネシスファイルには公開鍵が含まれています
+`priv_validator_key.json`であるため、Tendermintノードはデフォルト値で開始します
+ルートディレクトリを入力できます。議決権はint64を使用します
+ただし、正の数である必要があるため、範囲は0〜9223372036854775807です。
+現在の提案者はアルゴリズムの動作方法を選択するため、
+議決権は10 \ ^ 12(つまり、1兆)を超えることをお勧めします。
 
-If we want to add more nodes to the network, we have two choices: we can
-add a new validator node, who will also participate in the consensus by
-proposing blocks and voting on them, or we can add a new non-validator
-node, who will not participate directly, but will verify and keep up
-with the consensus protocol.
+ネットワークにノードを追加する場合は、2つのオプションがあります。
+新しいバリデーターノードを追加します。これも次の方法でコンセンサスに参加します
+ブロックを提案して投票するか、新しい非バリデーターを追加できます
+ノード、直接参加しませんが、検証して維持します
+コンセンサスとの合意。
 
-### Peers
+### ピア
 
-#### Seed
+#### シード
 
-A seed node is a node who relays the addresses of other peers which they know
-of. These nodes constantly crawl the network to try to get more peers. The
-addresses which the seed node relays get saved into a local address book. Once
-these are in the address book, you will connect to those addresses directly.
-Basically the seed nodes job is just to relay everyones addresses. You won't
-connect to seed nodes once you have received enough addresses, so typically you
-only need them on the first start. The seed node will immediately disconnect
-from you after sending you some addresses.
+シードノードは、知っている他のピアのアドレスを中継するノードです。
+の。これらのノードは、より多くのピアを取得しようとして、ネットワークを継続的にクロールします。この
+シードノードによって中継されたアドレスは、ローカルアドレスブックに保存されます。一度
+これらはアドレスブックにあり、これらのアドレスに直接接続されます。
+基本的に、シードノードの仕事は全員のアドレスを中継することです。あなたはしません
+十分なアドレスを受け取った後、シードノードに接続するため、通常は
+これらは最初の起動時にのみ必要です。シードノードはすぐに切断されます
+あなたにいくつかのアドレスを送った後あなたから。
 
-#### Persistent Peer
+####永続的なピア
 
-Persistent peers are people you want to be constantly connected with. If you
-disconnect you will try to connect directly back to them as opposed to using
-another address from the address book. On restarts you will always try to
-connect to these peers regardless of the size of your address book.
+パーマネントピアは、連絡を取り合いたい相手です。もし、あんたが
+切断します。使用する代わりに、直接接続を試みます。
+名簿の別の住所。再起動時に、常に試してみます
+名簿のサイズに関係なく、これらのピアに接続できます。
 
-All peers relay peers they know of by default. This is called the peer exchange
-protocol (PeX). With PeX, peers will be gossiping about known peers and forming
-a network, storing peer addresses in the addrbook. Because of this, you don't
-have to use a seed node if you have a live persistent peer.
+デフォルトでは、すべてのピアが知っているピアを中継します。これはピアツーピア交換と呼ばれます
+合意(PeX)。 PeXを使用すると、ピアはゴシップの既知のピアを形成します
+addrbookにピアアドレスを格納するネットワーク。このため、あなたはしません
+リアルタイムの永続ピアがある場合は、シードノードを使用する必要があります。
 
-#### Connecting to Peers
+####ピアに接続する
 
-To connect to peers on start-up, specify them in the
-`$TMHOME/config/config.toml` or on the command line. Use `seeds` to
-specify seed nodes, and
-`persistent-peers` to specify peers that your node will maintain
-persistent connections with.
+起動時にピアに接続するには、
+`$ TMHOME/config/config.toml`またはコマンドライン。 「シード」を使用して
+シードノードを指定し、
+`persistent-peers`は、ノードが維持するピアを指定します
+との持続的接続。
 
-For example,
+例えば、
 
 ```sh
 tendermint start --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"
 ```
 
-Alternatively, you can use the `/dial_seeds` endpoint of the RPC to
-specify seeds for a running node to connect to:
+または、RPC `/dial_seeds`エンドポイントを使用して
+実行中のノードの接続先のシードを指定します。
 
 ```sh
 curl 'localhost:26657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"\]'
 ```
 
-Note, with PeX enabled, you
-should not need seeds after the first start.
+PeXを有効にした後、
+最初の起動後にシードは必要ありません。
 
-If you want Tendermint to connect to specific set of addresses and
-maintain a persistent connection with each, you can use the
-`--p2p.persistent-peers` flag or the corresponding setting in the
-`config.toml` or the `/dial_peers` RPC endpoint to do it without
-stopping Tendermint core instance.
+Tendermintを特定のアドレスのセットに接続する場合
+それぞれとの永続的な接続を維持するために、次を使用できます
+`--p2p.persistent-peers`フラグまたは対応する設定
+`config.toml`または`/dial_peers`RPCエンドポイントは
+Tendermintコアインスタンスを停止します。
 
 ```sh
 tendermint start --p2p.persistent-peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"
@@ -480,29 +478,29 @@ tendermint start --p2p.persistent-peers "429fcf25974313b95673f58d77eacdd43440266
 curl 'localhost:26657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"\]'
 ```
 
-### Adding a Non-Validator
+### 非バリデーターを追加する
 
-Adding a non-validator is simple. Just copy the original `genesis.json`
-to `~/.tendermint/config` on the new machine and start the node,
-specifying seeds or persistent peers as necessary. If no seeds or
-persistent peers are specified, the node won't make any blocks, because
-it's not a validator, and it won't hear about any blocks, because it's
-not connected to the other peer.
+非バリデーターの追加は簡単です。 元の `genesis.json`をコピーするだけです
+新しいマシンで `〜/.tendermint/config`に移動し、ノードを起動します。
+必要に応じてシードまたは永続ピアを指定します。 シードがない場合または
+永続ピアが指定されている場合、ノードはブロックを生成しません。
+バリデーターではなく、ブロックニュースは聞こえません。
+他のピアに接続されていません。
 
-### Adding a Validator
+### バリデーターを追加
 
-The easiest way to add new validators is to do it in the `genesis.json`,
-before starting the network. For instance, we could make a new
-`priv_validator_key.json`, and copy it's `pub_key` into the above genesis.
+新しいバリデーターを追加する最も簡単な方法は、 `genesis.json`で追加することです。
+ネットワークを開始する前。 たとえば、新しいものを作成できます
+`priv_validator_key.json`を作成し、その` pub_key`を上記のジェネシスにコピーします。
 
-We can generate a new `priv_validator_key.json` with the command:
+次のコマンドを使用して、新しい `priv_validator_key.json`を生成できます。
 
 ```sh
 tendermint gen_validator
 ```
 
-Now we can update our genesis file. For instance, if the new
-`priv_validator_key.json` looks like:
+これで、ジェネシスファイルを更新できます。 たとえば、新しい場合
+`priv_validator_key.json`は次のようになります。
 
 ```json
 {
@@ -521,7 +519,7 @@ Now we can update our genesis file. For instance, if the new
 }
 ```
 
-then the new `genesis.json` will be:
+次に、新しいgenesis.jsonは次のようになります。
 
 ```json
 {
@@ -549,33 +547,33 @@ then the new `genesis.json` will be:
 }
 ```
 
-Update the `genesis.json` in `~/.tendermint/config`. Copy the genesis
-file and the new `priv_validator_key.json` to the `~/.tendermint/config` on
-a new machine.
+`〜/.tendermint/config`の` genesis.json`を更新します。コピー元
+ファイルと新しい `priv_validator_key.json`を`〜/.tendermint/config`に
+新しいマシン。
 
-Now run `tendermint start` on both machines, and use either
-`--p2p.persistent-peers` or the `/dial_peers` to get them to peer up.
-They should start making blocks, and will only continue to do so as long
-as both of them are online.
+次に、両方のマシンで `tendermint start`を実行し、どちらかを使用します
+`--p2p.persistent-peers`または`/dial_peers`を使用してピアにします。
+彼らはブロックを作り始めるべきであり、そうし続けるだけです
+それらはすべてオンラインだからです。
 
-To make a Tendermint network that can tolerate one of the validators
-failing, you need at least four validator nodes (e.g., 2/3).
+バリデーターの1つに耐えることができるTendermintネットワークを作成します
+失敗するには、少なくとも4つのバリデーターノード(たとえば、2/3)が必要です。
 
-Updating validators in a live network is supported but must be
-explicitly programmed by the application developer.
+リアルタイムネットワークでバリデーターを更新するためのサポートが必要ですが、
+アプリケーション開発者によって明確にプログラムされています。
 
-### Local Network
+### 地元のネットワーク
 
-To run a network locally, say on a single machine, you must change the `_laddr`
-fields in the `config.toml` (or using the flags) so that the listening
-addresses of the various sockets don't conflict. Additionally, you must set
-`addr_book_strict=false` in the `config.toml`, otherwise Tendermint's p2p
-library will deny making connections to peers with the same IP address.
+マシンなどでネットワークをローカルで実行するには、 `_laddr`を変更する必要があります
+監視用の `config.toml`のフィールド(またはフラグを使用)
+さまざまなソケットのアドレスは競合しません。さらに、設定する必要があります
+`config.toml`の` addr_book_strict = false`、それ以外の場合はTendermintのp2p
+ライブラリは、同じIPアドレスを持つピアとの接続の確立を拒否します。
 
-### Upgrading
+### アップグレード
 
-See the
-[UPGRADING.md](https://github.com/tendermint/tendermint/blob/master/UPGRADING.md)
-guide. You may need to reset your chain between major breaking releases.
-Although, we expect Tendermint to have fewer breaking releases in the future
-(especially after 1.0 release).
+見る
+[Upgrade.md](https://github.com/tendermint/tendermint/blob/master/UPGRADING.md)
+ガイド。主要な画期的なバージョン間でチェーンをリセットする必要があるかもしれません。
+ただし、Tendermintの画期的なバージョンは将来的に少なくなると予想されます。
+(特にバージョン1.0以降)。/

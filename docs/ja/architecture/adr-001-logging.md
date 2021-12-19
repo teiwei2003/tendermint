@@ -1,25 +1,25 @@
-# ADR 1: Logging
+# ADR 1:記録
 
-## Context
+## 環境
 
-Current logging system in Tendermint is very static and not flexible enough.
+Tendermintの現在のロギングシステムは非常に静的であり、十分な柔軟性がありません。
 
-Issues: [358](https://github.com/tendermint/tendermint/issues/358), [375](https://github.com/tendermint/tendermint/issues/375).
+問題:[358](https://github.com/tendermint/tendermint/issues/358)、[375](https://github.com/tendermint/tendermint/issues/375)。
 
-What we want from the new system:
+新しいシステムから得たいもの:
 
-- per package dynamic log levels
-- dynamic logger setting (logger tied to the processing struct)
-- conventions
-- be more visually appealing
+-各パッケージの動的ログレベル
+-動的レコーダ設定(レコーダは処理構造にバインドされています)
+-大会
+-より視覚的に魅力的
 
-"dynamic" here means the ability to set smth in runtime.
+ここでの「動的」とは、実行時にsmthを設定する機能を指します。
 
-## Decision
+## 決定
 
-### 1) An interface
+### 1)1つのインターフェース
 
-First, we will need an interface for all of our libraries (`tmlibs`, Tendermint, etc.). My personal preference is go-kit `Logger` interface (see Appendix A.), but that is too much a bigger change. Plus we will still need levels.
+まず、すべてのライブラリ( `tmlibs`、Tendermintなど)のインターフェイスが必要です。 私の個人的な好みはgo-kitの `Logger`インターフェース(付録Aを参照)ですが、これは大きな変更です。 さらに、まだレベルが必要です。
 
 ```go
 # log.go
@@ -32,47 +32,47 @@ type Logger interface {
 }
 ```
 
-On a side note: difference between `Info` and `Notice` is subtle. We probably
-could do without `Notice`. Don't think we need `Panic` or `Fatal` as a part of
-the interface. These funcs could be implemented as helpers. In fact, we already
-have some in `tmlibs/common`.
+補足:「情報」と「通知」の違いは微妙です。 おそらく
+「通知」はあり得ません。 その一部として「パニック」や「致命的」が必要だとは思わないでください
+インターフェース。 これらの機能は、アシスタントとして実装できます。 実は
+`tmlibs/common`にいくつかあります。
 
-- `Debug` - extended output for devs
-- `Info` - all that is useful for a user
-- `Error` - errors
+-`Debug`-開発者の拡張出力
+-`Info`-ユーザーにとって役立つすべての情報
+-`Error`-エラー
 
-`Notice` should become `Info`, `Warn` either `Error` or `Debug` depending on the message, `Crit` -> `Error`.
+`Notice`は、メッセージ` Crit`-> `Error`に応じて、` Info`、 `Warn`、` Error`、または `Debug`になります。
 
-This interface should go into `tmlibs/log`. All libraries which are part of the core (tendermint/tendermint) should obey it.
+このインターフェースは `tmlibs/log`と入力する必要があります。 コア(tendermint/tendermint)の一部であるすべてのライブラリは、それに準拠する必要があります。
 
-### 2) Logger with our current formatting
+### 2)現在のフォーマットレコーダーを使用する
 
-On top of this interface, we will need to implement a stdout logger, which will be used when Tendermint is configured to output logs to STDOUT.
+このインターフェイスに加えて、標準の出力ロガーを実装する必要があります。これは、ログを標準出力に出力するようにTendermintが構成されている場合に使用されます。
 
-Many people say that they like the current output, so let's stick with it.
+多くの人が現在の出力が好きだと言っているので、それを守りましょう。
 
 ```
 NOTE[2017-04-25|14:45:08] ABCI Replay Blocks                       module=consensus appHeight=0 storeHeight=0 stateHeight=0
 ```
 
-Couple of minor changes:
+いくつかの小さな変更:
 
 ```
 I[2017-04-25|14:45:08.322] ABCI Replay Blocks            module=consensus appHeight=0 storeHeight=0 stateHeight=0
 ```
 
-Notice the level is encoded using only one char plus milliseconds.
+レベルはエンコードに1文字とミリ秒のみを使用することに注意してください。
 
-Note: there are many other formats out there like [logfmt](https://brandur.org/logfmt).
+注:[logfmt](https://brandur.org/logfmt)など、他にも多くの形式があります。
 
-This logger could be implemented using any logger - [logrus](https://github.com/sirupsen/logrus), [go-kit/log](https://github.com/go-kit/kit/tree/master/log), [zap](https://github.com/uber-go/zap), log15 so far as it
+このロガーは、任意のロガーを使用して実装できます-[logrus](https://github.com/sirupsen/logrus)、[go-kit/log](https://github.com/go-kit/kit/tree/master/log)、[zap](https://github.com/uber-go/zap)、log15はここで終了します
 
-a) supports coloring output<br>
-b) is moderately fast (buffering) <br>
-c) conforms to the new interface or adapter could be written for it <br>
-d) is somewhat configurable<br>
+a)カラー出力をサポート<br>
+b)中程度の速度(バッファー)<br>
+c)新しいインターフェースに準拠するか、そのためのアダプターを作成できます<br>
+d)ある程度構成可能<br>
 
-go-kit is my favorite so far. Check out how easy it is to color errors in red https://github.com/go-kit/kit/blob/master/log/term/example_test.go#L12. Although, coloring could only be applied to the whole string :(
+これまでのところ、go-kitが私のお気に入りです。 エラーを赤でペイントするのがいかに簡単かをご覧くださいhttps://github.com/go-kit/kit/blob/master/log/term/example_test.go#L12。 ただし、色付けは文字列全体にのみ適用できます:(
 
 ```
 go-kit +: flexible, modular
@@ -84,8 +84,8 @@ logrus -: not so flexible
 
 ```go
 # tm_logger.go
-// NewTmLogger returns a logger that encodes keyvals to the Writer in
-// tm format.
+//NewTmLogger returns a logger that encodes keyvals to the Writer in
+//tm format.
 func NewTmLogger(w io.Writer) Logger {
   return &tmLogger{kitlog.NewLogfmtLogger(w)}
 }
@@ -115,33 +115,33 @@ logger.SetLevel(config.GetString("log_level"))
 node.SetLogger(log.With(logger, "node", Name))
 ```
 
-**Other log formatters**
+**其他日志格式化程序**
 
-In the future, we may want other formatters like JSONFormatter.
+将来，我们可能需要其他格式化程序，例如 JSONFormatter。
 
 ```
 { "level": "notice", "time": "2017-04-25 14:45:08.562471297 -0400 EDT", "module": "consensus", "msg": "ABCI Replay Blocks", "appHeight": 0, "storeHeight": 0, "stateHeight": 0 }
 ```
 
-### 3) Dynamic logger setting
+### 3) 动态记录器设置
 
 https://dave.cheney.net/2017/01/23/the-package-level-logger-anti-pattern
 
-This is the hardest part and where the most work will be done. logger should be tied to the processing struct, or the context if it adds some fields to the logger.
+这是最困难的部分，也是最多工作要做的地方。 如果将某些字段添加到记录器，记录器应与处理结构或上下文相关联。
 
 ```go
 type BaseService struct {
     log     log15.Logger
     name    string
-    started uint32 // atomic
-    stopped uint32 // atomic
+    started uint32//atomic
+    stopped uint32//atomic
 ...
 }
 ```
 
-BaseService already contains `log` field, so most of the structs embedding it should be fine. We should rename it to `logger`.
+BaseServiceにはすでに `log`フィールドが含まれているため、BaseServiceに埋め込まれているほとんどの構造は問題ないはずです。 名前を `logger`に変更する必要があります。
 
-The only thing missing is the ability to set logger:
+足りないのは、ロガーを設定する機能だけです。
 
 ```
 func (bs *BaseService) SetLogger(l log.Logger) {
@@ -149,9 +149,9 @@ func (bs *BaseService) SetLogger(l log.Logger) {
 }
 ```
 
-### 4) Conventions
+### 4)コンベンション
 
-Important keyvals should go first. Example:
+重要なキーバルブを最初に配置する必要があります。 例:
 
 ```
 correct
@@ -165,7 +165,7 @@ wrong
 I[2017-04-25|14:45:08.322] ABCI Replay Blocks                       module=consensus appHeight=0 storeHeight=0 stateHeight=0 instance=1
 ```
 
-for that in most cases you'll need to add `instance` field to a logger upon creating, not when u log a particular message:
+このため、ほとんどの場合、特定のメッセージを記録するときではなく、ロガーを作成するときに「インスタンス」フィールドをロガーに追加する必要があります。
 
 ```go
 colorFn := func(keyvals ...interface{}) term.FgBgColor {
@@ -187,25 +187,25 @@ c2 := NewConsensusReactor(...)
 c2.SetLogger(log.With(logger, "instance", 2))
 ```
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-Dynamic logger, which could be turned off for some modules at runtime. Public interface for other projects using Tendermint libraries.
+一部のモジュールでは、実行時にダイナミックレコーダをオフにすることができます。 Tendermintライブラリを使用する他のプロジェクトのパブリックインターフェイス。
 
-### Negative
+### ネガティブ
 
-We may loose the ability to color keys in keyvalue pairs. go-kit allow you to easily change foreground / background colors of the whole string, but not its parts.
+キーと値のペアでキーに色を付ける機能が失われる可能性があります。 go-kitを使用すると、文字列全体の前景色/背景色を簡単に変更できますが、文字列の一部は変更できません。
 
-### Neutral
+### ニュートラル
 
-## Appendix A.
+## 付録A。
 
-I really like a minimalistic approach go-kit took with his logger https://github.com/go-kit/kit/tree/master/log:
+私はgo-kitのロガーを使用する最小限の方法が本当に好きですhttps://github.com/go-kit/kit/tree/master/log:
 
 ```
 type Logger interface {
@@ -213,4 +213,4 @@ type Logger interface {
 }
 ```
 
-See [The Hunt for a Logger Interface](https://go-talks.appspot.com/github.com/ChrisHines/talks/structured-logging/structured-logging.slide). The advantage is greater composability (check out how go-kit defines colored logging or log-leveled logging on top of this interface https://github.com/go-kit/kit/tree/master/log).
+请参阅[寻找记录器接口](https://go-talks.appspot.com/github.com/ChrisHines/talks/structured-logging/structured-logging.slide)。 优点是更大的可组合性(查看 go-kit 如何在此界面上定义彩色日志或日志级别的日志 https://github.com/go-kit/kit/tree/master/log)。

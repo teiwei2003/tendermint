@@ -4,70 +4,70 @@ Tendermint Coreのドキュメントは、次の場所でホストされてい�
 
 -<https://docs.tendermint.com/>
 
-この[`master`の` docs`ディレクトリ内のファイルから構築](https://github.com/tendermint/tendermint/tree/master/docs)
+この[`master`の` docs`ディレクトリにあるドキュメント](https://github.com/tendermint/tendermint/tree/master/docs)からビルドします
 およびその他のサポートされているリリースブランチ。
 
 ## 使い方
 
 [GitHubアクションワークフロー](https://github.com/tendermint/docs/actions/workflows/deployment.yml)があります
-ドキュメントのクローンを作成してビルドする `tendermint/docs`リポジトリ内
-この `docs`ディレクトリの内容からのサイト、` master`、および
-サポートされている各リリースのバックポートブランチ。内部では、このワークフローが実行されます
-[Makefile](../Makefile#L214)から `makebuild-docs`。
+ドキュメントが複製されて構築される `tendermint/docs`リポジトリ内
+この `docs`ディレクトリのコンテンツのサイト。`master`と
+サポートされている各バージョンのバックポートブランチ。バックグラウンドで、このワークフローは実行されます
+`make build-docs`は[Makefile](../Makefile#L214)から来ています。
 
 サポートされているバージョンのリストは、[`config.js`](./。vuepress/config.js)で定義されています。
-これは、ドキュメントサイトとでUIメニューを定義します
-[`docs/version`](./versions)、これはどのブランチを構築するかを決定します。
+ドキュメントサイトのUIメニューを定義します。
+[`docs/version`](./versions)、構築するブランチを決定します。
 
-`docs/versions`ファイルの最後のエントリは、リンクされているバージョンを決定します
-デフォルトでは、生成された `index.html`から。これは一般的に最も多いはずです
-「マスター」ではなく最近のリリースで、新しいユーザーが
-未リリースの機能に関するドキュメント。
+`docs/versions`ファイルの最後のエントリは、リンクのバージョンを決定します
+これは、デフォルトで生成された `index.html`から取得されます。これは通常最も多いはずです
+「マスター」の代わりに最近リリースされたため、新しいユーザーは
+未公開の機能のドキュメント。
 
-## README
+## Readmeファイル
 
 [README.md](./README.md)は、ドキュメントのランディングページでもあります
-ウェブサイトで。 Jenkinsのビルド中に、現在のコミットが下部に追加されます
-READMEの。
+ウェブサイト上。 Jenkinsのビルド中に、現在のコミットが下部に追加されます
+READMEファイル。
 
 ## Config.js
 
-[config.js](./。vuepress/config.js)は、サイドバーと目次を生成します
-ウェブサイトのドキュメントで。相対リンクの使用との省略に注意してください
-ファイル拡張子。外観を改善するための追加機能を利用できます
-サイドバーの。
+[config.js](./。vuepress/ config.js)サイドバーと目次を生成します
+Webサイトのドキュメント。相対リンクの使用と省略に注意してください
+ファイル拡張子。追加機能を使用して外観を改善できます
+サイドバー。
 
 ## リンク
 
-**注:**既存のリンクを強く検討してください-両方ともこのディレクトリ内にあります
-およびWebサイトのドキュメントへ-ファイルを移動または削除する場合。
+**注:**既存のリンクは強く考慮されます-すべてこのディレクトリにあります
+そしてウェブサイトのドキュメント-ファイルを移動または削除するとき。
 
-ディレクトリへのリンク_MUST_は `/`で終わります。
+ディレクトリへのリンクは「/」で終わる必要があります。
 
-相対リンクは、次のことを発見して評価した上で、ほぼすべての場所で使用する必要があります。
+相対リンクはほとんどすべての場所で使用する必要があり、次のものが見つかり、評価されました。
 
-### 相対的
+### 比較的
 
-現在のファイルと比較して、他のファイルはどこにありますか？
+現在のファイルに対して、他のファイルはどこにありますか？
 
--GitHubとVuePressビルドの両方で機能します
--混乱する/煩わしい: `../../../../myfile.md`
--ファイルが再シャッフルされるときに、より多くの更新が必要です
+-GitHubおよびVuePressビルドに適しています
+-紛らわしい/迷惑なことは次のとおりです: `../../../../ myfile.md`
+-ファイルを再シャッフルするときは、さらに更新が必要です
 
 ### 絶対
 
-リポジトリのルートを指定すると、他のファイルはどこにありますか？
+リポジトリのルートディレクトリを考えると、他のファイルはどこにありますか？
 
--GitHubで動作し、VuePressビルドでは動作しません
--これははるかに優れています: `/docs/hereitis/myfile.md`
--そのファイルを移動すると、その中のリンクは保持されます(もちろん、ファイルへのリンクは保持されません)。
+-VuePressビルドではなく、GitHubに適用されます
+-これはより良いです: `/ docs/ hereitis/ myfile.md`
+-そのファイルを移動すると、内部のリンクは保持されます(もちろんそのリンクではありません)
 
 ### 満杯
 
-ファイルまたはディレクトリへの完全なGitHubURL。意味があるときに時々使用されます
+ファイルまたはディレクトリの完全なGitHubURL。意味があるときに時々使用する
 ユーザーをGitHubに送信します。
 
-##ローカルで構築する
+## ローカルビルド
 
 `docs`ディレクトリにいることを確認し、次のコマンドを実行します。
 
@@ -84,22 +84,22 @@ npm install
 テーマとすべての依存関係をインストールします。
 
 ```bash
-npm run serve
+npm runserve
 ```
 
 <！-markdown-link-check-disable->
 
-`pre`フックと` post`フックを実行し、ホットリロードWebサーバーを起動します。 URLについては、このコマンドの出力を参照してください(多くの場合、<https://localhost:8080>です)。
+`pre`フックと` post`フックを実行し、ホットリロードWebサーバーを起動します。 URL(通常は<https:// localhost:8080>)については、このコマンドの出力を参照してください。
 
 <！-markdown-link-check-enable->
 
-ドキュメントを静的Webサイトとしてビルドするには、 `npm runbuild`を実行します。 Webサイトは `.vuepress/dist`ディレクトリにあります。
+ドキュメントを静的Webサイトとしてビルドするには、 `npm runbuild`を実行します。 Webサイトは `.vuepress/ dist`ディレクトリにあります。
 
-## 検索
+## 探す
 
-全文検索を強化するために[Algolia](https://www.algolia.com)を使用しています。これは、 `config.js`のパブリックAPI検索専用キーと[tendermint.json](https://github.com/algolia/docsearch-configs/blob/master/configs/tendermint.json)を使用しますPRで更新できる構成ファイル。
+全文検索をサポートするために[Algolia](https://www.algolia.com)を使用しています。これは、 `config.js`のパブリックAPIを使用して、キーと[tendermint.json](https://github.com/algolia/docsearch-configs/blob/master/configs/tendermint.json)のみを検索します。更新できますPR構成ファイルを使用します。
 
 ## 一貫性
 
-ビルドプロセスは(ここに含まれる情報と同様に)同一であるため、このファイルは次のように同期を維持する必要があります。
-[Cosmos SDKリポジトリのカウンターパート](https://github.com/cosmos/cosmos-sdk/blob/master/docs/DOCS_README.md)で可能な限り。
+ビルドプロセスは(ここに含まれる情報と)同じであるため、このファイルは同期を維持する必要があります。
+可能な限り、[Cosmos SDKリポジトリに対応する](https://github.com/cosmos/cosmos-sdk/blob/master/docs/DOCS_README.md)を使用してください。/

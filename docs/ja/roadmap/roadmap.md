@@ -1,93 +1,92 @@
-# Tendermint Roadmap
+# テンダーミントロードマップ
 
-*Last Updated: Friday 8 October 2021*
+*最終更新日:2021年10月8日金曜日*
 
-This document endeavours to inform the wider Tendermint community about development plans and priorities for Tendermint Core, and when we expect features to be delivered. It is intended to broadly inform all users of Tendermint, including application developers, node operators, integrators, and the engineering and research teams.
+このドキュメントは、より広いTendermintコミュニティに、Tendermint Coreの開発計画と優先順位、および機能の提供を予定している時期を理解させることを目的としています。これは、アプリケーション開発者、ノードオペレーター、インテグレーター、エンジニアリングおよび研究チームを含む、Tendermintのすべてのユーザーに広く通知することを目的としています。
 
-Anyone wishing to propose work to be a part of this roadmap should do so by opening an [issue](https://github.com/tendermint/spec/issues/new/choose) in the spec. Bug reports and other implementation concerns should be brought up in the [core repository](https://github.com/tendermint/tendermint).
+提案された作業をこのロードマップの一部にしたい場合は、仕様の[issue](https://github.com/tendermint/spec/issues/new/choose)を開いてください。バグレポートやその他の実装の問題は、[コアリポジトリ](https://github.com/tendermint/tendermint)で発生する必要があります。
 
-This roadmap should be read as a high-level guide to plans and priorities, rather than a commitment to schedules and deliverables. Features earlier on the roadmap will generally be more specific and detailed than those later on. We will update this document periodically to reflect the current status.
+ロードマップは、タイムラインと成果物へのコミットメントではなく、計画と優先順位の高レベルのガイドと見なす必要があります。ロードマップの前にある機能は、通常、後ろにある機能よりも具体的で詳細です。このドキュメントは、現在の状況を反映するために定期的に更新されます。
 
-The upgrades are split into two components: **Epics**, the features that define a release and to a large part dictate the timing of releases; and **minors**, features of smaller scale and lower priority, that could land in neighboring releases.
+アップグレードは2つの部分に分かれています。リリースする機能を定義し、リリースの時間を大幅に決定する** Epic **と、規模が小さく優先度の低い機能である** Minor **です。 、隣接するバージョンで表示される場合があります。
 
-## V0.35 (completed Q3 2021)
+## V0.35(2021年の第3四半期に完成)
+### 優先メモリプール
 
-### Prioritized Mempool
+トランザクションの前に、それらはメモリプールに到着した順序でブロックに追加されます。 「CheckTx」を介して優先度フィールドを追加すると、アプリケーションはどのトランザクションをブロックに入れるかをより適切に制御できます。これは、取引コストがある場合に重要です。 [詳細](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-067-mempool-refactor.md)
 
-Transactions were previously added to blocks in the order with which they arrived to the mempool. Adding a priority field via `CheckTx` gives applications more control over which transactions make it into a block. This is important in the presence of transaction fees. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-067-mempool-refactor.md)
+### P2Pフレームワークのリファクタリング
 
-### Refactor of the P2P Framework
+Tendermint P2Pシステムは、パフォーマンスと信頼性を向上させるために大規模な再設計が行われています。この再設計の最初のフェーズは0.35に含まれています。この段階では、抽象化をクリーンアップして切り離し、ピアライフサイクル管理、ピアアドレス処理を改善し、プラグ可能な送信を可能にします。以前の実装プロトコルと互換性があるように実装されています。 [詳細](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-062-p2p-architecture.md)
 
-The Tendermint P2P system is undergoing a large redesign to improve its performance and reliability. The first phase of this redesign is included in 0.35. This phase cleans and decouples abstractions, improves peer lifecycle management, peer address handling and enables pluggable transports. It is implemented to be protocol-compatible with the previous implementation. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-062-p2p-architecture.md)
+### 状態の同期の改善
 
-### State Sync Improvements
+状態同期の初期バージョンの後、いくつかの改善が行われました。証拠処理の追加に必要な[ReverseSync](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-068-reverse-sync.md)を含み、[P2P状態プロバイダー]( https://github.com/tendermint/tendermint/pull/6807)RPCエンドポイントの代替として、スループットを調整するための新しい構成パラメーター、およびいくつかのバグ修正。
 
-Following the initial version of state sync, several improvements have been made. These include the addition of [Reverse Sync](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-068-reverse-sync.md) needed for evidence handling, the introduction of a [P2P State Provider](https://github.com/tendermint/tendermint/pull/6807) as an alternative to RPC endpoints, new configuration parameters to adjust throughput, and several bug fixes.
+### カスタムイベントインデックス+ PSQLインデクサー
 
-### Custom event indexing + PSQL Indexer
+新しい「EventSink」インターフェースが追加され、Tendermint独自のトランザクションインデクサーを置き換えることができます。また、豊富なSQLベースのインデックスクエリを可能にするPostgreSQLインデクサー実装を追加しました。 [詳細](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-065-custom-event-indexing.md)
 
-Added a new `EventSink` interface to allow alternatives to Tendermint's proprietary transaction indexer. We also added a PostgreSQL Indexer implementation, allowing rich SQL-based index queries. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-065-custom-event-indexing.md)
+### 小作品
 
-### Minor Works
+-いくつかのGoパッケージが再編成され、パブリックAPIと実装の詳細の違いが明確になりました。
+-ブロックインデクサーは、開始ブロックイベントと終了ブロックイベントにインデックスを付けます。 [詳細](https://github.com/tendermint/tendermint/pull/6226)
+-ブロック、ステータス、証拠、およびライトストレージキーは、辞書の順序を維持するように再設計されました。この変更には、データベースの移行が必要です。 [詳細](https://github.com/tendermint/tendermint/pull/5771)
+-テンダーミントモードの紹介。この変更の一部には、PEXリアクターのみを実行する別のシードノードを実行する可能性が含まれます。 [詳細](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
 
-- Several Go packages were reorganized to make the distinction between public APIs and implementation details more clear.
-- Block indexer to index begin-block and end-block events. [More](https://github.com/tendermint/tendermint/pull/6226)
-- Block, state, evidence, and light storage keys were reworked to preserve lexicographic order. This change requires a database migration. [More](https://github.com/tendermint/tendermint/pull/5771)
-- Introduciton of Tendermint modes. Part of this change includes the possibility to run a separate seed node that runs the PEX reactor only. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-052-tendermint-mode.md)
+## V0.36(2022年の第1四半期に予定)
 
-## V0.36 (expected Q1 2022)
+### ABCI ++
 
-### ABCI++
+アプリケーションとコンセンサスの間の既存のインターフェイスを完全に改革して、アプリケーションがブロック構造をより適切に制御できるようにします。 ABCI ++は、トランザクションがブロックに入る前にトランザクションを変更し、投票する前にブロックを検証し、投票に署名情報を挿入し、合意後にブロックをよりコンパクトに配信できるようにする新しいフックを追加します(同時実行を可能にします)。 [詳細](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md)
 
-An overhaul of the existing interface between the application and consensus, to give the application more control over block construction. ABCI++ adds new hooks allowing modification of transactions before they get into a block, verification of a block before voting, injection of signed information into votes, and more compact delivery of blocks after agreement (to allow for concurrent execution). [More](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md)
+###提案者のタイムスタンプに基づく
 
-### Proposer-Based Timestamps
+提案者に基づくタイムスタンプは、[BFT時間](https://docs.tendermint.com/master/spec/consensus/bft-time.html)の代替手段であり、提案者がタイムスタンプを選択し、バリデーターは次の場合、ブロックの投票タイムスタンプは*タイムリー*と見なされます。これにより、正確なローカルクロックへの依存度が高まりますが、その代わりに、ブロック時間の信頼性が高まり、障害に対する耐性が高まります。これには、ライトクライアント、IBCリピーター、CosmosHubインフレーション、および署名の集約を可能にする重要なユースケースがあります。 [詳細](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-071-proposer-based-timestamps.md)
 
-Proposer-based timestamps are a replacement of [BFT time](https://docs.tendermint.com/master/spec/consensus/bft-time.html), whereby the proposer chooses a timestamp and validators vote on the block only if the timestamp is considered *timely*. This increases reliance on an accurate local clock, but in exchange makes block time more reliable and resistant to faults. This has important use cases in light clients, IBC relayers, CosmosHub inflation and enabling signature aggregation. [More](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-071-proposer-based-timestamps.md)
+### ソフトアップグレード
 
-### Soft Upgrades
+ノードオペレーターとアプリケーション開発者が新しいバージョンのTendermintにすばやく安全にアップグレードできるように、一連のツールとモデルを開発しています。 [詳細](https://github.com/tendermint/spec/pull/222)
 
-We are working on a suite of tools and patterns to make it easier for both node operators and application developers to quickly and safely upgrade to newer versions of Tendermint. [More](https://github.com/tendermint/spec/pull/222)
+### 小作品
 
-### Minor Works
+-「レガシー」P2Pフレームワークを削除し、P2Pパッケージをクリーンアップします。 [詳細](https://github.com/tendermint/tendermint/issues/5670)
+-ローカルABCIクライアントからグローバルミューテックスを削除して、アプリケーション制御の同時実行を有効にします。 [詳細](https://github.com/tendermint/tendermint/issues/7073)
+-ライトクライアントのP2Pサポートを有効にする
+-サービスノードのオーケストレーション+ノードの初期化と構成可能性
+-複数のデータ構造の冗長性を削除します。ブロック同期v2リアクター、RPCレイヤーのgRPC、ソケットベースのリモート署名者などの未使用のコンポーネントを削除します。
+-より多くのインジケーターを導入することにより、ノードの可視性を向上させます
 
-- Remove the "legacy" P2P framework, and clean up of P2P package. [More](https://github.com/tendermint/tendermint/issues/5670)
-- Remove the global mutex from the local ABCI client to enable application-controlled concurrency. [More](https://github.com/tendermint/tendermint/issues/7073)
-- Enable P2P support for light clients
-- Node orchestration of services + Node initialization and composibility
-- Remove redundancy in several data structures. Remove unused components such as the block sync v2 reactor, gRPC in the RPC layer, and the socket-based remote signer.
-- Improve node visibility by introducing more metrics
+## V0.37(2022年の第3四半期に予定)
 
-## V0.37 (expected Q3 2022)
+### 完全なP2Pリファクタリング
 
-### Complete P2P Refactor
+P2Pシステムの最終段階を完了します。進行中の調査と計画では、[QUIC](https://en.wikipedia.org/wiki/QUIC)などの「MConn」送信方法の代わりに[libp2p](https://libp2p.io/)を使用するかどうかを決定しています。 )および[Noise](https://noiseprotocol.org/)などのハンドシェイク/認証プロトコル。より高度なゴシップテクニックを研究します。
 
-Finish the final phase of the P2P system. Ongoing research and planning is taking place to decide whether to adopt [libp2p](https://libp2p.io/), alternative transports to `MConn` such as [QUIC](https://en.wikipedia.org/wiki/QUIC) and handshake/authentication protocols such as [Noise](https://noiseprotocol.org/). Research into more advanced gossiping techniques.
+### ストレージエンジンを簡素化する
 
-### Streamline Storage Engine
+Tendermintには現在、複数のデータベースバックエンドをサポートできるようにする抽象化があります。この一般性により、メンテナンスオーバーヘッドが発生し、Tendermintが使用できるアプリケーション固有の最適化(ACID保証など)が妨げられる可能性があります。 1つのデータベースに集中し、Tendermintストレージエンジンを簡素化する予定です。 [詳細](https://github.com/tendermint/tendermint/pull/6897)
 
-Tendermint currently has an abstraction to allow support for multiple database backends. This generality incurs maintenance overhead and interferes with application-specific optimizations that Tendermint could use (ACID guarantees, etc.). We plan to converge on a single database and streamline the Tendermint storage engine. [More](https://github.com/tendermint/tendermint/pull/6897)
+### プロセス間通信を評価する
 
-### Evaluate Interprocess Communication
+Tendermintノードには現在、他のプロセス(ABCI、リモート署名者、P2P、JSONRPC、WebSocket、イベントなど)との複数の通信フィールドがあります。これらの多くには複数の実装があり、そのうちの1つで十分です。 IPCを統合してクリーンアップします。 [詳細](https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-002-ipc-ecosystem.md)
 
-Tendermint nodes currently have multiple areas of communication with other processes (ABCI, remote-signer, P2P, JSONRPC, websockets, events as examples). Many of these have multiple implementations in which a single suffices. Consolidate and clean up IPC. [More](https://github.com/tendermint/tendermint/blob/master/docs/rfc/rfc-002-ipc-ecosystem.md)
+### ヒント
 
-### Minor Works
+-健忘症の攻撃処理。 [詳細](https://github.com/tendermint/tendermint/issues/5270)
+-コンセンサスWALを削除/更新します。 [詳細](https://github.com/tendermint/tendermint/issues/6397)
+-署名の集約。 [詳細](https://github.com/tendermint/tendermint/issues/1319)
+-gogoprotoの依存関係を削除します。 [詳細](https://github.com/tendermint/tendermint/issues/5446)
 
-- Amnesia attack handling. [More](https://github.com/tendermint/tendermint/issues/5270)
-- Remove / Update Consensus WAL. [More](https://github.com/tendermint/tendermint/issues/6397)
-- Signature Aggregation. [More](https://github.com/tendermint/tendermint/issues/1319)
-- Remove gogoproto dependency. [More](https://github.com/tendermint/tendermint/issues/5446)
+## V1.0(2022年の第4四半期に予定)
 
-## V1.0 (expected Q4 2022)
+V0.37と同じ機能セットを備えていますが、テスト、プロトコルの正確性、および製品の安定性を確保するための微調整に重点を置いています。これらの取り組みには、[コンセンサステストフレームワーク](https://github.com/tendermint/tendermint/issues/5920)の拡張、カナリア/長寿命テストネットの使用、およびより大規模な統合テストが含まれる場合があります。
 
-Has the same feature set as V0.37 but with a focus towards testing, protocol correctness and minor tweaks to ensure a stable product. Such work might include extending the [consensus testing framework](https://github.com/tendermint/tendermint/issues/5920), the use of canary/long-lived testnets and greater integration tests.
+## リリース1.0の作業
 
-## Post 1.0 Work
-
-- Improved block propagation with erasure coding and/or compact blocks. [More](https://github.com/tendermint/spec/issues/347)
-- Consensus engine refactor
-- Bidirectional ABCI
-- Randomized Leader Election
-- ZK proofs / other cryptographic primitives
-- Multichain Tendermint
+-ブロックの伝播を改善するために、イレイジャーコーディングやコンパクトブロックを使用します。 [詳細](https://github.com/tendermint/spec/issues/347)
+-リファクタリングされたコンセンサスエンジン
+-双方向ABCI
+-ランダムリーダー選出
+-ZKプルーフ/その他の暗号化プリミティブ
+-マルチチェーンテンダーミント

@@ -1,57 +1,57 @@
-# ADR 044: Lite Client with Weak Subjectivity
+# ADR 044:主観性の弱い軽いクライアント
 
-## Changelog
-* 13-07-2019: Initial draft
-* 14-08-2019: Address cwgoes comments
+## 変更ログ
+* 13-07-2019:最初のドラフト
+* 14-08-2019:cwgosのコメントに対応
 
-## Context
+## 環境
 
-The concept of light clients was introduced in the Bitcoin white paper. It
-describes a watcher of distributed consensus process that only validates the
-consensus algorithm and not the state machine transactions within.
+ライトクライアントの概念は、ビットコインホワイトペーパーで紹介されています。それ
+検証するだけの分散型コンセンサスプロセスのオブザーバーについて説明します
+コンセンサスアルゴリズムは、それらの間のステートマシントランザクションではありません。
 
-Tendermint light clients allow bandwidth & compute-constrained devices, such as smartphones, low-power embedded chips, or other blockchains to
-efficiently verify the consensus of a Tendermint blockchain. This forms the
-basis of safe and efficient state synchronization for new network nodes and
-inter-blockchain communication (where a light client of one Tendermint instance
-runs in another chain's state machine).
+Tendermintライトクライアントは、スマートフォン、低電力組み込みチップ、その他のブロックチェーンなど、帯域幅とコンピューティングに制約のあるデバイスを可能にします
+Tendermintブロックチェーンのコンセンサスを効果的に検証します。これが形成された
+新しいネットワークノードの安全で効率的な状態同期の基盤と
+ブロックチェーン間通信(Tendermintインスタンスの1つのライトクライアント
+別のチェーンのステートマシンで実行します)。
 
-In a network that is expected to reliably punish validators for misbehavior
-by slashing bonded stake and where the validator set changes
-infrequently, clients can take advantage of this assumption to safely
-synchronize a lite client without downloading the intervening headers.
+不正行為に対して検証者を確実に罰することが期待されるネットワーク
+場所を変更するために結合された権利とバリデーターセットを減らすことによって
+まれに、お客様がこの仮定を使用して安全に使用できる場合
+中間ヘッダーをダウンロードせずに、liteクライアントを同期できます。
 
-Light clients (and full nodes) operating in the Proof Of Stake context need a
-trusted block height from a trusted source that is no older than 1 unbonding
-window plus a configurable evidence submission synchrony bound. This is called “weak subjectivity”.
+プルーフオブステーク環境で実行されているライトクライアント(およびフルノード)には、1つ必要です。
+信頼できるソースからの信頼できるブロックの高さは、1unbindを超えません
+ウィンドウと構成可能な証拠提出同期バインディング。これがいわゆる「弱い主観」です。
 
-Weak subjectivity is required in Proof of Stake blockchains because it is
-costless for an attacker to buy up voting keys that are no longer bonded and
-fork the network at some point in its prior history. See Vitalik’s post at
-[Proof of Stake: How I Learned to Love Weak
-Subjectivity](https://blog.ethereum.org/2014/11/25/proof-stake-learned-love-weak-subjectivity/).
+プルーフオブステークブロックチェーンは、主観的である必要があります。
+攻撃者は、無料でバインドされなくなった投票キーを購入できます
+以前の履歴のある時点でネットワークをフォークします。 Vitalikの投稿を参照してください:
+[公平性の証明:弱者を愛することをどのように学ぶか
+主観性](https://blog.ethereum.org/2014/11/25/proof-stake-learned-love-weak-subjectivity/)。
 
-Currently, Tendermint provides a lite client implementation in the
-[light](https://github.com/tendermint/tendermint/tree/master/light) package. This
-lite client implements a bisection algorithm that tries to use a binary search
-to find the minimum number of block headers where the validator set voting
-power changes are less than < 1/3rd. This interface does not support weak
-subjectivity at this time. The Cosmos SDK also does not support counterfactual
-slashing, nor does the lite client have any capacity to report evidence making
-these systems *theoretically unsafe*.
+現在、テンダーミントは
+[light](https://github.com/tendermint/tendermint/tree/master/light)パッケージ。この
+liteクライアントは、バイナリ検索を使用しようとするバイナリ検索アルゴリズムを実装します
+バリデーターが投票するためのブロックヘッダーの最小数を見つけます
+電力変化は<1/3未満です。このインターフェースはweakをサポートしていません
+現時点での主観。 CosmosSDKは反事実もサポートしていません
+カット、ライトクライアントには証拠の作成を報告する機能がありません
+これらのシステムは*理論的には安全ではありません*。
 
-NOTE: Tendermint provides a somewhat different (stronger) light client model
-than Bitcoin under eclipse, since the eclipsing node(s) can only fool the light
-client if they have two-thirds of the private keys from the last root-of-trust.
+注:Tendermintは、わずかに異なる(より強力な)軽量クライアントモデルを提供します
+日食ノードは光をだますことができるだけなので、日食の下のビットコインより
+クライアント(最後の信頼ルートからの秘密鍵の3分の2を持っている場合)。
 
-## Decision
+## 決定
 
-### The Weak Subjectivity Interface
+###弱く主観的なインターフェース
 
-Add the weak subjectivity interface for when a new light client connects to the
-network or when a light client that has been offline for longer than the
-unbonding period connects to the network. Specifically, the node needs to
-initialize the following structure before syncing from user input:
+新しいライトクライアント接続を追加するときの弱い主観的なインターフェイス
+ネットワークまたはライトクライアントのオフライン時間が超過した場合
+アンバンドリング期間中にネットワークに接続します。具体的には、ノードには
+ユーザー入力から同期する前に、次の構造を初期化します。
 
 ```
 type TrustOptions struct {
@@ -72,70 +72,70 @@ type TrustOptions struct {
 }
 ```
 
-The expectation is the user will get this information from a trusted source
-like a validator, a friend, or a secure website. A more user friendly
-solution with trust tradeoffs is that we establish an https based protocol with
-a default end point that populates this information. Also an on-chain registry
-of roots-of-trust (e.g. on the Cosmos Hub) seems likely in the future.
+ユーザーが信頼できるソースからこの情報を取得することを期待します
+たとえば、検証者、友人、または安全なWebサイトです。より人道的
+信頼バランスのあるソリューションは、httpsに基づいてプロトコルを構築することです。
+この情報を入力するためのデフォルトのエンドポイント。オンチェーンレジストリでもあります
+信頼の根源(たとえば、コスモスハブ)は将来明らかになる可能性があります。
 
-### Linear Verification
+###線形検証
 
-The linear verification algorithm requires downloading all headers
-between the `TrustHeight` and the `LatestHeight`. The lite client downloads the
-full header for the provided `TrustHeight` and then proceeds to download `N+1`
-headers and applies the [Tendermint validation
-rules](https://docs.tendermint.com/master/spec/blockchain/blockchain.html#validation)
-to each block.
+線形検証アルゴリズムは、すべてのヘッダーをダウンロードする必要があります
+`TrustHeight`と` LatestHeight`の間。ライトクライアントのダウンロード
+「TrustHeight」の完全なヘッダーを入力してから、「N +1」のダウンロードに進みます
+ヘッダーと適用[テンダーミント検証
+ルール](https://docs.tendermint.com/master/spec/blockchain/blockchain.html#validation)
+各ブロックに。
 
-### Bisecting Verification
+### 第2部の検証
 
-Bisecting Verification is a more bandwidth and compute intensive mechanism that
-in the most optimistic case requires a light client to only download two block
-headers to come into synchronization.
+バイナリ検証は、帯域幅と計算量の多いメカニズムであり、
+最も楽観的なケースでは、ライトクライアントは2つのブロックのみをダウンロードする必要があります
+同期に向かいます。
 
-The bisection algorithm proceeds in the following fashion. The client downloads
-and verifies the full block header for `TrustHeight` and then  fetches
-`LatestHeight` blocker header. The client then verifies the `LatestHeight`
-header. Finally the client attempts to verify the `LatestHeight` header with
-voting powers taken from `NextValidatorSet` in the `TrustHeight` header. This
-verification will succeed if the validators from `TrustHeight` still have > 2/3
-+1 of voting power in the `LatestHeight`. If this succeeds, the client is fully
-synchronized. If this fails, then following Bisection Algorithm should be
-executed.
+バイナリアルゴリズムは次のように実行されます。クライアントのダウンロード
+そして、「TrustHeight」の完全なブロックヘッダーを確認してから、
+`LatestHeight`インターセプターのタイトル。次に、クライアントは「最新の高度」を確認します
+タイトル。最後に、クライアントは次のメソッドを使用して「LatestHeight」ヘッダーを検証しようとします
+`TrustHeight`ヘッダーの` NextValidatorSet`から議決権を取得します。この
+`TrustHeight`のバリデーターがまだ> 2/3の場合、検証は成功します
+「最新の高さ」で+1の投票権を取得します。成功した場合、クライアントは完全に
+同期します。失敗した場合は、バイナリアルゴリズムに従う必要があります
+埋め込む。
 
-The Client tries to download the block at the mid-point block between
-`LatestHeight` and `TrustHeight` and attempts that same algorithm as above
-using `MidPointHeight` instead of `LatestHeight` and a different threshold -
-1/3 +1 of voting power for *non-adjacent headers*. In the case the of failure,
-recursively perform the `MidPoint` verification until success then start over
-with an updated `NextValidatorSet` and `TrustHeight`.
+クライアントは中央のブロックのブロックをダウンロードしようとします
+`LatestHeight`と` TrustHeight`を使用して、上記と同じアルゴリズムを試してください
+`LatestHeight`の代わりに` MidPointHeight`を使用し、さまざまなしきい値を使用します-
+*隣接していないタイトル* 1/3 + 1議決権。失敗した場合、
+成功するまで `MidPoint`検証を再帰的に実行してから、再起動します
+「NextValidatorSet」と「TrustHeight」が更新されました。
 
-If the client encounters a forged header, it should submit the header along
-with some other intermediate headers as the evidence of misbehavior to other
-full nodes. After that, it can retry the bisection using another full node. An
-optimal client will cache trusted headers from the previous run to minimize
-network usage.
+クライアントが偽造されたヘッダーに遭遇した場合、クライアントはヘッダーを一緒に送信する必要があります
+他の人に対する不正行為の証拠としてのいくつかの他の中間の見出し
+フルノード。その後、別のフルノードを使用して2つのポイントを再試行できます。一
+最適なクライアントは、最小化するために最後の実行からの信頼できるヘッダーをキャッシュします
+ネットワークの使用。
 
 ---
 
-Check out the formal specification
-[here](https://github.com/tendermint/spec/tree/master/spec/light-client).
+公式仕様を見る
+[こちら](https://github.com/tendermint/spec/tree/master/spec/light-client)。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-* light client which is safe to use (it can go offline, but not for too long)
+*安全に使用できる軽量クライアント(オフラインにすることもできますが、長すぎないようにしてください)
 
-### Negative
+### ネガティブ
 
-* complexity of bisection
+*半分にすることの複雑さ
 
-### Neutral
+### ニュートラル
 
-* social consensus can be prone to errors (for cases where a new light client
-  joins a network or it has been offline for too long)
+*社会的コンセンサスはエラーが発生しやすい可能性があります(新しいライトクライアントの場合)
+  ネットワークに参加するか、オフラインになりすぎる)

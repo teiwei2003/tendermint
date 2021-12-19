@@ -1,40 +1,40 @@
-# ADR 035: Documentation
+# ADR 035:ドキュメント
 
-Author: @zramsay (Zach Ramsay)
+著者:@zramsay(扎克拉姆齐)
 
-## Changelog
+## 変更ログ
 
-###  November 2nd 2018
+### 2018年11月2日
 
-- initial write-up
+-予備執筆
 
-## Context
+## 環境
 
-The Tendermint documentation has undergone several changes until settling on the current model. Originally, the documentation was hosted on the website and had to be updated asynchronously from the code. Along with the other repositories requiring documentation, the whole stack moved to using Read The Docs to automatically generate, publish, and host the documentation. This, however, was insufficient; the RTD site had advertisement, it wasn't easily accessible to devs, didn't collect metrics, was another set of external links, etc.
+現在のモデルが決定される前に、Tendermintのドキュメントには多くの変更が加えられました。最初は、ドキュメントはWebサイトでホストされており、コードとは非同期に更新する必要があります。ドキュメントを必要とする他のリポジトリとともに、スタック全体がRead The Docsを利用して、ドキュメントを自動的に生成、公開、およびホストします。ただし、これだけでは不十分です。 RTD Webサイトには広告があり、開発者がアクセスしにくい、メトリックを収集しない、別の外部リンクのセットなどがあります。
 
-## Decision
+## 決定
 
-For two reasons, the decision was made to use VuePress:
+私は2つの理由でVuePressを使用することにしました:
 
-1) ability to get metrics (implemented on both Tendermint and SDK)
-2) host the documentation on the website as a `/docs` endpoint.
+1)インジケーターを取得する機能(TendermintおよびSDKに実装)
+2)「/ docs」エンドポイントとしてWebサイト上のドキュメントをホストします。
 
-This is done while maintaining synchrony between the docs and code, i.e., the website is built whenever the docs are updated.
+これは、ドキュメントとコードの同期を維持しながら行われます。つまり、ドキュメントが更新されている限り、Webサイトが構築されます。
 
-## Status
+## ステータス
 
-The two points above have been implemented; the `config.js` has a Google Analytics identifier and the documentation workflow has been up and running largely without problems for several months. Details about the documentation build & workflow can be found [here](../DOCS_README.md)
+上記の2つのポイントが達成されました。`config.js`にはGoogleAnalytics識別子があり、ドキュメントワークフローは数か月間稼働しており、基本的に問題はありません。ドキュメントの作成とワークフローの詳細については、[こちら](../ DOCS_README.md)を参照してください。
 
-## Consequences
+## 結果
 
-Because of the organizational seperation between Tendermint & Cosmos, there is a challenge of "what goes where" for certain aspects of documentation.
+TendermintとCosmosは組織的に分離されているため、ドキュメントの特定の側面には「何がどこに行くのか」という課題があります。
 
-### Positive
+### ポジティブ
 
-This architecture is largely positive relative to prior docs arrangements.
+以前のドキュメントの配置と比較すると、このアーキテクチャはおおむね前向きです。
 
-### Negative
+### ネガティブ
 
-A significant portion of the docs automation / build process is in private repos with limited access/visibility to devs. However, these tasks are handled by the SRE team.
+ドキュメントの自動化/ビルドプロセスの大部分はプライベートリポジトリにあり、開発者へのアクセス/可視性は制限されています。ただし、これらのタスクはSREチームによって処理されます。
 
-### Neutral
+### ニュートラル

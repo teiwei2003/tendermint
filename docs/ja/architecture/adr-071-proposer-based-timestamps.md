@@ -1,94 +1,94 @@
-# ADR 71: Proposer-Based Timestamps
+# ADR 71:提案者のタイムスタンプに基づく
 
-## Changelog
+## 変更ログ
 
- - July 15 2021: Created by @williambanfield 
- - Aug 4 2021: Draft completed by @williambanfield
- - Aug 5 2021: Draft updated to include data structure changes by @williambanfield
- - Aug 20 2021: Language edits completed by @williambanfield
- - Oct 25 2021: Update the ADR to match updated spec from @cason by @williambanfield
- - Nov 10 2021: Additional language updates by @williambanfield per feedback from @cason
+ -2021年7月15日:@williambanfieldによって作成されました
+ -2021年8月4日:@williambanfieldがドラフトを完成
+ -2021年8月5日:ドラフトを更新して、@ williambanfieldのデータ構造の変更を含めます
+ -2021年8月20日:@williambanfieldが言語編集を完了
+ -2021年10月25日:@casonからの@williambanfieldの更新された仕様に一致するようにADRを更新します
+ -2021年11月10日:@casonのフィードバックによると、@ williambanfieldは他の言語を更新しました
 
-## Status
+## ステータス
 
- **Accepted**
+ **承認済み**
 
-## Context
+## 環境
 
-Tendermint currently provides a monotonically increasing source of time known as [BFTTime](https://github.com/tendermint/spec/blob/master/spec/consensus/bft-time.md).
-This mechanism for producing a source of time is reasonably simple.
-Each correct validator adds a timestamp to each `Precommit` message it sends.
-The timestamp it sends is either the validator's current known Unix time or one millisecond greater than the previous block time, depending on which value is greater.
-When a block is produced, the proposer chooses the block timestamp as the weighted median of the times in all of the `Precommit` messages the proposer received.
-The weighting is proportional to the amount of voting power, or stake, a validator has on the network.
-This mechanism for producing timestamps is both deterministic and byzantine fault tolerant.
- 
-This current mechanism for producing timestamps has a few drawbacks.
-Validators do not have to agree at all on how close the selected block timestamp is to their own currently known Unix time.
-Additionally, any amount of voting power `>1/3` may directly control the block timestamp.
-As a result, it is quite possible that the timestamp is not particularly meaningful.
+Tendermintは現在、[BFTTime](https://github.com/tendermint/spec/blob/master/spec/consensus/bft-time.md)と呼ばれる単調に増加するタイムソースを提供しています。
+タイムソースを生成するためのこのメカニズムは非常に単純です。
+すべての正しいバリデーターは、送信するすべての「pre-commit」メッセージにタイムスタンプを追加します。
+送信するタイムスタンプは、ベリファイアが現在認識しているUnix時間か、どちらの値が大きいかに応じて、前のブロック時間より1ミリ秒長くなります。
+ブロックが生成されると、提案者は、提案者が受信したすべての「事前コミット」メッセージの時間の加重中央値としてブロックタイムスタンプを選択します。
+重みは、ネットワーク上の検証者の投票権または公平性に比例します。
+タイムスタンプを生成するためのこのメカニズムは、決定論的であり、ビザンチンフォールトトレラントです。
 
-These drawbacks present issues in the Tendermint protocol.
-Timestamps are used by light clients to verify blocks.
-Light clients rely on correspondence between their own currently known Unix time and the block timestamp to verify blocks they see; 
-However, their currently known Unix time may be greatly divergent from the block timestamp as a result of the limitations of `BFTTime`.
+タイムスタンプを生成するためのこの現在のメカニズムには、いくつかの欠点があります。
+検証者は、選択したブロックのタイムスタンプが自分の現在の既知のUnix時間にどれだけ近いかについて合意する必要はありません。
+さらに、任意の数の議決権 "> 1/3"で、ブロックのタイムスタンプを直接制御できます。
+したがって、タイムスタンプはおそらく特に意味がありません。
 
-The proposer-based timestamps specification suggests an alternative approach for producing block timestamps that remedies these issues.
-Proposer-based timestamps alter the current mechanism for producing block timestamps in two main ways:
+これらの欠点は、Tendermintプロトコルでは問題があります。
+ライトクライアントはタイムスタンプを使用してブロックを検証します。
+ライトクライアントは、現在の既知のUnix時間とブロックタイムスタンプの間の対応に依存して、表示されるブロックを検証します。
+ただし、「BFTTime」の制限により、現在知られているUnix時間はブロックタイムスタンプと大きく異なる場合があります。
 
-1. The block proposer is amended to offer up its currently known Unix time as the timestamp for the next block instead of the `BFTTime`.
-1. Correct validators only approve the proposed block timestamp if it is close enough to their own currently known Unix time. 
+提案者のタイムスタンプ仕様に基づいて、これらの問題を解決するために、ブロックタイムスタンプを生成する代替方法が提案されます。
+提案者のタイムスタンプに基づいて、ブロックタイムスタンプを生成するための現在のメカニズムは、主に2つの方法で変更されます。
 
-The result of these changes is a more meaningful timestamp that cannot be controlled by `<= 2/3` of the validator voting power. 
-This document outlines the necessary code changes in Tendermint to implement the corresponding [proposer-based timestamps specification](https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp).
+1.ブロック提案者は、現在の既知のUnix時刻を、「BFTTime」ではなく次のブロックのタイムスタンプとして提供するように変更されました。
+1.提案されたブロックタイムスタンプが現在の既知のUnix時間に十分近い場合にのみ、正しいベリファイアが提案されたブロックタイムスタンプを承認します。
 
-## Alternative Approaches
+これらの変更の結果は、検証者の投票権の「<= 2/3」では制御できないより意味のあるタイムスタンプになります。
+このドキュメントでは、対応する[プロポーザーベースのタイムスタンプ仕様](https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp)を実装するためにTendermintで必要なコード変更の概要を説明します。
 
-### Remove timestamps altogether
+## 代替方法
 
-Computer clocks are bound to skew for a variety of reasons.
-Using timestamps in our protocol means either accepting the timestamps as not reliable or impacting the protocol’s liveness guarantees.
-This design requires impacting the protocol’s liveness in order to make the timestamps more reliable.
-An alternate approach is to remove timestamps altogether from the block protocol.
-`BFTTime` is deterministic but may be arbitrarily inaccurate.
-However, having a reliable source of time is quite useful for applications and protocols built on top of a blockchain.
+### タイムスタンプを完全に削除します
 
-We therefore decided not to remove the timestamp. 
-Applications often wish for some transactions to occur on a certain day, on a regular period, or after some time following a different event.
-All of these require some meaningful representation of agreed upon time.
-The following protocols and application features require a reliable source of time:
-* Tendermint Light Clients [rely on correspondence between their known time](https://github.com/tendermint/spec/blob/master/spec/light-client/verification/README.md#definitions-1) and the block time for block verification.
-* Tendermint Evidence validity is determined [either in terms of heights or in terms of time](https://github.com/tendermint/spec/blob/8029cf7a0fcc89a5004e173ec065aa48ad5ba3c8/spec/consensus/evidence.md#verification).
-* Unbonding of staked assets in the Cosmos Hub [occurs after a period of 21 days](https://github.com/cosmos/governance/blob/ce75de4019b0129f6efcbb0e752cd2cc9e6136d3/params-change/Staking.md#unbondingtime).
-* IBC packets can use either a [timestamp or a height to timeout packet delivery](https://docs.cosmos.network/v0.43/ibc/overview.html#acknowledgements).
+さまざまな理由により、コンピュータの時計は必然的にずれます。
+契約でタイムスタンプを使用するということは、タイムスタンプの信頼性が低いことを受け入れるか、契約の有効性の保証に影響を与えることを意味します。
+この設計は、タイムスタンプの信頼性を高めるために、プロトコルの活性に影響を与える必要があります。
+もう1つの方法は、ブロックプロトコルからタイムスタンプを完全に削除することです。
+`BFTTime`は決定論的ですが、任意に不正確になる可能性があります。
+ただし、信頼できる時間のソースがあると、ブロックチェーン上に構築されたアプリケーションやプロトコルに非常に役立ちます。
 
-Finally, inflation distribution in the Cosmos Hub uses an approximation of time to calculate an annual percentage rate. 
-This approximation of time is calculated using [block heights with an estimated number of blocks produced in a year](https://github.com/cosmos/governance/blob/master/params-change/Mint.md#blocksperyear). 
-Proposer-based timestamps will allow this inflation calculation to use a more meaningful and accurate source of time.
+したがって、タイムスタンプを削除しないことにしました。
+アプリケーションは通常、特定のトランザクションが特定の日、特定の期間、またはさまざまなイベントの後の特定の期間に発生することを想定しています。
+これらすべてには、合意された時間の意味のある表現が必要です。
+次のプロトコルとアプリケーション機能には、信頼できる時間のソースが必要です。
+*テンダーミントライトクライアント[既知の時間に依存](https://github.com/tendermint/spec/blob/master/spec/light-client/verification/README.md#definitions-1)とブロック時間対応間の関係は、ブロック検証に使用されます。
+* Tendermintの証拠の有効性は、[高さまたは時間](https://github.com/tendermint/spec/blob/8029cf7a0fcc89a5004e173ec065aa48ad5ba3c8/spec/consensus/evidence.md#verification)によって異なります。
+* Cosmos Hubでの資産のステーキング解除[21日後に発生](https://github.com/cosmos/governance/blob/ce75de4019b0129f6efcbb0e752cd2cc9e6136d3/params-change/Staking.md#unbondingtime)。
+* IBCパケットは、[タイムスタンプまたは高さを使用してパケット送信をタイムアウトする](https://docs.cosmos.network/v0.43/ibc/overview.html#acknowledgements)を使用できます。
+
+最後に、コスモスハブのインフレ分布は、時間の概算値を使用して年率を計算します。
+この時間の概算値は、[ブロックの高さと1年間に生成されるブロックの推定数](https://github.com/cosmos/governance/blob/master/params-change/Mint.md#blocksperyear)を使用して計算されます。
+提案者のタイムスタンプに基づいて、このインフレ計算でより意味のある正確な時間ソースを使用できるようになります。
 
 
-## Decision
+## 決定
 
-Implement proposer-based timestamps and remove `BFTTime`.
+実装は提案者のタイムスタンプに基づいており、「BFTTime」を削除します。
 
-## Detailed Design
+## 詳細設計
 
-### Overview
+### 概要
 
-Implementing proposer-based timestamps will require a few changes to Tendermint’s code.
-These changes will be to the following components:
-* The `internal/consensus/` package.
-* The `state/` package.
-* The `Vote`, `CommitSig` and `Header` types.
-* The consensus parameters.
+提案者に基づいてタイムスタンプを実装するには、Tendermintのコードにいくつかの変更を加える必要があります。
+これらの変更は、次のコンポーネントを対象としています。
+* `internal/consensus /`パッケージ。
+* `state /`パッケージ。
+* `Vote`、` CommitSig`および `Header`タイプ。
+*コンセンサスパラメータ。
 
-### Changes to `CommitSig`
+### `CommitSig`に変更
 
-The [CommitSig](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L604) struct currently contains a timestamp. 
-This timestamp is the current Unix time known to the validator when it issued a `Precommit` for the block.
-This timestamp is no longer used and will be removed in this change.
+[CommitSig](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/block.go#L604)構造には現在タイムスタンプが含まれています。
+このタイムスタンプは、バリデーターがブロックに対して「pre-commit」を発行したときに認識された現在のUnix時間です。
+このタイムスタンプは使用されなくなり、この変更で削除されます。
 
-`CommitSig` will be updated as follows:
+`CommitSig`は次のように更新されます。
 
 ```diff
 type CommitSig struct {
@@ -99,23 +99,23 @@ type CommitSig struct {
 }
 ```
 
-### Changes to `Vote` messages
+### 「投票」メッセージへの変更
 
-`Precommit` and `Prevote` messages use a common [Vote struct](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/vote.go#L50).
-This struct currently contains a timestamp.
-This timestamp is set using the [voteTime](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L2241) function and therefore vote times correspond to the current Unix time known to the validator.
-For precommits, this timestamp is used to construct the [CommitSig that is included in the block in the LastCommit](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/block.go#L754) field.
-For prevotes, this field is currently unused.
-Proposer-based timestamps will use the timestamp that the proposer sets into the block and will therefore no longer require that a timestamp be included in the vote messages. 
-This timestamp is therefore no longer useful and will be dropped.
+`Precommit`メッセージと` Prevote`メッセージは、共通の[投票構造](https://github.com/tendermint/tendermint/blob/a419f4df76fe4aed668a6c74696deabb9fe73211/types/vote.go#L50)を使用します。
+この構造には現在、タイムスタンプが含まれています。
+このタイムスタンプは[voteTime](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L2241)関数を使用して設定されるため、投票時間は現在のUnix時間バリデーターに対応します。
+事前コミットの場合、このタイムスタンプを使用して[LastCommitのブロックに含まれるCommitSig](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/block.go#L754)を作成します
+事前投票の場合、このフィールドは現在使用されていません。
+提案者ベースのタイムスタンプは、ブロック内の提案者によって設定されたタイムスタンプを使用するため、投票メッセージにタイムスタンプを含める必要がなくなりました。
+したがって、このタイムスタンプは使用できなくなり、削除されます。
 
-`Vote` will be updated as follows:
+`Vote`は次のように更新されます。
 
 ```diff
 type Vote struct {
 	Type             tmproto.SignedMsgType `json:"type"`
 	Height           int64                 `json:"height"`
-	Round            int32                 `json:"round"`    
+	Round            int32                 `json:"round"`
 	BlockID          BlockID               `json:"block_id"` // zero if vote is nil.
 --	Timestamp        time.Time             `json:"timestamp"`
 	ValidatorAddress Address               `json:"validator_address"`
@@ -124,27 +124,27 @@ type Vote struct {
 }
 ```
 
-### New consensus parameters
+### 新しいコンセンサスパラメータ
 
-The proposer-based timestamp specification includes multiple new parameters that must be the same among all validators.
-These parameters are `PRECISION`, `MSGDELAY`, and `ACCURACY`.
+提案者ベースのタイムスタンプ仕様には、すべてのバリデーターで同じでなければならないいくつかの新しいパラメーターが含まれています。
+これらのパラメータは、「PRECISION」、「MSGDELAY」、および「ACCURACY」です。
 
-The `PRECISION` and `MSGDELAY` parameters are used to determine if the proposed timestamp is acceptable.
-A validator will only Prevote a proposal if the proposal timestamp is considered `timely`.
-A proposal timestamp is considered `timely` if it is within `PRECISION` and `MSGDELAY` of the Unix time known to the validator.
-More specifically, a proposal timestamp is `timely` if `validatorLocalTime - PRECISION < proposalTime < validatorLocalTime + PRECISION + MSGDELAY`. 
+`PRECISION`および` MSGDELAY`パラメータは、提案されたタイムスタンプが受け入れ可能かどうかを判断するために使用されます。
+プロポーザルのタイムスタンプが「タイムリー」であると見なされる場合、バリデーターはプロポーザルにのみ事前投票します。
+プロポーザルのタイムスタンプが、バリデーターが認識しているUnix時間の `PRECISION`および` MSGDELAY`内にある場合、それは `timely`であると見なされます。
+より具体的には、 `validatorLocalTime-PRECISION <proposalTime <validatorLocalTime + PRECISION + MSGDELAY`の場合、プロポーザルのタイムスタンプは` timely`です。
 
-Because the `PRECISION` and `MSGDELAY` parameters must be the same across all validators, they will be added to the [consensus parameters](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/types/params.proto#L13) as [durations](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration).
+`PRECISION`パラメータと` MSGDELAY`パラメータはすべてのバリデータで同じである必要があるため、[コンセンサスパラメータ](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/types/ params .proto#L13)as [duration](https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Duration)。
 
-The proposer-based timestamp specification also includes a [new ACCURACY parameter](https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/pbts-sysmodel_001_draft.md#pbts-clocksync-external0).
-Intuitively, `ACCURACY` represents the difference between the ‘real’ time and the currently known time of correct validators.
-The currently known Unix time of any validator is always somewhat different from real time.
-`ACCURACY` is the largest such difference between each validator's time and real time taken as an absolute value. 
-This is not something a computer can determine on its own and must be specified as an estimate by community running a Tendermint-based chain.
-It is used in the new algorithm to [calculate a timeout for the propose step](https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/pbts-algorithm_001_draft.md#pbts-alg-startround0).
-`ACCURACY` is assumed to be the same across all validators and therefore should be included as a consensus parameter.
+提案者ベースのタイムスタンプ仕様には、[新しい精度パラメーター](https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/pbts-sysmodel_001_draft.md# pbts-clocksync -external0)。
+直感的には、「精度」は、正しいベリファイアの「実際の」時間と現在の既知の時間との差を表します。
+現在知られているバリデーターのUnix時間は、常にリアルタイムとは多少異なります。
+`ACCURACY`は、絶対値としての、各検証者の時間と実際の時間の最大差です。
+これは、コンピューターが独自に判断できるものではなく、Tendermintベースのチェーンを実行しているコミュニティによる見積もりとして指定する必要があります。
+これは、[提案ステップのタイムアウトを計算する](https://github.com/tendermint/spec/blob/master/spec/consensus/proposer-based-timestamp/pbts-algorithm_001_draft.md#)ための新しいアルゴリズムで使用されます。 pbts- alg-startround0)。
+すべてのバリデーターは同じ「精度」を持っていると想定されているため、コンセンサスパラメーターとして含める必要があります。
 
-The consensus will be updated to include this `Timestamp` field as follows:
+コンセンサスは、次のようにこの「タイムスタンプ」フィールドを含むように更新されます。
 
 ```diff
 type ConsensusParams struct {
@@ -164,176 +164,176 @@ type TimestampParams struct {
 }
 ```
 
-### Changes to the block proposal step
+### ブロック提案ステップを変更する
 
-#### Proposer selects block timestamp
+#### 提案者はブロックタイムスタンプを選択します
 
-Tendermint currently uses the `BFTTime` algorithm to produce the block's `Header.Timestamp`.
-The [proposal logic](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/internal/state/state.go#L269) sets the weighted median of the times in the `LastCommit.CommitSigs` as the proposed block's `Header.Timestamp`.
+Tendermintは現在、「BFTTime」アルゴリズムを使用してブロックの「Header.Timestamp」を生成しています。
+[提案ロジック](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/internal/state/state.go#L269) `LastCommit.Commitの` sigs`の時間の加重中央値を提案されたブロックに設定します`Header.Timestamp`。
 
-In proposer-based timestamps, the proposer will still set a timestamp into the `Header.Timestamp`.
-The timestamp the proposer sets into the `Header` will change depending on if the block has previously received a [polka](https://github.com/tendermint/tendermint/blob/053651160f496bb44b107a434e3e6482530bb287/docs/introduction/what-is-tendermint.md#consensus-overview) or not.
+提案者に基づくタイムスタンプでは、提案者は引き続き `Header.Timestamp`にタイムスタンプを設定します。
+`Header`で提案者が設定するタイムスタンプは、ブロックが[polka](https://github.com/tendermint/tendermint/blob/053651160f496bb44b107a434e3e6482530bb287/docs/introduction/what-is-tendermint。md)を受信したかどうかに基づきます。 #consensus-overview)かどうか。
 
-#### Proposal of a block that has not previously received a polka
+#### ポルカのブロックの提案は以前に受け取られていません
 
-If a proposer is proposing a new block, then it will set the Unix time currently known to the proposer into the `Header.Timestamp` field.
-The proposer will also set this same timestamp into the `Timestamp` field of the `Proposal` message that it issues.
+提案者が新しいブロックを提案している場合、提案者が現在知っているUnix時間を `Header.Timestamp`フィールドに設定します。
+提案者は、この同じタイムスタンプを、送信する「提案」メッセージの「タイムスタンプ」フィールドにも設定します。
 
-#### Re-proposal of a block that has previously received a polka
+####以前にポルカを受け取った再提案ブロック
 
-If a proposer is re-proposing a block that has previously received a polka on the network, then the proposer does not update the `Header.Timestamp` of that block.
-Instead, the proposer simply re-proposes the exact same block.
-This way, the proposed block has the exact same block ID as the previously proposed block and the validators that have already received that block do not need to attempt to receive it again. 
+提案者が以前にネットワーク上でポルカを受信したブロックを再提案した場合、提案者はブロックのheader.Timestampを更新しません。
+代わりに、提案者はまったく同じブロックを再提案します。
+このように、提案されたブロックは、以前に提案されたブロックとまったく同じブロックIDを持ち、すでにブロックを受信した検証者は、ブロックを再度受信しようとする必要はありません。
 
-The proposer will set the re-proposed block's `Header.Timestamp` as the `Proposal` message's `Timestamp`.
+提案者は、新しく提案されたブロックの「Header.Timestamp」を「Proposal」メッセージの「Timestamp」に設定します。
 
-#### Proposer waits
+#### 提案者が待っています
 
-Block timestamps must be monotonically increasing.
-In `BFTTime`, if a validator’s clock was behind, the [validator added 1 millisecond to the previous block’s time and used that in its vote messages](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/internal/consensus/state.go#L2246).
-A goal of adding proposer-based timestamps is to enforce some degree of clock synchronization, so having a mechanism that completely ignores the Unix time of the validator time no longer works.
+ブロックタイムスタンプは単調に増加する必要があります。
+「BFTTime」では、バリデーターの時計が遅れている場合、[バリデーターは前のブロックの時刻に1ミリ秒を追加し、投票メッセージで使用します](https://github.com/tendermint/tendermint/blob/ e8013281281985e3ada7819f42502b09623d24a0コンセンサス/state.go#L2246)。
+提案者に基づいてタイムスタンプを追加する目的は、ある程度のクロック同期を強制することであるため、バリデーターの時間を完全に無視するUnix時間のメカニズムは無効になります。
 
-Validator clocks will not be perfectly in sync.
-Therefore, the proposer’s current known Unix time may be less than the previous block's `Header.Time`.
-If the proposer’s current known Unix time is less than the previous block's `Header.Time`, the proposer will sleep until its known Unix time exceeds it.
+ベリファイアクロックは完全には同期されません。
+したがって、提案者の現在の既知のUnix時間は、前のブロックのheader.Timeよりも短い場合があります。
+提案者の現在の既知のUnix時間がheader.Timeよりも小さい場合、提案者は既知のUnix時間がそれを超えるまでスリープします。
 
-This change will require amending the [defaultDecideProposal](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L1180) method.
-This method should now schedule a timeout that fires when the proposer’s time is greater than the previous block's `Header.Time`.
-When the timeout fires, the proposer will finally issue the `Proposal` message. 
+この変更には、[defaultDecideProposal](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L1180)メソッドの変更が必要になります。
+このメソッドは、提案者の時間が前のブロックのheader.Timeよりも大きい場合にトリガーされるタイムアウトをスケジュールする必要があります。
+タイムアウトがトリガーされると、提案者は最終的に「提案」メッセージを送信します。
 
-#### Changes to the propose step timeout
+#### 提案されたステップタイムアウトの変更
 
-Currently, a validator waiting for a proposal will proceed past the propose step if the configured propose timeout is reached and no proposal is seen.
-Proposer-based timestamps requires changing this timeout logic.
+現在、構成されたプロポーザルのタイムアウトに達し、プロポーザルが表示されない場合、プロポーザルを待機しているバリデーターはプロポーザルステップを通過します。
+このタイムアウトロジックは、提案者のタイムスタンプに基づいて変更する必要があります。
 
-The proposer will now wait until its current known Unix time exceeds the previous block's `Header.Time` to propose a block.
-The validators must now take this and some other factors into account when deciding when to timeout the propose step.
-Specifically, the propose step timeout must also take into account potential inaccuracy in the validator’s clock and in the clock of the proposer.
-Additionally, there may be a delay communicating the proposal message from the proposer to the other validators. 
+提案者は、現在の既知のUnix時間がheader.Timeを超えるまで待機して、ブロックを提案します。
+検証者は、推奨されるステップをいつタイムアウトするかを決定するときに、これと他の要因を考慮する必要があります。
+具体的には、提案ステップのタイムアウトでは、検証者のクロックと提案者のクロックの潜在的な不正確さも考慮する必要があります。
+さらに、提案者から他の検証者への提案メッセージの伝達が遅れる場合があります。
 
-Therefore, validators waiting for a proposal must wait until after the previous block's `Header.Time` before timing out.
-To account for possible inaccuracy in its own clock, inaccuracy in the proposer’s clock, and message delay, validators waiting for a proposal will wait until the previous block's `Header.Time + 2*ACCURACY + MSGDELAY`.
- The spec defines this as `waitingTime`.
- 
-The [propose step’s timeout is set in enterPropose](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L1108) in `state.go`. 
-`enterPropose` will be changed to calculate waiting time using the new consensus parameters.
-The timeout in `enterPropose` will then be set as the maximum of `waitingTime` and the [configured proposal step timeout](https://github.com/tendermint/tendermint/blob/dc7c212c41a360bfe6eb38a6dd8c709bbc39aae7/config/config.go#L1013).
+したがって、プロポーザルを待機しているバリデーターは、前のブロックの「Header.Time」がタイムアウトするまで待機する必要があります。
+自身のクロックが不正確である可能性があり、提案者のクロックが不正確であり、メッセージが遅延していることを考慮すると、提案を待機しているバリデーターは、 `Header.Time + 2 * ACCURACY + MSGDELAY`の前のブロックまで待機します。
+ 仕様では、これを「waitingTime」と定義しています。
 
-### Changes to proposal validation rules
+[提案されたステップのタイムアウトは、 `state.go`のenterPropose](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L1108)で設定されます。
+`enterPropose`は、新しいコンセンサスパラメータを使用して待機時間を計算するように変更されます。
+`enterPropose`のタイムアウトは、` waitingTime`と[構成されたプロポーザルステップのタイムアウト](https://github.com/tendermint/tendermint/blob/dc7c212c41a360bfe6eb38a6dd8c709bbc39aae7/config/config.go#L1013)の最大値に設定されます。
 
-The rules for validating a proposed block will be modification to implement proposer-based timestamps.
-We will change the validation logic to ensure that a proposal is `timely`.
+### 提案の検証ルールを変更する
 
-Per the proposer-based timestamps spec, `timely` only needs to be checked if a block has not received a +2/3 majority of `Prevotes` in a round.
-If a block previously received a +2/3 majority of prevotes in a previous round, then +2/3 of the voting power considered the block's timestamp near enough to their own currently known Unix time in that round.
+提案されたブロックを検証するためのルールは、提案者に基づいてタイムスタンプを実装するように変更されます。
+提案が「時間どおり」であることを確認するために、検証ロジックを変更します。
 
-The validation logic will be updated to check `timely` for blocks that did not previously receive +2/3 prevotes in a round. 
-Receiving +2/3 prevotes in a round is frequently referred to as a 'polka' and we will use this term for simplicity.
+提案者に基づくタイムスタンプの仕様によると、ブロックがラウンドで+2/3の多数決を受け取らなかった場合にのみ、「適時性」をチェックする必要があります。
+ブロックが前のラウンドで+2/3の過半数を獲得した場合、投票権の+2/3は、ブロックのタイムスタンプがラウンドの現在の既知のUnix時間に十分近いと見なします。
 
-#### Current timestamp validation logic
+検証ロジックが更新され、前のラウンドで+2/3の事前投票を受け取っていないブロックの「適時性」がチェックされます。
+ラウンドで予備投票の+2/3を獲得することは、しばしば「ポルカ」と呼ばれ、簡単にするためにこの用語を使用します。
 
-To provide a better understanding of the changes needed to timestamp validation, we will first detail how timestamp validation works currently in Tendermint.
+#### 現在のタイムスタンプ検証ロジック
 
-The [validBlock function](https://github.com/tendermint/tendermint/blob/c3ae6f5b58e07b29c62bfdc5715b6bf8ae5ee951/state/validation.go#L14) currently [validates the proposed block timestamp in three ways](https://github.com/tendermint/tendermint/blob/c3ae6f5b58e07b29c62bfdc5715b6bf8ae5ee951/state/validation.go#L118).
-First, the validation logic checks that this timestamp is greater than the previous block’s timestamp.
+タイムスタンプ検証に必要な変更をよりよく理解するために、最初に、タイムスタンプ検証が現在Tendermintでどのように機能するかを詳細に説明します。
 
-Second, it validates that the block timestamp is correctly calculated as the weighted median of the timestamps in the [block’s LastCommit](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/block.go#L48).
+[validBlock関数](https://github.com/tendermint/tendermint/blob/c3ae6f5b58e07b29c62bfdc5715b6bf8ae5ee951/state/validation.go#L14)現在[提案されたブロックタイムスタンプを3つの方法で確認](https://github.com/tendermint /tendermint/blob/c3ae6f5b58e07b29c62bfdc5715b6bf8ae5ee951/state/validation.go#L118)。
+まず、検証ロジックは、このタイムスタンプが前のブロックのタイムスタンプよりも大きいかどうかをチェックします。
 
-Finally, the validation logic authenticates the timestamps in the `LastCommit.CommitSig`.
-The cryptographic signature in each `CommitSig` is created by signing a hash of fields in the block with the voting validator’s private key.
-One of the items in this `signedBytes` hash is the timestamp in the `CommitSig`.
-To authenticate the `CommitSig` timestamp, the validator authenticating votes builds a hash of fields that includes the `CommitSig` timestamp and checks this hash against the signature.
-This takes place in the [VerifyCommit function](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/validation.go#L25).
+次に、ブロックのタイムスタンプが[ブロックのLastCommit]のタイムスタンプの加重中央値として正しく計算されていることを確認します(https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/block.go#L48) 。
 
-#### Remove unused timestamp validation logic
+最後に、検証ロジックは「LastCommit.CommitSig」のタイムスタンプを検証します。
+各 `CommitSig`の暗号署名は、投票バリデーターの秘密鍵を使用してブロック内のフィールドハッシュに署名することによって作成されます。
+この `signedBytes`ハッシュの1つの項目は、` CommitSig`のタイムスタンプです。
+`CommitSig`タイムスタンプを検証するために、検証者は投票を検証して、` CommitSig`タイムスタンプを含むフィールドのハッシュ値を作成し、このハッシュ値を署名と照合します。
+これは[VerifyCommit関数](https://github.com/tendermint/tendermint/blob/e8013281281985e3ada7819f42502b09623d24a0/types/validation.go#L25)で発生します。
 
-`BFTTime` validation is no longer applicable and will be removed.
-This means that validators will no longer check that the block timestamp is a weighted median of `LastCommit` timestamps.
-Specifically, we will remove the call to [MedianTime in the validateBlock function](https://github.com/tendermint/tendermint/blob/4db71da68e82d5cb732b235eeb2fd69d62114b45/state/validation.go#L117).
-The `MedianTime` function can be completely removed. 
+#### 未使用のタイムスタンプ検証ロジックを削除します
 
-Since `CommitSig`s will no longer contain a timestamp, the validator authenticating a commit will no longer include the `CommitSig` timestamp in the hash of fields it builds to check against the cryptographic signature.
+`BFTTime`検証は適用されなくなり、削除されます。
+これは、バリデーターがブロックタイムスタンプが「LastCommit」タイムスタンプの加重中央値であるかどうかをチェックしなくなることを意味します。
+具体的には、[validateBlock関数のMedianTime](https://github.com/tendermint/tendermint/blob/4db71da68e82d5cb732b235eeb2fd69d62114b45/state/validation.go#L117)の呼び出しを削除します。
+`MedianTime`関数は完全に削除できます。
 
-#### Timestamp validation when a block has not received a polka
+`CommitSig`にはタイムスタンプが含まれなくなるため、送信を検証するバリデーターは、暗号署名をチェックするために構築するフィールドハッシュに` CommitSig`タイムスタンプを含めなくなります。
 
-The [POLRound](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/types/proposal.go#L29) in the `Proposal` message indicates which round the block received a polka.
-A negative value in the `POLRound` field indicates that the block has not previously been proposed on the network. 
-Therefore the validation logic will check for timely when `POLRound < 0`.
+#### ブロックがポルカを受け取らないときのタイムスタンプ検証
 
-When a validator receives a `Proposal` message, the validator will check that the `Proposal.Timestamp` is at most `PRECISION` greater than the current Unix time known to the validator, and at minimum `PRECISION + MSGDELAY` less than the current Unix time known to the validator.
-If the timestamp is not within these bounds, the proposed block will not be considered `timely`.
+「提案」メッセージの[POLRound](https://github.com/tendermint/tendermint/blob/68ca65f5d79905abd55ea999536b1a3685f9f19d/types/proposal.go#L29)は、ブロックがポルカを受け取ったラウンドを示します。
+`POLRound`フィールドの負の値は、ブロックが以前にネットワーク上で提案されたことがないことを示します。
+したがって、検証ロジックは「POLRound <0」のときにチェックインします。
 
-Once a full block matching the `Proposal` message is received, the validator will also check that the timestamp in the `Header.Timestamp` of the block matches this `Proposal.Timestamp`.
-Using the `Proposal.Timestamp` to check `timely` allows for the `MSGDELAY` parameter to be more finely tuned since `Proposal` messages do not change sizes and are therefore faster to gossip than full blocks across the network.
+ベリファイアが `Proposal`メッセージを受信すると、ベリファイアは、` Proposal.Timestamp`がベリファイアが認識している現在のUnix時間よりも最大で `PRECISION`大きく、少なくとも現在の` PRECISION + MSGDELAY`よりも小さいことを確認します。既知のUnix時間。
+タイムスタンプがこれらの範囲内にない場合、提案されたブロックは「時間内」とは見なされません。
 
-A validator will also check that the proposed timestamp is greater than the timestamp of the block for the previous height.
-If the timestamp is not greater than the previous block's timestamp, the block will not be considered valid, which is the same as the current logic.
+「Proposal」メッセージに一致する完全なブロックが受信されると、バリデーターは、ブロックの「Header.Timestamp」のタイムスタンプがこの「Proposal.Timestamp」に一致するかどうかもチェックします。
+`Proposal.Timestamp`を使用して` timely`をチェックすると、 `MSGDELAY`パラメータを微調整できます。これは、` Proposal`メッセージのサイズが変更されないため、ネットワーク上の完全なブロックよりも速くゴシップされる可能性があるためです。
 
-#### Timestamp validation when a block has received a polka
+バリデーターは、提案されたタイムスタンプが前の高さのブロックのタイムスタンプよりも大きいかどうかもチェックします。
+タイムスタンプが前のブロックのタイムスタンプより大きくない場合、ブロックは有効とは見なされません。これは、現在のロジックと同じです。
 
-When a block is re-proposed that has already received a +2/3 majority of `Prevote`s on the network, the `Proposal` message for the re-proposed block is created with a `POLRound` that is `>= 0`.
-A validator will not check that the `Proposal` is `timely` if the propose message has a non-negative `POLRound`.
-If the `POLRound` is non-negative, each validator will simply ensure that it received the `Prevote` messages for the proposed block in the round indicated by `POLRound`.
+#### ブロックがポルカを受け取ったときのタイムスタンプの検証
 
-If the validator did not receive `Prevote` messages for the proposed block in `POLRound`, then it will prevote nil.
-Validators already check that +2/3 prevotes were seen in `POLRound`, so this does not represent a change to the prevote logic.
+ブロックが再提案され、 `Prevote`の+2/3の過半数がネットワーク上で受信されると、再提案されたブロックの` Proposal`メッセージは `POLRound`として作成されます。つまり、`> = 0`。
+プロポーザルメッセージに負でない「POLRound」が含まれている場合、バリデーターは「プロポーザル」が「インタイム」であるかどうかをチェックしません。
+`POLRound`が負でない値の場合、各バリデーターは、` POLRound`で示されるラウンドで提案されたブロックの `Prevote`メッセージを受信することを確認します。
 
-A validator will also check that the proposed timestamp is greater than the timestamp of the block for the previous height.
-If the timestamp is not greater than the previous block's timestamp, the block will not be considered valid, which is the same as the current logic.
+バリデーターが「POLRound」で提案されたブロックの「Prevote」メッセージを受信しない場合、バリデーターはnilをprevoteします。
+バリデーターは、 `POLRound`で+2/3の事前投票が行われたことを確認したため、これは事前投票ロジックの変更を表すものではありません。
 
-Additionally, this validation logic can be updated to check that the `Proposal.Timestamp` matches the `Header.Timestamp` of the proposed block, but it is less relevant since checking that votes were received is sufficient to ensure the block timestamp is correct. 
+バリデーターは、提案されたタイムスタンプが前の高さのブロックのタイムスタンプよりも大きいかどうかもチェックします。
+タイムスタンプが前のブロックのタイムスタンプより大きくない場合、ブロックは有効とは見なされません。これは、現在のロジックと同じです。
 
-### Changes to the prevote step
+さらに、この検証ロジックを更新して、 `Proposal.Timestamp`が提案されたブロックの` Header.Timestamp`と一致するかどうかを確認できますが、投票が受信されたかどうかを確認するだけでブロックを確認できるため、あまり関係ありません。タイムスタンプは正しいです。
 
-Currently, a validator will prevote a proposal in one of three cases:
+### 前のステップに変更
 
-* Case 1:  Validator has no locked block and receives a valid proposal.
-* Case 2:  Validator has a locked block and receives a valid proposal matching its locked block.
-* Case 3:  Validator has a locked block, sees a valid proposal not matching its locked block but sees +⅔ prevotes for the proposal’s block, either in the current round or in a round greater than or equal to the round in which it locked its locked block. 
+現在、バリデーターは次の3つの状況のいずれかで提案に投票します。
 
-The only change we will make to the prevote step is to what a validator considers a valid proposal as detailed above.
+*ケース1:バリデーターにロックされたブロックがなく、有効なプロポーザルを受信しました。
+*ケース2:ベリファイアにロックされたブロックがあり、ロックされたブロックに一致する有効なプロポーザルを受け取ります。
+*ケース3:バリデーターにロックされたブロックがあり、ロックされたブロックと一致しない有効な提案が表示されますが、現在のラウンドまたはロックされたラウンド以上のラウンドで提案された領域が表示されますブロック+⅔はい、ブロックをロックするために投票してください。
 
-### Changes to the precommit step
+上記のように、事前投票ステップに加える唯一の変更は、検証者が有効な提案であると見なすものです。
 
-The precommit step will not require much modification.
-Its proposal validation rules will change in the same ways that validation will change in the prevote step with the exception of the `timely` check: precommit validation will never check that the timestamp is `timely`.
+### プレコミットステップへの変更
 
-### Remove voteTime Completely
+提出前のステップは、多くの変更を必要としません。
+「タイムリー」チェックを除いて、その提案検証ルールは、投票前のステップで検証が変更されるのと同じ方法で変更されます。コミット前検証では、タイムスタンプが「タイムリー」であるかどうかはチェックされません。
 
-[voteTime](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L2229) is a mechanism for calculating the next `BFTTime` given both the validator's current known Unix time and the previous block timestamp.
-If the previous block timestamp is greater than the validator's current known Unix time, then voteTime returns a value one millisecond greater than the previous block timestamp.
-This logic is used in multiple places and is no longer needed for proposer-based timestamps.
-It should therefore be removed completely.
+### 投票時間を完全に削除する
 
-## Future Improvements
+[voteTime](https://github.com/tendermint/tendermint/blob/822893615564cb20b002dd5cf3b42b8d364cb7d9/internal/consensus/state.go#L2229)は、現在の既知のバリデーター時間を指定し、次の「BFTTime」のタイムスタンプを計算するメカニズムです。前のブロック。
+前のブロックのタイムスタンプがバリデーターの現在の既知のUnix時間よりも大きい場合、voteTimeは前のブロックのタイムスタンプよりも1ミリ秒大きい値を返します。
+このロジックは複数の場所で使用され、提案者に基づくタイムスタンプには不要になりました。
+したがって、完全に削除する必要があります。
 
-* Implement BLS signature aggregation.
-By removing fields from the `Precommit` messages, we are able to aggregate signatures.
+## 将来の改善
 
-## Consequences
+* BLS署名の集約を実現します。
+`Precommit`メッセージからフィールドを削除することで、署名を集約することができます。
 
-### Positive
+## 結果
 
-* `<2/3` of validators can no longer influence block timestamps.
-* Block timestamp will have stronger correspondence to real time.
-* Improves the reliability of light client block verification.
-* Enables BLS signature aggregation.
-* Enables evidence handling to use time instead of height for evidence validity.
+### ポジティブ
 
-### Neutral
+* `<2/3`のバリデーターは、ブロックのタイムスタンプに影響を与えなくなりました。
+*ブロックタイムスタンプは、リアルタイムとの対応が強くなります。
+*ライトクライアントブロック検証の信頼性を向上させます。
+* BLS署名の集約を有効にします。
+*証拠の有効性を確保するために、高さではなく時間を使用する証拠処理を有効にします。
 
-* Alters Tendermint’s liveness properties.
-Liveness now requires that all correct validators have synchronized clocks within a bound.
-Liveness will now also require that validators’ clocks move forward, which was not required under `BFTTime`.
+### ニュートラル
 
-### Negative
+*テンダーミントのアクティブな属性を変更します。
+ライブネスでは、すべての正しいバリデーターが境界内でクロックを同期している必要があります。
+ライブネスは、前進するためにバリデーターの時計も必要としますが、これは「BFTTime」では必要ありません。
 
-* May increase the length of the propose step if there is a large skew between the previous proposer and the current proposer’s local Unix time.
-This skew will be bound by the `PRECISION` value, so it is unlikely to be too large.
+### ネガティブ
 
-* Current chains with block timestamps far in the future will either need to pause consensus until after the erroneous block timestamp or must maintain synchronized but very inaccurate clocks.
+*前の提案者と現在の提案者のローカルUnix時間の間に大きな偏差がある場合、提案ステップの長さが長くなる可能性があります。
+このスキューは `PRECISION`の値によって制約されるため、大きすぎる可能性はほとんどありません。
 
-## References
+*将来の現在のブロックタイムスタンプは、間違ったブロックタイムスタンプが終了するまでコンセンサスを一時停止する必要があります。そうでない場合は、同期されているが非常に不正確なクロックを維持する必要があります。
 
-* [PBTS Spec](https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp)
-* [BFTTime spec](https://github.com/tendermint/spec/blob/master/spec/consensus/bft-time.md)
+## 参照する
+
+* [PBTS仕様](https://github.com/tendermint/spec/tree/master/spec/consensus/proposer-based-timestamp)
+* [BFTTime仕様](https://github.com/tendermint/spec/blob/master/spec/consensus/bft-time.md)

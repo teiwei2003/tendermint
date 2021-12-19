@@ -1,13 +1,13 @@
-# Overview
+# 概要
 
-## Quick Start
+## クイックスタート
 
-Get Tendermint up-and-running quickly with the [quick-start guide](./quick-start.md)!
+[クイックスタートガイド](./quick-start.md)を使用して、Tendermintをすばやく起動して実行します。
 
-## Install
+## インストール
 
-Detailed [installation instructions](./install.md).
+詳細な[インストール手順](./install.md)。
 
-## What is Tendermint
+## テンダーミントとは
 
-Dive into [what Tendermint is and why](./what-is-tendermint.md)!
+[テンダーミントとは何ですか、その理由](./what-is-tendermint.md)の詳細をご覧ください。

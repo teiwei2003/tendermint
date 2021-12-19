@@ -1,28 +1,28 @@
-# ADR 064: Batch Verification
+# ADR 064:バッチ検証
 
-## Changelog
+## 変更ログ
 
-- January 28, 2021: Created (@marbar3778)
+-2021年1月28日:作成(@ marbar3778)
 
-## Context
+## 環境
 
-Tendermint uses public private key cryptography for validator signing. When a block is proposed and voted on validators sign a message representing acceptance of a block, rejection is signaled via a nil vote. These signatures are also used to verify previous blocks are correct if a node is syncing. Currently, Tendermint requires each signature to be verified individually, this leads to a slow down of block times.
+Tendermintは、公開鍵秘密鍵暗号化を使用して検証者に署名します。ブロックが提案され、検証者がブロックの受け入れを示すメッセージに署名するために投票された場合、ゼロ投票は拒否を示します。ノードが同期している場合、これらの署名は、前のブロックが正しいことを確認するためにも使用されます。現在、Tendermintでは、各署名を個別に検証する必要があります。これにより、ブロックの生成時間が遅くなります。
 
-Batch Verification is the process of taking many messages, keys, and signatures adding them together and verifying them all at once. The public key can be the same in which case it would mean a single user is signing many messages. In our case each public key is unique, each validator has their own and contribute a unique message. The algorithm can vary from curve to curve but the performance benefit, over single verifying messages, public keys and signatures is shared.  
+バッチ検証は、多くのメッセージ、キー、および署名を一緒に追加し、それらを同時に検証するプロセスです。公開鍵は同じでもかまいません。この場合、1人のユーザーが複数のメッセージに署名していることを意味します。この例では、各公開鍵は一意であり、各検証者には独自のメッセージがあり、一意のメッセージを提供します。アルゴリズムは曲線ごとに異なる場合がありますが、パフォーマンス上の利点は、単一の検証メッセージ、公開鍵、および署名で共有されます。
 
-## Alternative Approaches
+## 代替方法
 
-- Signature aggregation
-  - Signature aggregation is an alternative to batch verification. Signature aggregation leads to fast verification and smaller block sizes. At the time of writing this ADR there is on going work to enable signature aggregation in Tendermint. The reason why we have opted to not introduce it at this time is because every validator signs a unique message.
-  Signing a unique message prevents aggregation before verification. For example if we were to implement signature aggregation with BLS, there could be a potential slow down of 10x-100x in verification speeds.
+-署名の集約
+  -署名の集約は、バッチ検証の代替手段です。署名の集約により、検証が高速になり、ブロックサイズが小さくなります。このADRを書いている時点で、Tendermintで署名の集約を有効にする作業が進行中です。現時点で導入しないことを選択した理由は、各検証者が固有のメッセージに署名するためです。
+  一意のメッセージに署名すると、検証前の集約が防止されます。たとえば、BLSを使用して署名の集約を実装する場合、検証速度は10倍から100倍低下する可能性があります。
 
-## Decision
+## 決定
 
-Adopt Batch Verification.
+バッチ検証を使用します。
 
-## Detailed Design
+## 詳細設計
 
-A new interface will be introduced. This interface will have three methods `NewBatchVerifier`, `Add` and `VerifyBatch`.
+新しいインターフェースが導入されます。このインターフェースには、 `NewBatchVerifier`、` Add`、 `VerifyBatch`の3つのメソッドがあります。
 
 ```go
 type BatchVerifier interface {
@@ -31,11 +31,11 @@ type BatchVerifier interface {
 }
 ```
 
-- `NewBatchVerifier` creates a new verifier. This verifier will be populated with entries to be verified. 
-- `Add` adds an entry to the Verifier. Add accepts a public key and two slice of bytes (signature and message). 
-- `Verify` verifies all the entires. At the end of Verify if the underlying API does not reset the Verifier to its initial state (empty), it should be done here. This prevents accidentally reusing the verifier with entries from a previous verification.
+-`NewBatchVerifier`は新しいベリファイアを作成します。 このバリデーターは、検証されるエントリにデータを入力します。
+-`Add`はバリデーターにエントリを追加します。 Addは、公開鍵と2バイトのスライス(署名とメッセージ)を受け入れます。
+-`Verify`はすべてを検証します。 検証の最後に、基盤となるAPIがバリデーターを初期状態(空)にリセットしなかった場合は、ここで行う必要があります。 これにより、以前に検証されたエントリを持つバリデーターが誤って再利用されるのを防ぎます。
 
-Above there is mention of an entry. An entry can be constructed in many ways depending on the needs of the underlying curve. A simple approach would be:
+エントリは上記で言及されました。 基礎となる曲線のニーズに応じて、エントリはさまざまな方法で作成できます。 簡単な方法は次のとおりです。
 
 ```go
 type entry struct {
@@ -45,46 +45,46 @@ type entry struct {
 }
 ```
 
-The main reason this approach is being taken is to prevent simple mistakes. Some APIs allow the user to create three slices and pass them to the `VerifyBatch` function but this relies on the user to safely generate all the slices (see example below). We would like to minimize the possibility of making a mistake.
+このアプローチを採用する主な理由は、単純なミスを防ぐためです。 一部のAPIでは、ユーザーが3つのスライスを作成して「VerifyBatch」関数に渡すことができますが、これはユーザーがすべてのスライスを安全に生成することに依存しています(以下の例を参照)。 エラーの可能性を最小限に抑えたいと考えています。
 
 ```go
 func Verify(keys []crypto.Pubkey, signatures, messages[][]byte) bool
 ```
 
-This change will not affect any users in anyway other than faster verification times.
+検証時間が短縮されることに加えて、この変更はどのユーザーにも影響を与えません。
 
-This new api will be used for verification in both consensus and block syncing. Within the current Verify functions there will be a check to see if the key types supports the BatchVerification API. If it does it will execute batch verification, if not single signature verification will be used. 
+この新しいAPIは、コンセンサスとブロック同期の検証に使用されます。現在の検証機能では、キータイプがBatchVerificationAPIをサポートしているかどうかがチェックされます。その場合はバッチ検証を実行し、そうでない場合は単一署名検証を使用します。
 
-#### Consensus
+#### コンセンサス
 
-  The process within consensus will be to wait for 2/3+ of the votes to be received, once they are received `Verify()` will be called to batch verify all the messages. The messages that come in after 2/3+ has been verified will be individually verified. 
+  コンセンサスプロセスは、2/3以上の投票の受信を待機します。受信されると、「Verify()」が呼び出され、すべてのメッセージがバッチで検証されます。 2/3以降に受信したメッセージは個別に検証されます。
 
-#### Block Sync & Light Client
+#### ブロック同期とライトクライアント
 
-  The process for block sync & light client verification will be to verify only 2/3+ in a batch style. Since these processes are not participating in consensus there is no need to wait for more messages.
+  ブロック同期とライトクライアント検証のプロセスは、バッチモードで2/3 +のみを検証します。これらのプロセスはコンセンサスに参加しないため、メッセージが増えるのを待つ必要はありません。
 
-If batch verifications fails for any reason, it will not be known which entry caused the failure. Verification will need to revert to single signature verification.
+何らかの理由でバッチ検証が失敗した場合、どのエントリが失敗の原因であるかはわかりません。検証は、単一署名の検証に戻す必要があります。
 
-Starting out, only ed25519 will support batch verification. 
+最初は、ed25519のみがバッチ検証をサポートします。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-### Positive
+### ポジティブ
 
-- Faster verification times, if the curve supports it
+-曲線がサポートしている場合は、検証時間が短縮されます
 
-### Negative
+### ネガティブ
 
-- No way to see which key failed verification
-  - A failure means reverting back to single signature verification.
+-どのキー検証が失敗したかを確認できません
+  -失敗とは、単一の署名検証に戻ることを意味します。
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する
 
-[Ed25519 Library](https://github.com/hdevalence/ed25519consensus)
-[Ed25519 spec](https://ed25519.cr.yp.to/)
-[Signature Aggregation for votes](https://github.com/tendermint/tendermint/issues/1319)
-[Proposer-based timestamps](https://github.com/tendermint/tendermint/issues/2840)
+[Ed25519ライブラリ](https://github.com/hdevalence/ed25519consensus)
+[Ed25519仕様](https://ed25519.cr.yp.to/)
+[署名集計投票](https://github.com/tendermint/tendermint/issues/1319)
+[提案者のタイムスタンプに基づく](https://github.com/tendermint/tendermint/issues/2840)

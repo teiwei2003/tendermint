@@ -1,149 +1,148 @@
-# ADR 047: Handling evidence from light client
+# ADR 047:ライトクライアントからの証拠を処理する
 
-## Changelog
-* 18-02-2020: Initial draft
-* 24-02-2020: Second version
-* 13-04-2020: Add PotentialAmnesiaEvidence and a few remarks
-* 31-07-2020: Remove PhantomValidatorEvidence
-* 14-08-2020: Introduce light traces (listed now as an alternative approach)
-* 20-08-2020: Light client produces evidence when detected instead of passing to full node
-* 16-09-2020: Post-implementation revision
-* 15-03-2020: Ammends for the case of a forward lunatic attack
+## 変更ログ
+* 18-02-2020:最初のドラフト
+* 24-02-2020:第2版
+* 13-04-2020:PotentialAmnesiaEvidenceといくつかのメモを追加
+* 31-07-2020:PhantomValidatorEvidenceを削除
+* 14-08-2020:ライトトレイルを導入(現在は代替方法としてリストされています)
+* 20-08-2020:ライトクライアントは、フルノードに渡すのではなく、検出されたときに証拠を生成します
+* 2020年9月16日:実装後に改訂
+* 15-03-2020:フォワードマッドマン攻撃の状況を修正
 
-### Glossary of Terms
+### 用語
 
-- a `LightBlock` is the unit of data that a light client receives, verifies and stores.
-It is composed of a validator set, commit and header all at the same height.
-- a **Trace** is seen as an array of light blocks across a range of heights that were
-created as a result of skipping verification.
-- a **Provider** is a full node that a light client is connected to and serves the light
-client signed headers and validator sets.
-- `VerifySkipping` (sometimes known as bisection or verify non-adjacent) is a method the
-light client uses to verify a target header from a trusted header. The process involves verifying
-intermediate headers in between the two by making sure that 1/3 of the validators that signed
-the trusted header also signed the untrusted one.
-- **Light Bifurcation Point**: If the light client was to run `VerifySkipping` with two providers
-(i.e. a primary and a witness), the bifurcation point is the height that the headers
-from each of these providers are different yet valid. This signals that one of the providers
-may be trying to fool the light client.
+-`LightBlock`は、ライトクライアントによって受信、検証、および保存されるデータユニットです。
+これは、非常に同一のバリデーター、送信、およびヘッダーのセットで構成されています。
+-**トレース**は、高さ範囲の一連のライトブロックと見なされます
+検証をスキップするために作成されました。
+-**プロバイダー**は完全なノードであり、ライトクライアントはライトクライアントに接続してサービスを提供します
+クライアントによって署名されたヘッダーとベリファイアのセット。
+-`VerifySkipping`(隣接していないことの二等分または検証と呼ばれることもあります)は1つの方法です
+ライトクライアントは、信頼できるヘッダーからターゲットヘッダーを検証するために使用されます。プロセスには検証が含まれます
+検証者の1/3が中間ヘッダーに署名したことを確認する
+信頼できるヘッダーは、信頼できないヘッダーにも署名しました。
+-**ライト分岐ポイント**:ライトクライアントが2つのプロバイダーを使用して「VerifySkipping」を実行する場合
+(つまり、メインと証人)、分岐点はタイトルの高さです
+これらのプロバイダーはそれぞれ異なりますが、効果的です。これは、プロバイダーの1つが
+軽いクライアントをだまそうとするかもしれません。
 
-## Context
+## 環境
 
-The bisection method of header verification used by the light client exposes
-itself to a potential attack if any block within the light clients trusted period has
-a malicious group of validators with power that exceeds the light clients trust level
-(default is 1/3). To improve light client (and overall network) security, the light
-client has a detector component that compares the verified header provided by the
-primary against witness headers. This ADR outlines the process of mitigating attacks
-on the light client by using witness nodes to cross reference with.
+ライトクライアントが使用するヘッダー検証の二分法が公開されています
+ライトクライアントの信頼期間内のいずれかのブロックが
+パワーがライトクライアントの信頼レベルを超える悪意のある検証者のグループ
+(デフォルトは1/3です)。ライトクライアント(およびネットワーク全体)のセキュリティを向上させるために、ライト
+クライアントには、比較に使用される検出器コンポーネントがあります
+主に証人ヘッダー用。このADRは、攻撃を軽減するプロセスの概要を示しています
+相互参照は、監視ノードを使用してライトクライアントで実行されます。
 
-## Alternative Approaches
+## 代替方法
 
-A previously discussed approach to handling evidence was to pass all the data that the
-light client had witnessed when it had observed diverging headers for the full node to
-process.This was known as a light trace and had the following structure:
+前述の証拠を処理する方法は、すべてのデータを渡すことです
+ライトクライアントは、フルノードのさまざまなヘッダーを観察したときに目撃しました
+処理する。これはライトトレイルと呼ばれ、次の構造になっています。
 
-```go
-type ConflictingHeadersTrace struct {
-  Headers []*types.SignedHeader
+`` `行く
+タイプConflictingHeadersTracestruct {
+  ヘッダー[] * types.SignedHeader
 }
-```
+`` `
 
-This approach has the advantage of not requiring as much processing on the light
-client side in the event that an attack happens. Although, this is not a significant
-difference as the light client would in any case have to validate all the headers
-from both witness and primary. Using traces would consume a large amount of bandwidth
-and adds a DDOS vector to the full node.
-
-
-## Decision
-
-The light client will be divided into two components: a `Verifier` (either sequential or
-skipping) and a `Detector` (see [Informal's Detector](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md))
-. The detector will take the trace of headers from the primary and check it against all
-witnesses. For a witness with a diverging header, the detector will first verify the header
-by bisecting through all the heights defined by the trace that the primary provided. If valid,
-the light client will trawl through both traces and find the point of bifurcation where it
-can proceed to extract any evidence (as is discussed in detail later).
-
-Upon successfully detecting the evidence, the light client will send it to both primary and
-witness before halting. It will not send evidence to other peers nor continue to verify the
-primary's header against any other header.
+この方法の利点は、光の処理をあまり必要としないことです。
+クライアントで攻撃が発生したとき。ただし、これは重要ではありません
+違いは、ライトクライアントはどのような場合でもすべてのヘッダーを検証する必要があることです
+目撃者とメインから。トレースを使用すると、多くの帯域幅が消費されます
+そして、DDOSベクトルをフルノードに追加します。
 
 
-## Detailed Design
+## 決定
 
-The verification process of the light client will start from a trusted header and use a bisectional
-algorithm to verify up to a header at a given height. This becomes the verified header (does not
-mean that it is trusted yet). All headers that were verified in between are cached and known as
-intermediary headers and the entire array is sometimes referred to as a trace.
+ライトクライアントは、「バリデーター」(シーケンシャルまたは
+スキップ)と `detector`([Informal Detector](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md)を参照)
+検出器はメインサーバーからタイトルのトレースを取得し、すべてを比較します
+目撃者。頭が発散している目撃者の場合、検出器は最初に頭を確認します
+メインの提供されたトレースによって定義されたすべての高さを半分にすることによって。それが機能する場合、
+ライトクライアントは2つのトレースをトラバースし、その分岐点を見つけます
+証拠を抽出し続けることができます(後で詳しく説明します)。
 
-The light client's detector then takes all the headers and runs the detect function.
+証拠の検出に成功した後、ライトクライアントはそれをメインに送信し、
+停止する前に証言します。他のピアに証拠を送信したり、検証を継続したりすることはありません
+メインヘッダーとその他のヘッダー。
+
+
+## 詳細設計
+
+ライトクライアントの検証プロセスは、信頼できる最初から始まり、二分法を使用します
+指定された高さのタイトルを検証するアルゴリズム。これは検証済みのヘッダーになります(
+それが信頼できることを意味します)。 2つの間で検証されたすべてのヘッダーがキャッシュされ、呼び出されます
+中間ヘッダーと配列全体は、トレースと呼ばれることもあります。
+
+次に、ライトクライアントの検出器がすべてのヘッダーを取得し、検出機能を実行します。
 
 ```golang
 func (c *Client) detectDivergence(primaryTrace []*types.LightBlock, now time.Time) error
 ```
 
-The function takes the last header it received, the target header and compares it against all the witnesses
-it has through the following function:
+この関数は、受信した最後のヘッダーであるターゲットヘッダーを取得し、それをすべての監視者と比較します
+次の関数を渡します。
 
 ```golang
 func (c *Client) compareNewHeaderWithWitness(errc chan error, h *types.SignedHeader,
 	witness provider.Provider, witnessIndex int)
 ```
 
-The err channel is used to send back all the outcomes so that they can be processed in parallel.
-Invalid headers result in dropping the witness, lack of response or not having the headers is ignored
-just as headers that have the same hash. Headers, however,
-of a different hash then trigger the detection process between the primary and that particular witness.
+errチャネルは、すべての結果を送り返して、それらを並行して処理できるようにするために使用されます。
+ヘッダーが無効な場合、監視が破棄されたり、応答が欠落したり、ヘッダーが無視されたりします
+同じハッシュを持つヘッダーのように。 しかし、タイトル、
+次に、異なるハッシュが、メインの証人とその特定の証人の間の検出プロセスをトリガーします。
 
-This begins with verification of the witness's header via skipping verification which is run in tande
-with locating the Light Bifurcation Point
+これは最初に、並行して実行される検証をスキップすることにより、証人のヘッダーを検証します
+光の分岐点を見つける
 
 ![](../imgs/light-client-detector.png)
 
-This is done with:
-
+これは次の方法で行われます。
 ```golang
 func (c *Client) examineConflictingHeaderAgainstTrace(
 	trace []*types.LightBlock,
 	targetBlock *types.LightBlock,
-	source provider.Provider, 
+	source provider.Provider,
 	now time.Time,
 	) ([]*types.LightBlock, *types.LightBlock, error)
 ```
 
-which performs the following
+以下をせよ
 
-1. Checking that the trusted header is the same. Currently, they should not theoretically be different
-because witnesses cannot be added and removed after the client is initialized. But we do this any way
-as a sanity check. If this fails we have to drop the witness.
+1.信頼できるヘッダーが同じかどうかを確認します。現在、それらは理論的に異ならないはずです
+クライアントの初期化後に監視を追加または削除できないためです。しかし、私たちは何らかの方法でそれを行います
+健全性チェックとして。これが失敗した場合、私たちは証人をあきらめなければなりません。
 
-2. Querying and verifying the witness's headers using bisection at the same heights of all the
-intermediary headers of the primary (In the above example this is A, B, C, D, F, H). If bisection fails
-or the witness stops responding then we can call the witness faulty and drop it.
+2.二分法を使用して、すべてのノードの同じ高さで証人の頭を照会および検証します
+メインの中間ヘッダー(上記の例ではA、B、C、D、F、H)。二分法が失敗した場合
+または、目撃者が応答を停止した場合、目撃者を問題と呼び、それを放棄することができます。
 
-3. We eventually reach a verified header by the witness which is not the same as the intermediary header 
-(In the above example this is E). This is the point of bifurcation (This could also be the last header).
+3.最終的に、真ん中の頭とは異なる、証人を通して確認された頭を取得しました
+(上記の例では、これはEです)。これが分岐点です(これが最後のタイトルになる場合もあります)。
 
-4. There is a unique case where the trace that is being examined against has blocks that have a greater 
-height than the targetBlock. This can occur as part of a forward lunatic attack where the primary has 
-provided a light block that has a height greater than the head of the chain (see Appendix B). In this 
-case, the light client will verify the sources blocks up to the targetBlock and return the block in the 
-trace that is directly after the targetBlock in height as the `ConflictingBlock`
+4.チェックされているトレースのブロックが大きくなるという独特の状況があります
+高さがターゲットブロックよりも高くなっています。これは、主に以下を含むフォワードクレイジー攻撃の一部として発生する可能性があります
+高さがチェーンヘッドよりも高いライトブロックを用意します(付録Bを参照)。これで
+この場合、ライトクライアントはtargetBlockまでソースブロックを検証し、
+高さがtargetBlockの直後に続くトレースは、ConflictingBlockと呼ばれます。
 
-This function then returns the trace of blocks from the witness node between the common header and the
-divergent header of the primary as it is likely, as seen in the example to the right, that multiple 
-headers where required in order to verify the divergent one. This trace will
-be used later (as is also described later in this document).
+次に、この関数は、共通ヘッドと共通ヘッドの間の監視ノードからブロックのトレースを返します。
+右の例に示すように、複数の可能性が非常に高いため、主な発散ヘッド
+異なるタイトルを確認するために必要なタイトル。このトレースは
+後で使用します(このドキュメントの後半で説明します)。
 
-![](../imgs/bifurcation-point.png)
+！[](../imgs/bifurcation-point.png)
 
-Now, that an attack has been detected, the light client must form evidence to prove it. There are
-three types of attacks that either the primary or witness could have done to try fool the light client
-into verifying the wrong header: Lunatic, Equivocation and Amnesia. As the consequence is the same and
-the data required to prove it is also very similar, we bundle these attack styles together in a single
-evidence:
+攻撃が検出されたので、ライトクライアントはそれを証明するための証拠を作成する必要があります。持ってる
+メインまたは目撃者は、ライトクライアントをだまそうとするために3種類の攻撃を実行する可能性があります
+間違ったタイトルを確認してください:Lunatic、Equivocation、およびAmnesia。結果は同じなので
+それを証明するために必要なデータも非常に似ています。これらの攻撃方法をバンドルします
+証拠:
 
 ```golang
 type LightClientAttackEvidence struct {
@@ -152,103 +151,102 @@ type LightClientAttackEvidence struct {
 }
 ```
 
-The light client takes the stance of first suspecting the primary. Given the bifurcation point found
-above, it takes the two divergent headers and compares whether the one from the primary is valid with
-respect to the one from the witness. This is done by calling `isInvalidHeader()` which looks to see if
-any one of the deterministically derived header fields differ from one another. This could be one of
-`ValidatorsHash`, `NextValidatorsHash`, `ConsensusHash`, `AppHash`, and `LastResultsHash`.
-In this case we know it's a Lunatic attack and to help the witness verify it we send the height
-of the common header which is 1 in the example above or C in the example above that. If all these
-hashes are the same then we can infer that it is either Equivocation or Amnesia. In this case we send
-the height of the diverged headers because we know that the validator sets are the same, hence the
-malicious nodes are still bonded at that height. In the example above, this is height 10 and the
-example above that it is the height at E.
+ライトクライアントは、最初にメインクライアントを疑う立場になります。見つかった分岐点を考えると
+上記では、2つの異なるヘッダーを取得し、メインのヘッダーが有効かどうかを比較しています
+目撃者を尊重します。これは `isInvalidHeader()`を呼び出すことによって行われます。
+決定論的に導出されたヘッダーフィールドのいずれかが互いに異なります。これはそれらの1つかもしれません
+`ValidatorsHash`、` NextValidatorsHash`、 `ConsensusHash`、` AppHash`、および `LastResultsHash`。
+この場合、目撃者が私たちが高さを送ることを確認するのを助けるために、これが狂人の攻撃であることを私たちは知っています
+上記の例の1または上記の例のCの共通ヘッダー。このすべての場合
+ハッシュ値が同じである場合、それはEquivocationまたはAmnesiaであると推測できます。この場合、送信します
+バリデーターセットが同じであることがわかっているため、発散ヘッドの高さ。
+悪意のあるノードはまだその高さにバインドされています。上記の例では、これは高さ10であり、
+上記の例はEでの高さです。
 
-The light client now has the evidence and broadcasts it to the witness.
+ライトクライアントは証拠を所有し、それを証人にブロードキャストします。
 
-However, it could have been that the header the light client used from the witness against the primary
-was forged, so before halting the light client swaps the process and thus suspects the witness and
-uses the primary to create evidence. It calls `examineConflictingHeaderAgainstTrace` this time using
-the witness trace found earlier.
-If the primary was malicious it is likely that it will not respond but if it is innocent then the
-light client will produce the same evidence but this time the conflicting
-block will come from the witness node instead of the primary. The evidence is then formed and sent to
-the primary node.
+ただし、ライトクライアントが使用するヘッダーはメインの証人からのものである可能性があります
+偽造されているため、ライトクライアントを停止する前にプロセスを交換し、目撃者を疑って
+メインを使用して証拠を作成します。今回は `examineConflictingHeaderAgainstTrace`を呼び出して使用します
+以前に発見された目撃者の痕跡。
+主に悪意のあるものである場合は応答しない可能性が高いですが、無実の場合は
+軽いクライアントは同じ証拠を提供しますが、今回は矛盾しています
+ブロックは、マスターノードではなくウィットネスノードから取得されます。次に、証拠を作成し、に送信します
+マスターノード。
 
-This then ends the process and the verify function that was called at the start returns the error to
-the user.
+これでプロセスが終了し、最初に呼び出された検証関数がエラーを次のように返します。
+ユーザー。
 
-For a detailed overview of how each of these three attacks can be conducted please refer to the
-[fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md).
+これら3つの攻撃のそれぞれを実行する方法の詳細な概要については、を参照してください。
+[フォーク責任仕様](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)。
 
-## Full Node Verification
+##フルノード検証
 
-When a full node receives evidence from the light client it will need to verify
-it for itself before gossiping it to peers and trying to commit it on chain. This process is outlined
- in [ADR-059](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md).
+フルノードがライトクライアントから証拠を受信すると、検証する必要があります
+同僚とチャットしてチェーンに送信する前に、自分で考えてください。プロセスの概要
+ [ADR-059](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md)。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-* Light client has increased security against Lunatic, Equivocation and Amnesia attacks.
-* Do not need intermediate data structures to encapsulate the malicious behavior
-* Generalized evidence makes the code simpler
+*ライトクライアントは、Lunatic、Equivocation、Amnesiaの攻撃に対するセキュリティを向上させます。
+*悪意のある動作をカプセル化するための中間データ構造は必要ありません
+*一般化の証拠により、コードが単純化されます
 
-### Negative
+### ネガティブ
 
-* Breaking change on the light client from versions 0.33.8 and below. Previous
-versions will still send `ConflictingHeadersEvidence` but it won't be recognized
-by the full node. Light clients will however still refuse the header and shut down.
-* Amnesia attacks although detected, will not be able to be punished as it is not
-clear from the current information which nodes behaved maliciously.
-* Evidence module must handle both individual and grouped evidence.
+*ライトクライアントの0.33.8以下のバージョンからの重要な変更。ついさっき
+バージョンは引き続き `ConflictingHeadersEvidence`を送信しますが、認識されません
+フルノードを介して。ただし、ライトクライアントはヘッダーを拒否して閉じます。
+*健忘症の発作は発見されましたが、そうではないため罰せられません
+現在の情報から削除されるノードは悪意があります。
+*証拠モジュールは、個人の証拠とグループの証拠を同時に処理する必要があります。
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する
 
-* [Fork accountability spec](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
-* [ADR 056: Light client amnesia attacks](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-light-client-amnesia-attacks.md)
-* [ADR-059: Evidence Composition and Lifecycle](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md)
-* [Informal's Light Client Detector](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md)
+* [フォークアカウンタビリティ仕様](https://github.com/tendermint/spec/blob/master/spec/consensus/light-client/accountability.md)
+* [ADR 056:ライトクライアント記憶喪失攻撃](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-056-light-client-amnesia-attacks.md)
+* [ADR-059:証拠の構成とライフサイクル](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-059-evidence-composition-and-lifecycle.md)
+* [Informalのライトクライアント検出器](https://github.com/informalsystems/tendermint-rs/blob/master/docs/spec/lightclient/detection/detection.md)
 
 
-## Appendix A
+## 付録A
 
-PhantomValidatorEvidence was used to capture when a validator that was still staked
-(i.e. within the bonded period) but was not in the current validator set had voted for a block.
+PhantomValidatorEvidenceは、まだ誓約されているバリデーターをキャプチャするために使用されます
+(つまり、結合期間中)しかし、現在のバリデーターのセットではブロックに投票していません。
 
-In later discussions it was argued that although possible to keep phantom validator
-evidence, any case a phantom validator that could have the capacity to be involved
-in fooling a light client would have to be aided by 1/3+ lunatic validators.
+後の議論で、ファントムバリデーターは保持できるが、一部の人々は考えました
+いずれにせよ、参加できる可能性のあるファントムバリデーターの証拠
+軽いクライアントをだますには、1/3以上のクレイジーなバリデーターの助けを借りる必要があります。
 
-It would also be very unlikely that the new validators injected by the lunatic attack
-would be validators that currently still have something staked.
+クレイジーな攻撃によって注入された新しいバリデーターもありそうにありません
+まだ何かを保持しているバリデーターになります。
 
-Not only this but there was a large degree of extra computation required in storing all
-the currently staked validators that could possibly fall into the group of being
-a phantom validator. Given this, it was removed.
+それだけでなく、すべてを保存するために多くの追加の計算が必要です
+現在誓約されているバリデーターは
+仮想バリデーター。このため、削除されました。
 
-## Appendix B
+## 付録B
 
-A unique flavor of lunatic attack is a forward lunatic attack. This is where a malicious
-node provides a header with a height greater than the height of the blockchain. Thus there
-are no witnesses capable of rebutting the malicious header. Such an attack will also 
-require an accomplice, i.e. at least one other witness to also return the same forged header.
-Although such attacks can be any arbitrary height ahead, they must still remain within the
-clock drift of the light clients real time. Therefore, to detect such an attack, a light
-client will wait for a time
-
+マッドアタックのユニークなフレーバーは、フォワードマッドアタックです。これは悪意のある場所です
+ノードは、高さがブロックチェーンの高さよりも大きいヘッダーを提供します。だからあります
+悪意のある称号に異議を唱えることができる目撃者はいません。そのような攻撃も
+共犯者が必要です。つまり、少なくとも1人の他の証人も同じ偽のタイトルを返します。
+このような攻撃はどの高さでも実行できますが、それでも維持する必要があります。
+ライトクライアントのリアルタイムクロックがドリフトします。したがって、この攻撃を検出するために、
+お客様はしばらくお待ちください
 ```
 2 * MAX_CLOCK_DRIFT + LAG
 ```
 
-for a witness to provide the latest block it has. Given the time constraints, if the witness
-is operating at the head of the blockchain, it will have a header with an earlier height but
-a later timestamp. This can be used to prove that the primary has submitted a lunatic header
-which violates monotonically increasing time. 
+目撃者に、所有する最新のブロックを提供させます。 制限時間を考えると、証人が
+ブロックチェーンのヘッドで実行すると、より高い高さのヘッドがありますが、
+後でタイムスタンプ。 これは、プライマリが狂気のヘッダーを送信したことを証明するために使用できます
+これは、単調に増加する時間に違反します。

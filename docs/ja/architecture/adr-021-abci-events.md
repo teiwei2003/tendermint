@@ -1,52 +1,52 @@
-# ADR 012: ABCI Events
+# ADR 012:ABCIインシデント
 
-## Changelog
+## 変更ログ
 
-- *2018-09-02* Remove ABCI errors component. Update description for events
-- *2018-07-12* Initial version
+-* 2018-09-02 * ABCIエラーコンポーネントを削除します。イベントの説明を更新する
+-* 2018-07-12 *初期バージョン
 
-## Context
+## 環境
 
-ABCI tags were first described in [ADR 002](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-002-event-subscription.md).
-They are key-value pairs that can be used to index transactions.
+ABCIラベルは、[ADR 002](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-002-event-subscription.md)で最初に説明されました。
+これらは、トランザクションのインデックス作成に使用できるキーと値のペアです。
 
-Currently, ABCI messages return a list of tags to describe an
-"event" that took place during the Check/DeliverTx/Begin/EndBlock,
-where each tag refers to a different property of the event, like the sending and receiving account addresses.
+現在、ABCIメッセージは、を説明するタグのリストを返します。
+Check/DeliverTx/Begin/EndBlock中に発生した「イベント」、
+これらの各タグは、アカウントアドレスの送受信など、イベントのさまざまな属性を参照します。
 
-Since there is only one list of tags, recording data for multiple such events in
-a single Check/DeliverTx/Begin/EndBlock must be done using prefixes in the key
-space.
+タグリストが1つしかないため、このような複数のイベントのデータが記録されます
+キーのプレフィックスを使用して、単一のCheck/DeliverTx/Begin/EndBlockを完了する必要があります
+空。
 
-Alternatively, groups of tags that constitute an event can be separated by a
-special tag that denotes a break between the events. This would allow
-straightforward encoding of multiple events into a single list of tags without
-prefixing, at the cost of these "special" tags to separate the different events.
+または、イベントを構成するタグのグループを使用できます
+イベント間の中断を示す特別なフラグ。これにより、
+複数のイベントを1つのタグリストに直接エンコードします。
+これらの「特別な」タグを犠牲にして、さまざまなイベントを分離するためのプレフィックス。
 
-TODO: brief description of how the indexing works
+TODO:インデックスがどのように機能するかについての簡単な説明
 
-## Decision
+## 決定
 
-Instead of returning a list of tags, return a list of events, where
-each event is a list of tags. This way we naturally capture the concept of
-multiple events happening during a single ABCI message.
+タグのリストを返す代わりに、イベントのリストを返します。
+各イベントはタグのリストです。このようにして自然にキャプチャしました
+1つのABCIメッセージ中に発生した複数のイベント。
 
-TODO: describe impact on indexing and querying
+TODO:インデックスとクエリへの影響を説明する
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Ability to track distinct events separate from ABCI calls (DeliverTx/BeginBlock/EndBlock)
-- More powerful query abilities
+-ABCI呼び出しとは別にさまざまなイベントを追跡する機能(DeliverTx/BeginBlock/EndBlock)
+-より強力なクエリ機能
 
-### Negative
+### ネガティブ
 
-- More complex query syntax
-- More complex search implementation
+-より複雑なクエリ構文
+-より複雑な検索の実装
 
-### Neutral
+### ニュートラル

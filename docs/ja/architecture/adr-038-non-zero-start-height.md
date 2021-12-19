@@ -1,38 +1,38 @@
-# ADR 038: Non-zero start height
+# ADR 038:ゼロ以外の開始高さ
 
-## Changelog
+## 変更ログ
 
-- {date}: {changelog}
+-{日付}:{変更ログ}
 
-## Context
+## 環境
 
-> This section contains all the context one needs to understand the current state, and why there is a problem. It should be as succinct as possible and introduce the high level idea behind the solution.
+>このセクションには、現在の状態と問題の理由を理解するために必要なすべてのコンテキストが含まれています。できるだけ簡潔にし、ソリューションの背後にある高レベルのアイデアを紹介する必要があります。
 
-## Decision
+## 決定
 
-> This section explains all of the details of the proposed solution, including implementation details.
-> It should also describe affects / corollary items that may need to be changed as a part of this.
-> If the proposed change will be large, please also indicate a way to do the change to maximize ease of review.
-> (e.g. the optimal split of things to do between separate PR's)
+>このセクションでは、実装の詳細を含む、提案されたソリューションのすべての詳細について説明します。
+>また、その一部として変更する必要があるかもしれない影響/必要性についても説明する必要があります。
+>提案された変更が大きい場合は、レビューを容易にするためにどのように変更が行われたかについても説明してください。
+>(たとえば、別々のPR間で行われることの最良の分割)
 
-## Status
+## ステータス
 
-> A decision may be "proposed" if it hasn't been agreed upon yet, or "accepted" once it is agreed upon. If a later ADR changes or reverses a decision, it may be marked as "deprecated" or "superseded" with a reference to its replacement.
+>合意がない場合は、決定を「提案」するか、合意に達したら「受け入れる」ことができます。後続のADRが決定を変更または撤回した場合は、それを「非推奨」または「置き換え」としてマークし、その置き換えについて言及することができます。
 
-{Deprecated|Proposed|Accepted|Declined}
+{非推奨|推奨|承認|拒否}
 
-## Consequences
+## 結果
 
-> This section describes the consequences, after applying the decision. All consequences should be summarized here, not just the "positive" ones.
+>このセクションでは、決定を適用した場合の結果について説明します。 「ポジティブ」な結果だけでなく、すべての結果をここに要約する必要があります。
 
-### Positive
+### ポジティブ
 
-### Negative
+### ネガティブ
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する
 
-> Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here!
+>関連するPRコメント、この問題の原因となった問題、または特定の設計を選択した理由に関する参考記事はありますか？もしそうなら、ここにそれらをリンクしてください！
 
-- {reference link}
+-{参照リンク}
