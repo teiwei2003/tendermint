@@ -1,48 +1,48 @@
-# ADR 006: Trust Metric Design
+# ADR 006:信頼測定設計
 
-## Context
+## 環境
 
-The proposed trust metric will allow Tendermint to maintain local trust rankings for peers it has directly interacted with, which can then be used to implement soft security controls. The calculations were obtained from the [TrustGuard](https://dl.acm.org/citation.cfm?id=1060808) project.
+提案された信頼インデックスにより、Tendermintは、直接対話するピアのローカル信頼ランキングを維持できます。これを使用して、ソフトセキュリティ制御を実装できます。計算は[TrustGuard](https://dl.acm.org/citation.cfm?id=1060808)プロジェクトから行われます。
 
-### Background
+### バックグラウンド
 
-The Tendermint Core project developers would like to improve Tendermint security and reliability by keeping track of the level of trustworthiness peers have demonstrated within the peer-to-peer network. This way, undesirable outcomes from peers will not immediately result in them being dropped from the network (potentially causing drastic changes to take place). Instead, peers behavior can be monitored with appropriate metrics and be removed from the network once Tendermint Core is certain the peer is a threat. For example, when the PEXReactor makes a request for peers network addresses from a already known peer, and the returned network addresses are unreachable, this untrustworthy behavior should be tracked. Returning a few bad network addresses probably shouldn’t cause a peer to be dropped, while excessive amounts of this behavior does qualify the peer being dropped.
+Tendermintコアプロジェクトの開発者は、ピアツーピアネットワークのピアによって表示される信頼性のレベルを追跡することにより、Tendermintのセキュリティと信頼性を向上させることを望んでいます。このように、ピアからの悪い結果がすぐにネットワークから削除されることはありません(大幅な変更につながる可能性があります)。代わりに、適切なインジケーターを使用してピアの動作を監視し、Tendermint Coreがピアが脅威をもたらすと判断した後、ピアの動作をネットワークから削除できます。たとえば、PEXReactorが既知のピアからピアネットワークアドレスを要求し、返されたネットワークアドレスに到達できない場合、この信頼できない動作を追跡する必要があります。間違ったネットワークアドレスを返してもピアが破棄されない場合があります。この動作が多すぎると、ピアが破棄されます。
 
-Trust metrics can be circumvented by malicious nodes through the use of strategic oscillation techniques, which adapts the malicious node’s behavior pattern in order to maximize its goals. For instance, if the malicious node learns that the time interval of the Tendermint trust metric is _X_ hours, then it could wait _X_ hours in-between malicious activities. We could try to combat this issue by increasing the interval length, yet this will make the system less adaptive to recent events.
+悪意のあるノードは、戦略オシレーションテクノロジーを使用して信頼インジケーターを回避できます。このテクノロジーは、悪意のあるノードの動作パターンを調整して、目標を最大化します。たとえば、悪意のあるノードがTendermintの信頼メトリックについて学習する時間間隔が_X_時間である場合、悪意のあるアクティビティ間で_X_時間待機する可能性があります。間隔の長さを増やすことでこの問題の解決を試みることができますが、これにより、最近のイベントに対するシステムの適応性が低下します。
 
-Instead, having shorter intervals, but keeping a history of interval values, will give our metric the flexibility needed in order to keep the network stable, while also making it resilient against a strategic malicious node in the Tendermint peer-to-peer network. Also, the metric can access trust data over a rather long period of time while not greatly increasing its history size by aggregating older history values over a larger number of intervals, and at the same time, maintain great precision for the recent intervals. This approach is referred to as fading memories, and closely resembles the way human beings remember their experiences. The trade-off to using history data is that the interval values should be preserved in-between executions of the node.
+それどころか、間隔は短くなりますが、間隔値の履歴記録を保持することで、ネットワークの安定性を維持するために必要な柔軟性をインジケーターに提供すると同時に、Tendermintピアツーピアネットワークの戦略的な悪意のあるノードに抵抗することができます。 。さらに、このインジケーターは、最新の時間間隔の高精度を維持しながら、多数の時間間隔で古い履歴値を集約することによって履歴レコードサイズを大幅に増加させることなく、かなりの期間、信頼データにアクセスできます。この方法は色あせた記憶と呼ばれ、人間が自分の経験を覚える方法と非常によく似ています。履歴データを使用することのトレードオフは、ノードの実行間で間隔の値を維持する必要があることです。
 
-### References
+### 参照する
 
-S. Mudhakar, L. Xiong, and L. Liu, “TrustGuard: Countering Vulnerabilities in Reputation Management for Decentralized Overlay Networks,” in _Proceedings of the 14th international conference on World Wide Web, pp. 422-431_, May 2005.
+S. Mudhakar、L。Xiong、およびL. Liu、「TrustGuard:分散型カバレッジネットワークのレピュテーション管理における脆弱性への対処」、第14回ワールドワイドウェブ国際会議の議事録、pp。422-431、2005年5月。
 
-## Decision
+## 決定
 
-The proposed trust metric will allow a developer to inform the trust metric store of all good and bad events relevant to a peer's behavior, and at any time, the metric can be queried for a peer's current trust ranking.
+提案された信頼メトリックにより、開発者は、ピアツーピアの動作に関連するすべての良いイベントと悪いイベントを信頼メトリックストアに通知でき、いつでもメトリックを照会して、ピアの現在の信頼ランキングを取得できます。
 
-The three subsections below will cover the process being considered for calculating the trust ranking, the concept of the trust metric store, and the interface for the trust metric.
+次の3つのサブセクションでは、信頼レベルの計算プロセス、信頼メトリックストレージの概念、および信頼メトリックのインターフェイスについて説明します。
 
-### Proposed Process
+### 提案されたプロセス
 
-The proposed trust metric will count good and bad events relevant to the object, and calculate the percent of counters that are good over an interval with a predefined duration. This is the procedure that will continue for the life of the trust metric. When the trust metric is queried for the current **trust value**, a resilient equation will be utilized to perform the calculation.
+提案された信頼メトリックは、オブジェクトに関連する良いイベントと悪いイベントを計算し、事前定義された期間の間隔で良いカウンターのパーセンテージを計算します。これは、信頼測定のライフサイクルで継続するプロセスです。現在の**信頼値**の信頼メトリックを照会する場合、弾性方程式を使用して計算が実行されます。
 
-The equation being proposed resembles a Proportional-Integral-Derivative (PID) controller used in control systems. The proportional component allows us to be sensitive to the value of the most recent interval, while the integral component allows us to incorporate trust values stored in the history data, and the derivative component allows us to give weight to sudden changes in the behavior of a peer. We compute the trust value of a peer in interval i based on its current trust ranking, its trust rating history prior to interval _i_ (over the past _maxH_ number of intervals) and its trust ranking fluctuation. We will break up the equation into the three components.
+提案された方程式は、制御システムで使用される比例積分微分(PID)コントローラーに似ています。比例コンポーネントを使用すると、最も近い間隔の値に敏感になり、積分コンポーネントを使用すると、履歴データに格納されている信頼値を組み込むことができ、微分コンポーネントを使用すると、動作の突然の変化に重みを付けることができます。ピア。現在の信頼レベル、間隔_i_(過去の_maxH_間隔)の前の信頼評価履歴、および信頼レベルの変動に基づいて、間隔iのピアの信頼値を計算します。方程式を3つの部分に分解します。
 
 ```math
 (1) Proportional Value = a * R[i]
 ```
 
-where _R_[*i*] denotes the raw trust value at time interval _i_ (where _i_ == 0 being current time) and _a_ is the weight applied to the contribution of the current reports. The next component of our equation uses a weighted sum over the last _maxH_ intervals to calculate the history value for time _i_:
+ここで、_R _ [* i *]は時間間隔_i_の元の信頼値(_i_ == 0は現在の時刻)を表し、_a_は現在のレポートの貢献に適用される重みです。 方程式の次のコンポーネントは、最後の_maxH_間隔の加重和を使用して、時間_i_の履歴値を計算します。
 
-`H[i] =` ![formula1](img/formula1.png "Weighted Sum Formula")
+`H [i] =`！[formula1](img/ Formula1.png "加重和式")
 
-The weights can be chosen either optimistically or pessimistically. An optimistic weight creates larger weights for newer history data values, while the the pessimistic weight creates larger weights for time intervals with lower scores. The default weights used during the calculation of the history value are optimistic and calculated as _Wk_ = 0.8^_k_, for time interval _k_. With the history value available, we can now finish calculating the integral value:
+重みは、楽観的または悲観的に選択できます。 楽観的な重みは、新しい履歴データ値に対してより大きな重みを作成しますが、悲観的な重みは、スコアが低い時間間隔に対してより大きな重みを作成します。 履歴値の計算プロセスで使用されるデフォルトの重みは楽観的であり、_Wk_ = 0.8 ^ _k_として計算され、時間間隔は_k_です。 履歴値を使用して、積分値の計算を完了することができます。
 
 ```math
 (2) Integral Value = b * H[i]
 ```
 
-Where _H_[*i*] denotes the history value at time interval _i_ and _b_ is the weight applied to the contribution of past performance for the object being measured. The derivative component will be calculated as follows:
+ここで、_H _ [* i *]は時間間隔_i_の履歴値を表し、_b_は測定されたオブジェクトの過去のパフォーマンス寄与に適用された重みです。 微分成分の計算は次のとおりです。
 
 ```math
 D[i] = R[i] – H[i]
@@ -50,19 +50,19 @@ D[i] = R[i] – H[i]
 (3) Derivative Value = c(D[i]) * D[i]
 ```
 
-Where the value of _c_ is selected based on the _D_[*i*] value relative to zero. The default selection process makes _c_ equal to 0 unless _D_[*i*] is a negative value, in which case c is equal to 1. The result is that the maximum penalty is applied when current behavior is lower than previously experienced behavior. If the current behavior is better than the previously experienced behavior, then the Derivative Value has no impact on the trust value. With the three components brought together, our trust value equation is calculated as follows:
+_c_の値は、ゼロを基準にした_D _ [* i *]の値に基づいて選択されます。 デフォルトの選択プロセスでは、_D _ [* i *]が負の値でない限り、_c_は0に等しくなります。負の値の場合、cは1に等しくなります。 その結果、現在の動作が以前に経験した動作よりも低い場合に最大のペナルティが適用されます。 現在の動作が以前の動作よりも優れている場合、派生値は信頼値に影響を与えません。 3つの要素を組み合わせると、信頼値の式は次のように計算されます。
 
 ```math
 TrustValue[i] = a * R[i] + b * H[i] + c(D[i]) * D[i]
 ```
 
-As a performance optimization that will keep the amount of raw interval data being saved to a reasonable size of _m_, while allowing us to represent 2^_m_ - 1 history intervals, we can employ the fading memories technique that will trade space and time complexity for the precision of the history data values by summarizing larger quantities of less recent values. While our equation above attempts to access up to _maxH_ (which can be 2^_m_ - 1), we will map those requests down to _m_ values using equation 4 below:
+保存された元の間隔データの量を妥当なサイズ_m_に維持するためのパフォーマンスの最適化として、2 ^ _m_-1の履歴間隔を表現できるようにする一方で、フェージングメモリテクノロジーを使用できます。新しい値の数は、履歴データ値の精度を向上させるために使用されます。 上記の式は、最も多くの_maxH_(2 ^ _m_-1になる可能性があります)にアクセスしようとしますが、次の式4を使用して、これらの要求を_m_値にマップします。
 
 ```math
 (4) j = index, where index > 0
 ```
 
-Where _j_ is one of _(0, 1, 2, … , m – 1)_ indices used to access history interval data. Now we can access the raw intervals using the following calculations:
+ここで、_j_は、履歴間隔データにアクセスするために使用される_(0、1、2、…、m – 1)_インデックスの1つです。 これで、次の計算を使用して生の間隔にアクセスできます。
 
 ```math
 R[0] = raw data for current time interval
@@ -70,22 +70,22 @@ R[0] = raw data for current time interval
 
 `R[j] =` ![formula2](img/formula2.png "Fading Memories Formula")
 
-### Trust Metric Store
+### 信頼インジケーターストレージ
 
-Similar to the P2P subsystem AddrBook, the trust metric store will maintain information relevant to Tendermint peers. Additionally, the trust metric store will ensure that trust metrics will only be active for peers that a node is currently and directly engaged with.
+P2PサブシステムAddrBookと同様に、トラストメトリックストアはTendermintノードに関連する情報を維持します。 さらに、トラストメトリックストレージは、ノードが現在直接参加しているピアに対してのみトラストメトリックが有効であることを保証します。
 
-Reactors will provide a peer key to the trust metric store in order to retrieve the associated trust metric. The trust metric can then record new positive and negative events experienced by the reactor, as well as provided the current trust score calculated by the metric.
+Reactorは、関連するトラストメトリックを取得するために、トラストメトリックストアにピアキーを提供します。 信頼メトリックは、リアクターが経験した新しい正および負のイベントを記録し、メトリックによって計算された現在の信頼スコアを提供できます。
 
-When the node is shutting down, the trust metric store will save history data for trust metrics associated with all known peers. This saved information allows experiences with a peer to be preserved across node executions, which can span a tracking windows of days or weeks. The trust history data is loaded automatically during OnStart.
+ノードがシャットダウンされると、トラストメトリックストアは、すべての既知のピアに関連付けられているトラストメトリックの履歴データを保存します。 この保存された情報により、ノード間で保存とピアエクスペリエンスを実行できます。これは、数日または数週間の追跡ウィンドウにまたがることができます。 信頼履歴データは、OnStart中に自動的にロードされます。
 
-### Interface Detailed Design
+### インターフェースの詳細設計
 
-Each trust metric allows for the recording of positive/negative events, querying the current trust value/score, and the stopping/pausing of tracking over time intervals. This can be seen below:
+各信頼インジケーターを使用すると、正/負のイベントを記録し、現在の信頼値/スコアを照会し、時間間隔で追跡を停止/一時停止できます。 これは以下で見ることができます:
 
 ```go
 // TrustMetric - keeps track of peer reliability
 type TrustMetric struct {
-    // Private elements.
+   // Private elements.
 }
 
 // Pause tells the metric to pause recording data over time intervals.
@@ -121,24 +121,24 @@ score := tm.TrustScore()
 tm.Stop()
 ```
 
-Some of the trust metric parameters can be configured. The weight values should probably be left alone in more cases, yet the time durations for the tracking window and individual time interval should be considered.
+一部の信頼度測定パラメーターを構成できます。 多くの場合、重み値は個別に保持される場合がありますが、追跡ウィンドウの期間と個別の時間間隔を考慮する必要があります。
 
 ```go
 // TrustMetricConfig - Configures the weight functions and time intervals for the metric
 type TrustMetricConfig struct {
-    // Determines the percentage given to current behavior
+   // Determines the percentage given to current behavior
     ProportionalWeight float64
 
-    // Determines the percentage given to prior behavior
+   // Determines the percentage given to prior behavior
     IntegralWeight float64
 
-    // The window of time that the trust metric will track events across.
-    // This can be set to cover many days without issue
+   // The window of time that the trust metric will track events across.
+   // This can be set to cover many days without issue
     TrackingWindow time.Duration
 
-    // Each interval should be short for adapability.
-    // Less than 30 seconds is too sensitive,
-    // and greater than 5 minutes will make the metric numb
+   // Each interval should be short for adapability.
+   // Less than 30 seconds is too sensitive,
+   // and greater than 5 minutes will make the metric numb
     IntervalLength time.Duration
 }
 
@@ -152,7 +152,7 @@ func NewMetricWithConfig(tmc TrustMetricConfig) *TrustMetric {}
 // For example
 
 config := TrustMetricConfig{
-    TrackingWindow: time.Minute * 60 * 24, // one day
+    TrackingWindow: time.Minute * 60 * 24,// one day
     IntervalLength:    time.Minute * 2,
 }
 
@@ -160,21 +160,21 @@ tm := NewMetricWithConfig(config)
 
 tm.BadEvents(10)
 tm.Pause()
-tm.GoodEvents(1) // becomes active again
+tm.GoodEvents(1)// becomes active again
 ```
 
-A trust metric store should be created with a DB that has persistent storage so it can save history data across node executions. All trust metrics instantiated by the store will be created with the provided TrustMetricConfig configuration.
+永続ストレージを備えたデータベースを使用してトラストメトリックストアを作成し、ノード間で履歴データを保存できるようにする必要があります。 ストアによってインスタンス化されるすべての信頼メトリックは、提供されたTrustMetricConfig構成を使用して作成されます。
 
-When you attempt to fetch the trust metric for a peer, and an entry does not exist in the trust metric store, a new metric is automatically created and the entry made within the store.
+ピアのトラストメトリックを取得しようとして、トラストメトリックストアにエントリがない場合、新しいメトリックが自動的に作成され、エントリがストアに作成されます。
 
-In additional to the fetching method, GetPeerTrustMetric, the trust metric store provides a method to call when a peer has disconnected from the node. This is so the metric can be paused (history data will not be saved) for periods of time when the node is not having direct experiences with the peer.
+getメソッドGetPeerTrustMetricに加えて、トラストメトリックストアは、ピアがノードから切断されたときに呼び出されるメソッドも提供します。 このようにして、ノードがピアを直接経験していない場合、インジケーターを一定期間一時停止できます(履歴データは保存されません)。
 
 ```go
 // TrustMetricStore - Manages all trust metrics for peers
 type TrustMetricStore struct {
     cmn.BaseService
 
-    // Private elements
+   // Private elements
 }
 
 // OnStart implements Service
@@ -208,22 +208,22 @@ tm.BadEvents(1)
 tms.PeerDisconnected(key)
 ```
 
-## Status
+## ステータス
 
-Approved.
+公式に認められています。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- The trust metric will allow Tendermint to make non-binary security and reliability decisions
-- Will help Tendermint implement deterrents that provide soft security controls, yet avoids disruption on the network
-- Will provide useful profiling information when analyzing performance over time related to peer interaction
+-トラストメトリックにより、Tendermintは非バイナリのセキュリティと信頼性の決定を行うことができます
+-Tendermintが、ネットワークの停止を回避しながらソフトなセキュリティ制御を提供する抑止力を実装するのに役立ちます
+-ピアツーピアの相互作用に関連する一定期間のパフォーマンスを分析するときに、有用な分析情報を提供します
 
-### Negative
+### ネガティブ
 
-- Requires saving the trust metric history data across node executions
+-過去の信頼測定データを保存するには、ノード間の実行が必要です
 
-### Neutral
+### ニュートラル
 
-- Keep in mind that, good events need to be recorded just as bad events do using this implementation
+-この実装を使用して、良いイベントを悪いイベントのように記録する必要があることを忘れないでください

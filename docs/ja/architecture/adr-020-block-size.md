@@ -1,61 +1,61 @@
-# ADR 020: Limiting txs size inside a block
+# ADR 020:ブロック内のtxのサイズを制限する
 
-## Changelog
+## 変更ログ
 
-13-08-2018: Initial Draft
-15-08-2018: Second version after Dev's comments
-28-08-2018: Third version after Ethan's comments
-30-08-2018: AminoOverheadForBlock => MaxAminoOverheadForBlock
-31-08-2018: Bounding evidence and chain ID
-13-01-2019: Add section on MaxBytes vs MaxDataBytes
+2018年8月13日:最初のドラフト
+15-08-2018:開発レビュー後の2番目のバージョン
+2018年8月28日:イーサンのコメントに続く3番目のバージョン
+30-08-2018:AminoOverheadForBlock => MaxAminoOverheadForBlock
+31-08-2018:境界証拠とチェーンID
+13-01-2019:MaxBytesとMaxDataBytesに関する部分を追加しました
 
-## Context
+## 環境
 
-We currently use MaxTxs to reap txs from the mempool when proposing a block,
-but enforce MaxBytes when unmarshaling a block, so we could easily propose a
-block thats too large to be valid.
+現在、ブロックを提案するときに、MaxTxsを使用してメモリプールからtxを取得しています。
+ただし、ブロックをアンマーシャリングするときにMaxBytesが適用されるため、簡単に
+ブロックが大きすぎて有効ではありません。
 
-We should just remove MaxTxs all together and stick with MaxBytes, and have a
-`mempool.ReapMaxBytes`.
+MaxTxsを一緒に削除し、MaxBytesに固執する必要があります。
+`mempool.ReapMaxBytes`。
 
-But we can't just reap BlockSize.MaxBytes, since MaxBytes is for the entire block,
-not for the txs inside the block. There's extra amino overhead + the actual
-headers on top of the actual transactions + evidence + last commit.
-We could also consider using a MaxDataBytes instead of or in addition to MaxBytes.
+ただし、MaxBytesはブロック全体を対象としているため、BlockSize.MaxBytesだけを収集することはできません。
+ブロック内のtxには適用されません。追加のアミノオーバーヘッド+実際があります
+実際の取引の上部にあるタイトル+証拠+最後の提出。
+MaxBytesの代わりに、またはMaxBytesに加えてMaxDataBytesを使用することも検討できます。
 
-## MaxBytes vs MaxDataBytes
+## MaxBytesおよびMaxDataBytes
 
-The [PR #3045](https://github.com/tendermint/tendermint/pull/3045) suggested
-additional clarity/justification was necessary here, wither respect to the use
-of MaxDataBytes in addition to, or instead of, MaxBytes.
+[PR#3045](https://github.com/tendermint/tendermint/pull/3045)提案
+の使用を考慮して、ここで追加の説明/理由が必要です
+MaxBytesに加えてまたはMaxBytesの代わりにMaxDataBytes。
 
-MaxBytes provides a clear limit on the total size of a block that requires no
-additional calculation if you want to use it to bound resource usage, and there
-has been considerable discussions about optimizing tendermint around 1MB blocks.
-Regardless, we need some maximum on the size of a block so we can avoid
-unmarshaling blocks that are too big during the consensus, and it seems more
-straightforward to provide a single fixed number for this rather than a
-computation of "MaxDataBytes + everything else you need to make room for
-(signatures, evidence, header)". MaxBytes provides a simple bound so we can
-always say "blocks are less than X MB".
+MaxBytesは、ブロックの合計サイズに明確な制限を提供します。必要はありません。
+追加の計算、リソース使用量を制限するためにそれを使用したい場合は、
+1MBブロックでTendermintを最適化することについてはかなり多くの議論がありました。
+いずれにせよ、回避できるように最大ブロックサイズが必要です
+アンマーシャリングコンセンサス中に大きすぎるブロックは、より多くのようです
+の代わりに固定番号を指定してください
+「MaxDataBytes +スペースを確保するために必要なその他すべて」を計算します
+(署名、証拠、タイトル) "。MaxBytesは単純な境界を提供するため、次のことができます。
+常に「ブロックはXMBよりも小さい」と言ってください。
 
-Having both MaxBytes and MaxDataBytes feels like unnecessary complexity. It's
-not particularly surprising for MaxBytes to imply the maximum size of the
-entire block (not just txs), one just has to know that a block includes header,
-txs, evidence, votes. For more fine grained control over the txs included in the
-block, there is the MaxGas. In practice, the MaxGas may be expected to do most of
-the tx throttling, and the MaxBytes to just serve as an upper bound on the total
-size. Applications can use MaxGas as a MaxDataBytes by just taking the gas for
-every tx to be its size in bytes.
+MaxBytesとMaxDataBytesを同時に持つことは、不必要な複雑さのように感じます。それは
+MaxBytesは、最大サイズが特に驚くべきことではないことを意味します
+ブロック全体(txsだけでなく)については、ブロックにタイトルが含まれていることだけを知っておく必要があります。
+取引、証拠、投票。よりきめ細かい制御のために
+ブロック、MaxGasがあります。実際には、MaxGasはほとんどのことを行う可能性があります
+txスロットリングとMaxBytesは合計の上限にすぎません
+サイズ。アプリケーションはMaxGasをMaxDataBytesとして使用でき、ガスを使用するだけです。
+各txはそのサイズ(バイト単位)です。
 
-## Proposed solution
+## 推奨される解決策
 
-Therefore, we should
+したがって、
 
-1) Get rid of MaxTxs.
-2) Rename MaxTxsBytes to MaxBytes.
+1)MaxTxsを取り除きます。
+2)MaxTxsBytesの名前をMaxBytesに変更します。
 
-When we need to ReapMaxBytes from the mempool, we calculate the upper bound as follows:
+メモリプールからReapMaxBytesを取得する必要がある場合、上限を次のように計算します。
 
 ```
 ExactLastCommitBytes = {number of validators currently enabled} * {MaxVoteBytes}
@@ -65,40 +65,40 @@ ExactEvidenceBytes = cs.evpool.PendingEvidence(MaxEvidenceBytesPerBlock) * MaxEv
 mempool.ReapMaxBytes(MaxBytes - MaxAminoOverheadForBlock - ExactLastCommitBytes - ExactEvidenceBytes - MaxHeaderBytes)
 ```
 
-where MaxVoteBytes, MaxEvidenceBytes, MaxHeaderBytes and MaxAminoOverheadForBlock
-are constants defined inside the `types` package:
+それらの中で、MaxVoteBytes、MaxEvidenceBytes、MaxHeaderBytes、およびMaxAminoOverheadForBlock
+定数は `types`パッケージで定義されていますか？
 
-- MaxVoteBytes - 170 bytes
-- MaxEvidenceBytes - 364 bytes
-- MaxHeaderBytes - 476 bytes (~276 bytes hashes + 200 bytes - 50 UTF-8 encoded
-  symbols of chain ID 4 bytes each in the worst case + amino overhead)
-- MaxAminoOverheadForBlock - 8 bytes (assuming MaxHeaderBytes includes amino
-  overhead for encoding header, MaxVoteBytes - for encoding vote, etc.)
+-MaxVoteBytes-170バイト
+-MaxEvidenceBytes-364バイト
+-MaxHeaderBytes-476バイト(〜276バイトのハッシュ+200バイト-50UTF-8エンコーディング
+  チェーンIDのシンボルは、最悪の場合、それぞれ4バイト+アミノオーバーヘッド)
+-MaxAminoOverheadForBlock-8バイト(MaxHeaderBytesにアミノが含まれていると仮定)
+  エンコーディングヘッダーのオーバーヘッド、MaxVoteBytes-エンコーディング投票など)
 
-ChainID needs to bound to 50 symbols max.
+ChainIDは最大50個のシンボルをバインドする必要があります。
 
-When reaping evidence, we use MaxBytes to calculate the upper bound (e.g. 1/10)
-to save some space for transactions.
+証拠を収集するときは、MaxBytesを使用して上限を計算します(例:1/10)
+トランザクションのためにいくらかのスペースを節約します。
 
-NOTE while reaping the `max int` bytes in mempool, we should account that every
-transaction will take `len(tx)+aminoOverhead`, where aminoOverhead=1-4 bytes.
+メモリプールで `max int`バイトを取得するときは、それぞれを考慮する必要があることに注意してください
+トランザクションは `len(tx)+ aminoOverhead`を使用します。ここでaminoOverhead = 1-4バイトです。
 
-We should write a test that fails if the underlying structs got changed, but
-MaxXXX stayed the same.
+基礎となる構造が変更された場合、テストを作成する必要がありますが、失敗しますが、
+MaxXXXは変更されません。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-* one way to limit the size of a block
-* less variables to configure
+*ブロックサイズを制限する方法
+*変動の少ない構成
 
-### Negative
+### ネガティブ
 
-* constants that need to be adjusted if the underlying structs got changed
+*基礎となる構造が変更されたときに調整する必要がある定数
 
-### Neutral
+### ニュートラル

@@ -10,8 +10,9 @@ Tendermint 处理同时在压缩档案中收集有用信息。
 Tendermint 过程。
 
 ```bash
-tendermint 调试杀死 <pid> </path/to/out.zip> --home=</path/to/app.d>
-``
+tendermint debug kill <pid> </path/to/out.zip> --home=</path/to/app.d>
+```
+
 
 将调试信息写入压缩存档。 存档将包含
 下列的:

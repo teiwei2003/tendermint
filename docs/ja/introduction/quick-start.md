@@ -1,22 +1,22 @@
-# Quick Start
+# クイックスタート
 
-## Overview
+## 概要
 
-This is a quick start guide. If you have a vague idea about how Tendermint
-works and want to get started right away, continue. Make sure you've installed the binary.
-Check out [install](./install.md) if you haven't.
+これはクイックスタートガイドです。 テンダーミントに興味のある方
+有効で、すぐに開始したい場合は、続行してください。 バイナリがインストールされていることを確認してください。
+そうでない場合は、[インストール](./install.md)を確認してください。
 
-## Initialization
+## 初期化
 
-Running:
+走る:
 
 ```sh
 tendermint init validator
 ```
 
-will create the required files for a single, local node.
+必要なファイルは、単一のローカルノード用に作成されます。
 
-These files are found in `$HOME/.tendermint`:
+これらのファイルは `$ HOME/.tendermin`にあります。
 
 ```sh
 $ ls $HOME/.tendermint
@@ -28,78 +28,75 @@ $ ls $HOME/.tendermint/config/
 config.toml  genesis.json  node_key.json  priv_validator.json
 ```
 
-For a single, local node, no further configuration is required.
-Configuring a cluster is covered further below.
+単一のローカルノードの場合、それ以上の構成は必要ありません。 次に、クラスターの構成について詳しく説明します。
 
-## Local Node
+## ローカルノード
 
-Start Tendermint with a simple in-process application:
-
+単純なインプロセスアプリケーションを使用して、Tendermintを起動します。
 ```sh
 tendermint start --proxy-app=kvstore
 ```
 
 > Note: `kvstore` is a non persistent app, if you would like to run an application with persistence run `--proxy-app=persistent_kvstore`
 
-and blocks will start to stream in:
+そして、ブロックが流入し始めます:
 
 ```sh
 I[01-06|01:45:15.592] Executed block                               module=state height=1 validTxs=0 invalidTxs=0
 I[01-06|01:45:15.624] Committed state                              module=state height=1 txs=0 appHash=
 ```
 
-Check the status with:
+ステータスの確認:
 
 ```sh
 curl -s localhost:26657/status
 ```
 
-### Sending Transactions
+###トランザクションを送信する
 
-With the KVstore app running, we can send transactions:
+KVstoreアプリケーションを実行した後、トランザクションを送信できます。
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
 ```
 
-and check that it worked with:
+そして、それが以下に適用されるかどうかを確認します。
 
 ```sh
 curl -s 'localhost:26657/abci_query?data="abcd"'
 ```
 
-We can send transactions with a key and value too:
+キーと値を使用してトランザクションを送信することもできます。
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
 ```
 
-and query the key:
+そして、キーを照会します。
 
 ```sh
 curl -s 'localhost:26657/abci_query?data="name"'
 ```
 
-where the value is returned in hex.
+値は16進数で返されます。
 
-## Cluster of Nodes
+## ノードクラスター
 
-First create four Ubuntu cloud machines. The following was tested on Digital
-Ocean Ubuntu 16.04 x64 (3GB/1CPU, 20GB SSD). We'll refer to their respective IP
-addresses below as IP1, IP2, IP3, IP4.
+まず、4台のUbuntuクラウドマシンを作成します。 以下は数値的にテストされています
+Ocean Ubuntu 16.04 x64(3GB/1CPU、20GB SSD)。 それぞれのIPを参照します
+次のアドレスは、IP1、IP2、IP3、およびIP4です。
 
-Then, `ssh` into each machine, and execute [this script](https://git.io/fFfOR):
-
+次に、 `ssh`が各マシンに入り、[このスクリプト](https://git.io/fFfOR)を実行します。
 ```sh
 curl -L https://git.io/fFfOR | bash
 source ~/.profile
 ```
 
-This will install `go` and other dependencies, get the Tendermint source code, then compile the `tendermint` binary.
+これにより、 `go`およびその他の依存関係がインストールされ、Tendermintソースコードが取得されてから、` tendermint`バイナリがコンパイルされます。
 
-Next, use the `tendermint testnet` command to create four directories of config files (found in `./mytestnet`) and copy each directory to the relevant machine in the cloud, so that each machine has `$HOME/mytestnet/node[0-3]` directory.
+次に、 `tendermint testnet`コマンドを使用して構成ファイルの4つのディレクトリ(`。/mytestnet`にあります)を作成し、各ディレクトリをクラウド内の関連するマシンにコピーして、各マシンが `$ HOME/mytestnet/nodeを持つようにします。 [0-3] `ディレクトリ。
 
-Before you can start the network, you'll need peers identifiers (IPs are not enough and can change). We'll refer to them as ID1, ID2, ID3, ID4.
+ネットワークを開始する前に、ピア識別子が必要です(IPは十分ではなく、変更できます)。 それらをID1、ID2、ID3、ID4と呼びます。
 
 ```sh
 tendermint show_node_id --home ./mytestnet/node0
@@ -108,7 +105,7 @@ tendermint show_node_id --home ./mytestnet/node2
 tendermint show_node_id --home ./mytestnet/node3
 ```
 
-Finally, from each machine, run:
+最後に、各マシンで実行します。
 
 ```sh
 tendermint start --home ./mytestnet/node0 --proxy-app=kvstore --p2p.persistent-peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
@@ -117,8 +114,8 @@ tendermint start --home ./mytestnet/node2 --proxy-app=kvstore --p2p.persistent-p
 tendermint start --home ./mytestnet/node3 --proxy-app=kvstore --p2p.persistent-peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
 ```
 
-Note that after the third node is started, blocks will start to stream in
-because >2/3 of validators (defined in the `genesis.json`) have come online.
-Persistent peers can also be specified in the `config.toml`. See [here](../tendermint-core/configuration.md) for more information about configuration options.
+3番目のノードが開始された後、ブロックが流入し始めることに注意してください
+バリデーターの2/3以上( `genesis.json`で定義)がすでにオンラインになっているためです。
+永続ピアは `config.toml`でも指定できます。 構成オプションの詳細については、[ここ](../tendermint-core/configuration.md)を参照してください。
 
-Transactions can then be sent as covered in the single, local node example above.
+次に、上記の単一のローカルノードの例で説明されているように、トランザクションを送信できます。

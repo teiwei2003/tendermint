@@ -1,35 +1,35 @@
-# RFC {RFC-NUMBER}: {TITLE}
+# RFC {RFC-NUMBER}:{TITLE}
 
-## Changelog
+## 変更ログ
 
-- {date}: {changelog}
+-{日付}:{変更ログ}
 
-## Abstract
+## 概要
 
-> A brief high-level synopsis of the topic of discussion for this RFC, ideally
-> just a few sentences.  This should help the reader quickly decide whether the
-> rest of the discussion is relevant to their interest.
+>このRFCで議論されているトピックの簡単な要約、できれば
+>ほんの一言。 これは、読者が
+>残りの議論は彼らの興味に関連しています。
 
-## Background
+## バックグラウンド
 
-> Any context or orientation needed for a reader to understand and participate
-> in the substance of the Discussion. If necessary, this section may include
-> links to other documentation or sources rather than restating existing
-> material, but should provide enough detail that the reader can tell what they
-> need to read to be up-to-date.
+>読者が理解して参加するために必要な背景や方向性
+>議論の本質において。 必要に応じて、このセクションには次のものが含まれる場合があります
+>既存のものを言い換えるのではなく、他のドキュメントやソースにリンクする
+>資料ですが、読者がそれらを伝えることができるように十分な詳細を提供する必要があります
+>最新の状態に保つために読む必要があります。
 
-### References
+### 参照する
 
-> Links to external materials needed to follow the discussion may be added here.
->
-> In addition, if the discussion in a request for comments leads to any design
-> decisions, it may be helpful to add links to the ADR documents here after the
-> discussion has settled.
+>ディスカッションをフォローするために必要な外部資料へのリンクをここに追加できます。
+>>
+>さらに、コメント募集での議論が何らかのデザインにつながる場合
+>この後にADRドキュメントへのリンクを追加すると役立つ可能性があると判断しました
+>議論は終わりました。
 
-## Discussion
+## 議論する
 
-> This section contains the core of the discussion.
->
-> There is no fixed format for this section, but ideally changes to this
-> section should be updated before merging to reflect any discussion that took
-> place on the PR that made those changes.
+>このセクションには、ディスカッションのコアが含まれています。
+>>
+>このセクションには固定形式はありませんが、理想的には次のように変更できます。
+>マージする前に、議論を反映するようにセクションを更新する必要があります
+>これらの変更を行ったPRに配置します。

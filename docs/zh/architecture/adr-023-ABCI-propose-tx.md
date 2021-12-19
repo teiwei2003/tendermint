@@ -106,25 +106,26 @@ Tendermint 共识引擎以意想不到的方式)。此外，它不
 
 它应该具有以下签名:
 
-``
+```
 ProposeTx(RequestProposeTx) ResponseProposeTx
-``
+```
+
 
 其中 `RequestProposeTx` 和 `ResponseProposeTx` 是带有
 以下形状:
 
-``
-消息 RequestProposeTx {
-  int64 next_block_height = 1; // 提议的 tx 将属于的块的高度
-  验证者提议者 = 2; // 提议者详细信息
+```
+message RequestProposeTx {
+  int64 next_block_height = 1; // height of the block the proposed tx would be part of
+  Validator proposer = 2; // the proposer details
 }
 
-消息 ResponseProposeTx {
-  int64 num_tx = 1; // 要包含在提议块中的 tx 数量
-  重复字节 txs = 2; // 包含在区块中的有序交易数据
-  布尔独占 = 3; // 区块是否应该包含其他交易(来自`mempool`)
+message ResponseProposeTx {
+  int64 num_tx = 1; // the number of tx to include in proposed block
+  repeated bytes txs = 2; // ordered transaction data to include in block
+  bool exclusive = 3; // whether the block should include other transactions (from `mempool`)
 }
-``
+```
 
 `ProposeTx` 将在 `mempool.Reap` 之前被调用
 [行](https://github.com/tendermint/tendermint/blob/9cd9f3338bc80a12590631632c23c8dbe3ff5c34/consensus/state.go#L935)。
@@ -141,12 +142,12 @@ ProposeTx(RequestProposeTx) ResponseProposeTx
 
 因此，应该更改“RequestDeliverTx”消息以提供额外的标志，如下所示:
 
-``
-消息 RequestDeliverTx {
-字节 tx = 1;
-布尔内部 = 2;
+```
+message RequestDeliverTx {
+	bytes tx = 1;
+	bool internal = 2;
 }
-``
+```
 
 或者，可以添加一个额外的方法“DeliverProposeTx”作为伴随
 `ProposeTx`。但是，目前尚不清楚是否需要额外的开销

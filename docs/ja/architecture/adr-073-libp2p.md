@@ -1,235 +1,234 @@
-# ADR 073: Adopt LibP2P
+# ADR 073:LibP2Pを採用
 
-## Changelog
+## 変更ログ
 
-- 2021-11-02: Initial Draft (@tychoish)
+-2021-11-02:最初のドラフト(@tychoish)
 
-## Status
+## ステータス
 
-Proposed.
+提案しました。
 
-## Context
+## 環境
 
 
-As part of the 0.35 development cycle, the Tendermint team completed
-the first phase of the work described in ADRs 61 and 62, which included a
-large scale refactoring of the reactors and the p2p message
-routing. This replaced the switch and many of the other legacy
-components without breaking protocol or network-level
-interoperability and left the legacy connection/socket handling code.
+0.35開発サイクルの一環として、Tendermintチームは完了しました
+ADR 61および62で説明されている作業の最初のフェーズには、次のものが含まれます。
+リアクターとp2pメッセージの大規模なリファクタリング
+ルーティング。これは、スイッチや他の多くの伝統に取って代わります
+プロトコルまたはネットワークレベルのコンポーネントを壊さない
+相互運用性とレガシー接続/ソケット処理コードを残します。
 
-Following the release, the team has reexamined the state of the code
-and the design, as well as Tendermint's requirements. The notes
-from that process are available in the [P2P Roadmap
-RFC][rfc].
+リリース後、チームはコードのステータスを再確認しました
+そして、デザイン、そしてテンダーミントの要件。ノート
+[P2Pロードマップにあります
+RFC] [RFC]。
 
-This ADR supersedes the decisions made in ADRs 60 and 61, but
-builds on the completed portions of this work. Previously, the
-boundaries of peer management, message handling, and the higher level
-business logic (e.g., "the reactors") were intermingled, and core
-elements of the p2p system were responsible for the orchestration of
-higher-level business logic. Refactoring the legacy components
-made it more obvious that this entanglement of responsibilities
-had outsized influence on the entire implementation, making
-it difficult to iterate within the current abstractions.
-It would not be viable to maintain interoperability with legacy
-systems while also achieving many of our broader objectives.
+このADRは、ADR 60および61で行われた決定に優先しますが、
+この作業の完了した部分に基づいて構築します。以前は、
+ピア管理、メッセージ処理、および上位レベルの境界
+ビジネスロジック(たとえば、「リアクター」)が混在し、コア
+p2pシステムの要素がオーケストレーションを担当します
+上位レベルのビジネスロジック。レガシーコンポーネントのリファクタリング
+より明白なのは、この責任の絡み合いです
+実装全体に大きな影響を与え、
+現在の抽象化で繰り返すことは困難です。
+レガシーシステムとの相互運用性を維持することは不可能です
+このシステムはまた、私たちのより広い目標の多くを達成しました。
 
-LibP2P is a thoroughly-specified implementation of a peer-to-peer
-networking stack, designed specifically for systems such as
-ours. Adopting LibP2P as the basis of Tendermint will allow the
-Tendermint team to focus more of their time on other differentiating
-aspects of the system, and make it possible for the ecosystem as a
-whole to take advantage of tooling and efforts of the LibP2P
-platform.
+LibP2Pは、ピアツーピアの完全に指定された実装です
+システム用に設計されたネットワークスタック(次のような)
+私たちの。 TendermintのベースとしてLibP2Pを採用すると、
+テンダーミントチームは、他の差別化により多くの時間を費やします
+システムのすべての側面とエコシステムを可能にします
+LibP2Pのツールと取り組み全体を使用する
+プラットホーム。
 
-## Alternative Approaches
+## 代替方法
 
-As discussed in the [P2P Roadmap RFC][rfc], the primary alternative would be to
-continue development of Tendermint's home-grown peer-to-peer
-layer. While that would give the Tendermint team maximal control
-over the peer system, the current design is unexceptional on its
-own merits, and the prospective maintenance burden for this system
-exceeds our tolerances for the medium term.
+[P2PロードマップRFC] [rfc]で説明されているように、主な代替手段は次のとおりです。
+Tendermintのローカルピアツーピアの開発を継続する
+床。これにより、テンダーミントチームが最もコントロールできるようになりますが
+ピアツーピアシステムと比較して、現在の設計
+独自の利点、およびシステムの予想される保守負担
+中期的な許容範囲を超えています。
 
-Tendermint can and should differentiate itself not on the basis of
-its networking implementation or peer management tools, but providing
-a consistent operator experience, a battle-tested consensus algorithm,
-and an ergonomic user experience.
+テンダーミントは、に基づいてではなく、それ自体を差別化することができ、またそうすべきです
+ネットワーク実装またはピアツーピア管理ツールですが、
+一貫した運用経験、実証済みのコンセンサスアルゴリズム、
+そして人間工学に基づいたユーザーエクスペリエンス。
+## 決定
 
-## Decision
+Tendermintは、0.37の開発サイクルでlibp2pを採用します。
+カスタマイズされたTendermintP2Pスタックを交換してください。これにより削除されます
+`Endpoint`、` Transport`、 `Connection`、` PeerManager`の抽象化
+そして、リアクター、 `p2p.Router`と` p2p.Channel`を離れます
+概要。
 
-Tendermint will adopt libp2p during the 0.37 development cycle,
-replacing the bespoke Tendermint P2P stack. This will remove the
-`Endpoint`, `Transport`, `Connection`, and `PeerManager` abstractions
-and leave the reactors, `p2p.Router` and `p2p.Channel`
-abstractions.
+LibP2Pは、専用のピアツーピア交換(PEX)を必要としない場合があります
+リアクター、これはまた、専用の必要性を回避します
+シードモード。この場合、これらすべての機能は
+取り除かれた。
 
-LibP2P may obviate the need for a dedicated peer exchange (PEX)
-reactor, which would also in turn obviate the need for a dedicated
-seed mode. If this is the case, then all of this functionality would
-be removed.
+それが判明した場合(プロトコルラボの推奨に従って)、
+別のpubsubまたはgossipsubトピックの意味を維持する
+メッセージタイプごとに、 `Router`の抽象化も可能です。
+完全に組み込まれました。
 
-If it turns out (based on the advice of Protocol Labs) that it makes
-sense to maintain separate pubsub or gossipsub topics
-per-message-type, then the `Router` abstraction could also
-be entirely subsumed.
+## 詳細設計
 
-## Detailed Design
+### 変更を実装する
 
-### Implementation Changes
+より高いレベル間のP2P実装の継ぎ目
+構造(リアクター)、ルーティングレイヤー( `ルーター`)以下
+レベル接続とピア管理コードがこの操作を行います
+実装は比較的簡単です。エッセンシャル
+この設計の目標は、原子炉への影響を最小限に抑えることです。
+(たぶん完全に)そして完全に下位レベルを削除します
+コンポーネント(たとえば、 `Transport`、` Connection`、 `PeerManager`)は
+`Router`レイヤーによって提供される分離。現在の状態
+コードはこれらの変更を比較的外科的に行い、小さなものに限定します
+メソッドの数:
 
-The seams in the P2P implementation between the higher level
-constructs (reactors), the routing layer (`Router`) and the lower
-level connection and peer management code make this operation
-relatively straightforward to implement. A key
-goal in this design is to minimize the impact on the reactors
-(potentially entirely,) and completely remove the lower level
-components (e.g., `Transport`, `Connection` and `PeerManager`) using the
-separation afforded by the `Router` layer. The current state of the
-code makes these changes relatively surgical, and limited to a small
-number of methods:
+-`p2p.Router.OpenChannel`は引き続き `Channel`構造を返します
+  それは原子炉と原子炉の間のパイプラインとして機能し続けます
+  「ルーター」。実装にはキューが不要になります
+  実装しますが、goroutinesを開始します
+  チャネルからlibp2pへのメッセージのルーティングを担当します
+  基本的な原則は、現在の `p2p.Router.routeChannel`を置き換えることです。
 
-- `p2p.Router.OpenChannel` will still return a `Channel` structure
-  which will continue to serve as a pipe between the reactors and the
-  `Router`. The implementation will no longer need the queue
-  implementation, and will instead start goroutines that
-  are responsible for routing the messages from the channel to libp2p
-  fundamentals, replacing the current `p2p.Router.routeChannel`.
+-現在の `p2p.Router.dialPeers`と` p2p.Router.acceptPeers`、
+  アウトバウンドおよびインバウンド接続の確立を担当し、
+  それぞれ。これらのメソッドは削除され、
+  `p2p.Router.openConnection`、libp2p接続マネージャーは
+  ネットワーク接続を維持する責任があります。
 
-- The current `p2p.Router.dialPeers` and `p2p.Router.acceptPeers`,
-  are responsible for establishing outbound and inbound connections,
-  respectively. These methods will be removed, along with
-  `p2p.Router.openConnection`, and the libp2p connection manager will
-  be responsible for maintaining network connectivity.
+-`p2p.Channel`インターフェースが変更されてGoに置き換わります
+  メッセージを送信するためのより機能的なインターフェイスを備えたチャネル。
+  このオブジェクトの新しいメソッドは、コンテキストを使用してセキュリティをサポートします
+  キャンセルしてエラーを返し、代わりにブロックする
+  非同期で実行します。チャネルを「アウト」し、それを介して
+  リアクターはピアにメッセージを送信します。これは「送信」に置き換えられます
+  メソッド、およびエラーチャネルは `エラー`に置き換えられます
+  方法。
 
-- The `p2p.Channel` interface will change to replace Go
-  channels with a more functional interface for sending messages.
-  New methods on this object will take contexts to support safe
-  cancellation, and return errors, and will block rather than
-  running asynchronously. The `Out` channel through which
-  reactors send messages to Peers, will be replaced by a `Send`
-  method, and the Error channel will be replaced by an `Error`
-  method.
+-リアクターは、それらを許可するインターフェースを通過します
+  libp2pからピア情報にアクセスします。これは置き換えられます
+  `p2p.PeerUpdates`サブスクリプション。
 
-- Reactors will be passed an interface that will allow them to
-  access Peer information from libp2p. This will supplant the
-  `p2p.PeerUpdates` subscription.
+-アプリレベルで何らかのハートビートメッセージを追加する
+  (例:リアクターを使用)libp2pに接続できるDHT
+  リアクタは、サービスディスカバリ、メッセージの場所、またはその他に使用されます
+  特徴。
 
-- Add some kind of heartbeat message at the application level
-  (e.g. with a reactor,) potentially connected to libp2p's DHT to be
-  used by reactors for service discovery, message targeting, or other
-  features.
+-既存/従来のハンドシェイクプロトコルを[ノイズ](http://www.noiseprotocol.org/noise.html)に置き換えます。
 
-- Replace the existing/legacy handshake protocol with [Noise](http://www.noiseprotocol.org/noise.html).
+プロジェクトは最初にTCPベースのトランスポートプロトコルを使用します
+libp2p。 QUICは、後で実装するオプションとしても使用できます。
+初期リリースではハイブリッドネットワークをサポートしませんが、サポートします
+本当に必要な場合は、後でこの可能性を再検討してください。
 
-This project will initially use the TCP-based transport protocols within
-libp2p. QUIC is also available as an option that we may implement later.
-We will not support mixed networks in the initial release, but will
-revisit that possibility later if there is a demonstrated need.
+###アップグレードと互換性
 
-### Upgrade and Compatibility
+ルーターと現在のすべてのP2Pライブラリは「内部」であるため
+パッケージはパブリックAPIの一部ではなく、パブリックへの唯一の変更です
+TendermintのAPI表面積は異なる構成になります
+ファイルオプション、現在のP2Pオプションを関連オプションに置き換えます
+libp2pへ。
 
-Because the routers and all current P2P libraries are `internal`
-packages and not part of the public API, the only changes to the public
-API surface area of Tendermint will be different configuration
-file options, replacing the current P2P options with options relevant
-to libp2p.
+ただし、2つのネットワークでネットワークを実行することはできません
+スタックは一度アクティブ化されるので、Tendermintバージョンにアップグレードしてください
+ネットワークのすべてのノード間で調整する必要があります。これは
+Tendermintのモバイルアップグレードを取り巻く期待と一致している
+前進し、複雑さと
+実装スケジュール。
 
-However, it will not be possible to run a network with both networking
-stacks active at once, so the upgrade to the version of Tendermint
-will need to be coordinated between all nodes of the network. This is
-consistent with the expectations around upgrades for Tendermint moving
-forward, and will help manage both the complexity of the project and
-the implementation timeline.
+##未解決の問題
 
-## Open Questions
+-libp2pの実現におけるProtocolLabの役割は何ですか？
+  テンダーミントは、最初の実装期間中か継続中かを問わず
+  その後の根拠は？
 
-- What is the role of Protocol Labs in the implementation of libp2p in
-  tendermint, both during the initial implementation and on an ongoing
-  basis thereafter?
+-特定のノードのすべてのP2Pトラフィックを単一のトピックにプッシュする必要があります。
+  トピックが特定のChainIDにマップされるように、または
+  各リアクター(またはメッセージタイプ)には独自のテーマがありますか？幾つか
+  libp2pネットワークはテーマをサポートできますか？検証テストはありますか
+  能力？
 
-- Should all P2P traffic for a given node be pushed to a single topic,
-  so that a topic maps to a specific ChainID, or should
-  each reactor (or type of message) have its own topic? How many
-  topics can a libp2p network support? Is there testing that validates
-  the capabilities?
+-Tendermintは現在、非常に大まかなQoSのような機能を提供しています
+  メッセージタイプに基づいて優先度を使用します。
+  これにより、直感的/理論的に証拠とコンセンサスが保証されます
+  ブロック同期/ステータス同期メッセージによってメッセージが枯渇することはありません。それは
+  libp2pを使用してコピーできるかどうか、またはコピーする必要があるかどうかは明確ではありません。
 
-- Tendermint presently provides a very coarse QoS-like functionality
-  using priorities based on message-type.
-  This intuitively/theoretically ensures that evidence and consensus
-  messages don't get starved by blocksync/statesync messages. It's
-  unclear if we can or should attempt to replicate this with libp2p.
+-libp2pが提供するQoS機能の種類と種類
+  libp2pは、そのQoS機能に関するメトリックを提供しますか？
 
-- What kind of QoS functionality does libp2p provide and what kind of
-  metrics does libp2p provide about it's QoS functionality?
+-追加(おそらく任意)を保存することは可能ですか？
+  情報はノード間のハートビートの一部としてDHTに入り、
+  たとえば、最新の高さ、そして
+  原子炉。 DHTはどのくらいの頻度で更新されますか？
 
-- Is it possible to store additional (and potentially arbitrary)
-  information into the DHT as part of the heartbeats between nodes,
-  such as the latest height, and then access that in the
-  reactors. How frequently can the DHT be updated?
+-原子炉がエントリを使い果たし続けるようにすることは理にかなっていますか
+  チャネルからのメッセージ( `In`)または別のインターフェースがありますか
+  どのモデルを検討する必要がありますか？
 
-- Does it make sense to have reactors continue to consume inbound
-  messages from a Channel (`In`) or is there another interface or
-  pattern that we should consider?
+-Goチャネルをできるだけ公開しないようにする必要があります。
+ある種の代替イテレータは処理に意味があるかもしれません
+原子炉内のニュース。
 
-  - We should avoid exposing Go channels when possible, and likely
-	some kind of alternate iterator likely makes sense for processing
-	messages within the reactors.
+-追跡のセキュリティと契約の意味は何ですか
+  ピアツーピアのハートビートからの情報とそれを原子炉に公開しますか？
 
-- What are the security and protocol implications of tracking
-  information from peer heartbeats and exposing that to reactors?
+-Tendermintが提供できる構成の量(または量)
+  libp2p、特に最初のバージョンでは？
 
-- How much (or how little) configuration can Tendermint provide for
-  libp2p, particularly on the first release?
+  -一般的に言って、libp2pのbyo-functionityをサポートするべきではありません
+Tendermint内のコンポーネントと構成領域の縮小
+エリア、可能な限り。
 
-  - In general, we should not support byo-functionality for libp2p
-	components within Tendermint, and reduce the configuration surface
-	area, as much as possible.
+-要求/応答セマンティクスを提供するための最良の方法は何ですか？
+  libp2pの上にあるリアクター？追加できますか
+  要求/応答のセマンティクスまたは将来のバージョンでの存在
+  初期段階の一部として行われると予想される作業
+  リリース？
 
-- What are the best ways to provide request/response semantics for
-  reactors on top of libp2p? Will it be possible to add
-  request/response semantics in a future release or is there
-  anticipatory work that needs to be done as part of the initial
-  release?
+## 結果
 
-## Consequences
+### ポジティブ
 
-### Positive
+-以下の方法でTendermintコアチームのメンテナンス負担を軽減します
+  であることが証明されている多くのレガシーコードを削除します
+  安全に変更することは困難です。
 
-- Reduce the maintenance burden for the Tendermint Core team by
-  removing a large swath of legacy code that has proven to be
-  difficult to modify safely.
+-メンテナンスと開発の全体的な責任を排除します
+  ピア管理システム(p2p)とスタック。
 
-- Remove the responsibility for maintaining and developing the entire
-  peer management system (p2p) and stack.
+-より安定したピアツーピアネットワークシステムをユーザーに提供し、
+  Tendermintは、オペレーターのエクスペリエンスとネットワークの安定性を向上させることができます。
 
-- Provide users with a more stable peer and networking system,
-  Tendermint can improve operator experience and network stability.
+### ネガティブ
 
-### Negative
+-ピア管理を実現し、
+  ネットワーク、テンダーミントは革新的な柔軟性を失いました
+  ピアツーピアおよびネットワークレベル。ただし、テンダーミントは革新的である必要があります
+  主にコンセンサスレイヤーで、libp2pは除外しません
+  ピアツーピアレベルで最適化または開発します。
 
-- By deferring to library implementations for peer management and
-  networking, Tendermint loses some flexibility for innovating at the
-  peer and networking level. However, Tendermint should be innovating
-  primarily at the consensus layer, and libp2p does not preclude
-  optimization or development in the peer layer.
+-Libp2pは大きな依存関係であり、Tendermintは依存関係になります
+  プロトコルラボに基づくリリースサイクルとエラー優先度
+  修理。これが面倒であることが判明した場合は、サプライヤーを維持することができます
+  必要に応じて、関連するコンポーネントをフォークします。
 
-- Libp2p is a large dependency and Tendermint would become dependent
-  upon Protocol Labs' release cycle and prioritization for bug
-  fixes. If this proves onerous, it's possible to maintain a vendor
-  fork of relevant components as needed.
+### ニュートラル
 
-### Neutral
+- 適用できない
 
-- N/A
+## 参照する
 
-## References
+-[ADR 61:P2P再構成範囲] [adr61]
+-[ADR 62:P2Pアーキテクチャ] [adr62]
+-[P2PロードマップRFC] [rfc]
 
-- [ADR 61: P2P Refactor Scope][adr61]
-- [ADR 62: P2P Architecture][adr62]
-- [P2P Roadmap RFC][rfc]
-
-[adr61]: ./adr-061-p2p-refactor-scope.md
-[adr62]: ./adr-062-p2p-architecture.md
-[rfc]: ../rfc/rfc-000-p2p.rst
+[adr61]:./ adr-061-p2p-refactor-scope.md
+[adr62]:./ adr-062-p2p-architecture.md
+[rfc]:../ rfc/rfc-000-p2p.rst

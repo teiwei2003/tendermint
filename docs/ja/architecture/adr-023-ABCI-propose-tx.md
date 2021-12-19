@@ -1,22 +1,21 @@
-# ADR 023: ABCI `ProposeTx` Method
+# ADR 023:ABCI`ProposeTx`メソッド
 
-## Changelog
+## 変更ログ
 
-25-06-2018: Initial draft based on [#1776](https://github.com/tendermint/tendermint/issues/1776)
+2018年6月25日:最初のドラフトは[#1776](https://github.com/tendermint/tendermint/issues/1776)に基づいています
 
-## Context
+## 環境
 
-[#1776](https://github.com/tendermint/tendermint/issues/1776) was
-opened in relation to implementation of a Plasma child chain using Tendermint
-Core as consensus/replication engine.
+[#1776](https://github.com/tendermint/tendermint/issues/1776)はい
+プラズマサブチェーンの開通を実装するためのテンダーミントの使用について
+コアはコンセンサス/レプリケーションエンジンとして機能します。
 
-Due to the requirements of [Minimal Viable Plasma (MVP)](https://ethresear.ch/t/minimal-viable-plasma/426) and [Plasma Cash](https://ethresear.ch/t/plasma-cash-plasma-with-much-less-per-user-data-checking/1298), it is necessary for ABCI apps to have a mechanism to handle the following cases (more may emerge in the near future):
+[Minimal Viable Plasma(MVP)](https://ethresear.ch/t/minimal-viable-plasma/426)および[Plasma Cash](https://ethresear.ch/t/plasma-cash-plasma-)以降with-much-less-per-user-data-checking/1298)、ABCIアプリケーションには、次の状況を処理するメカニズムが必要です(近い将来、さらに多くの状況が発生する可能性があります)。
 
-1. `deposit` transactions on the Root Chain, which must consist of a block
-   with a single transaction, where there are no inputs and only one output
-   made in favour of the depositor. In this case, a `block` consists of
-   a transaction with the following shape:
-
+1.ルートチェーンの `deposit`トランザクションは1つのブロックで構成されている必要があります
+     単一のトランザクション、入力なし、1つの出力のみ
+     預金者を助長します。 この場合、「ブロック」は次のもので構成されます。
+     次の形のトランザクション:
    ```
    [0, 0, 0, 0, #input1 - zeroed out
     0, 0, 0, 0, #input2 - zeroed out
@@ -26,93 +25,93 @@ Due to the requirements of [Minimal Viable Plasma (MVP)](https://ethresear.ch/t/
    ]
    ```
 
-   `exit` transactions may also be treated in a similar manner, wherein the
-   input is the UTXO being exited on the Root Chain, and the output belongs to
-   a reserved "burn" address, e.g., `0x0`. In such cases, it is favourable for
-   the containing block to only hold a single transaction that may receive
-   special treatment.
+「終了」トランザクションも同様の方法で処理できます。
+   入力はルートチェーンで終了したUTXOであり、出力はに属します
+   予約済みの「書き込み中」アドレス、たとえば「0x0」。この場合、それは役立ちます
+   包含ブロックは、可能なトランザクションを1つだけ保存します
+   特別扱い。
 
-2. Other "internal" transactions on the child chain, which may be initiated
-   unilaterally. The most basic example of is a coinbase transaction
-   implementing validator node incentives, but may also be app-specific. In
-   these cases, it may be favourable for such transactions to
-   be ordered in a specific manner, e.g., coinbase transactions will always be
-   at index 0. In general, such strategies increase the determinism and
-   predictability of blockchain applications.
+2.サブチェーン上の他の「内部」トランザクションが開始される場合があります
+   一方的。最も基本的な例はコインベーストランザクションです
+   バリデーターノードのインセンティブを実装しますが、アプリケーション固有の場合もあります。存在
+   これらの場合、それはそのような取引にとって有益かもしれません
+   特定の方法で並べ替えられます。たとえば、コインベースのトランザクションは常に
+   インデックス0で。一般的に言って、そのような戦略は確実性を高め、
+   ブロックチェーンアプリケーションの予測可能性。
 
-While it is possible to deal with the cases enumerated above using the
-existing ABCI, currently available result in suboptimal workarounds. Two are
-explained in greater detail below.
+使用できますが
+現在利用可能な既存のABCIは、次善のソリューションにつながります。 2つは
+これについては、以下で詳しく説明します。
 
-### Solution 1: App state-based Plasma chain
+### 解決策1:アプリケーションの状態に基づくプラズマチェーン
 
-In this work around, the app maintains a `PlasmaStore` with a corresponding
-`Keeper`. The PlasmaStore is responsible for maintaing a second, separate
-blockchain that complies with the MVP specification, including `deposit`
-blocks and other "internal" transactions. These "virtual" blocks are then broadcasted
-to the Root Chain.
+この作業では、アプリケーションは対応する「PlasmaStore」を維持します
+「ゴールキーパー」。 PlasmaStoreは、2番目の独立性を維持する責任があります
+`deposit`を含むMVP仕様に準拠したブロックチェーン
+ブロックおよびその他の「内部」トランザクション。次に、これらの「仮想」ブロックをブロードキャストします
+ルートチェーンへ。
 
-This naive approach is, however, fundamentally flawed, as it by definition
-diverges from the canonical chain maintained by Tendermint. This is further
-exacerbated if the business logic for generating such transactions is
-potentially non-deterministic, as this should not even be done in
-`Begin/EndBlock`, which may, as a result, break consensus guarantees.
+ただし、この素朴なアプローチは、定義上、根本的に欠陥があります。
+Tendermintが管理している仕様チェーンとは異なります。これはさらに
+このタイプのトランザクションを生成するビジネスロジックが
+潜在的な不確実性、これは
+`Begin/EndBlock`なので、コンセンサス保証が破られる可能性があります。
 
-Additinoally, this has serious implications for "watchers" - independent third parties,
-or even an auxilliary blockchain, responsible for ensuring that blocks recorded
-on the Root Chain are consistent with the Plasma chain's. Since, in this case,
-the Plasma chain is inconsistent with the canonical one maintained by Tendermint
-Core, it seems that there exists no compact means of verifying the legitimacy of
-the Plasma chain without replaying every state transition from genesis (!).
+さらに、これは「オブザーバー」に依存しないサードパーティに深刻な影響を及ぼします。
+記録されたブロックを確保する責任がある補助ブロックチェーンでさえ
+ルートチェーンはプラズマチェーンと一致しています。なぜなら、この場合、
+プラズマチェーンは、テンダーミントによって維持されている正規チェーンと矛盾しています
+根本的に、正当性を検証するためのコンパクトな方法はないようです
+作成からのすべての状態遷移を再生する必要のないプラズマチェーン(！)。
 
-### Solution 2: Broadcast to Tendermint Core from ABCI app
+### ソリューション2:ABCIアプリケーションからTendermintCoreにブロードキャストする
 
-This approach is inspired by `tendermint`, in which Ethereum transactions are
-relayed to Tendermint Core. It requires the app to maintain a client connection
-to the consensus engine.
+この方法は、イーサリアムのトランザクションが行われる「テンダーミント」に触発されています
+Tendermintコアに転送します。アプリケーションがクライアント接続を維持する必要があります
+コンセンサスエンジンへ。
 
-Whenever an "internal" transaction needs to be created, the proposer of the
-current block broadcasts the transaction or transactions to Tendermint as
-needed in order to ensure that the Tendermint chain and Plasma chain are
-completely consistent.
+「内部」トランザクションを作成する必要があるときはいつでも、そのトランザクションの提案者
+現在のブロックは、トランザクションまたはトランザクションをTendermintに次のようにブロードキャストします。
+テンダーミントチェーンとプラズマチェーンが
+まったく同じ。
 
-This allows "internal" transactions to pass through the full consensus
-process, and can be validated in methods like `CheckTx`, i.e., signed by the
-proposer, is the semantically correct, etc. Note that this involves informing
-the ABCI app of the block proposer, which was temporarily hacked in as a means
-of conducting this experiment, although this should not be necessary when the
-current proposer is passed to `BeginBlock`.
+これにより、「内部」トランザクションが完全なコンセンサスを通過できるようになります
+処理し、「CheckTx」などの方法で検証できます。
+提案者は、意味的に正しいかなどです。これには通知が含まれることに注意してください
+ブロック提案者のABCIアプリケーションは、手段として一時的にハッキングされました
+この実験を実施しますが、必須ではありません
+現在の提案者は「BeginBlock」に渡されます。
 
-It is much easier to relay these transactions directly to the Root
-Chain smart contract and/or maintain a "compressed" auxiliary chain comprised
-of Plasma-friendly blocks that 100% reflect the canonical (Tendermint)
-blockchain. Unfortunately, this approach not idiomatic (i.e., utilises the
-Tendermint consensus engine in unintended ways). Additionally, it does not
-allow the application developer to:
+これらのトランザクションをルートに直接中継する方がはるかに簡単です
+スマートコントラクトをチェーンし、および/または「圧縮された」補助チェーンを維持する
+仕様を100％反映したプラズマ対応ブロック(テンダーミント)
+ブロックチェーン。残念ながら、この方法は慣用的ではありません(つまり、
+予期しない方法でのテンダーミントコンセンサスエンジン)。また、そうではありません
+アプリケーション開発者に次のことを許可します。
 
-- Control the _ordering_ of transactions in the proposed block (e.g., index 0,
-  or 0 to `n` for coinbase transactions)
-- Control the _number_ of transactions in the block (e.g., when a `deposit`
-  block is required)
+-提案されたブロック内のトランザクションの_ordering_を制御します(たとえば、インデックス0、
+  または、コインベーストランザクションの場合は0から `n`)
+-ブロック内のトランザクション数を制御します(たとえば、「デポジット」の場合)
+  ブロックが必要です)
 
-Since determinism is of utmost importance in blockchain engineering, this approach,
-while more viable, should also not be considered as fit for production.
+ブロックチェーンエンジニアリングでは確実性が非常に重要であるため、この方法では、
+より実現可能ですが、本番環境に適していると見なすべきではありません。
 
-## Decision
+## 決定
 
 ### `ProposeTx`
 
-In order to address the difficulties described above, the ABCI interface must
-expose an additional method, tentatively named `ProposeTx`.
+上記の問題を解決するために、ABCIインターフェースは
+暫定的に「ProposeTx」という名前の追加のメソッドを公開します。
 
-It should have the following signature:
+次の署名が必要です。
 
 ```
 ProposeTx(RequestProposeTx) ResponseProposeTx
 ```
 
-Where `RequestProposeTx` and `ResponseProposeTx` are `message`s with the
-following shapes:
+`RequestProposeTx`と` ResponseProposeTx`は
+次の形状:
 
 ```
 message RequestProposeTx {
@@ -127,20 +126,20 @@ message ResponseProposeTx {
 }
 ```
 
-`ProposeTx` would be called by before `mempool.Reap` at this
-[line](https://github.com/tendermint/tendermint/blob/9cd9f3338bc80a12590631632c23c8dbe3ff5c34/consensus/state.go#L935).
-Depending on whether `exclusive` is `true` or `false`, the proposed
-transactions are then pushed on top of the transactions received from
-`mempool.Reap`.
+`ProposeTx`は` mempool.Reap`の前に呼び出されます
+[OK](https://github.com/tendermint/tendermint/blob/9cd9f3338bc80a12590631632c23c8dbe3ff5c34/consensus/state.go#L935)。
+`exclusive`が` true`であるか `false`であるかに応じて、それが推奨されます
+次に、トランザクションをスレーブにプッシュします
+`mempool.Reap`。
 
 ### `DeliverTx`
 
-Since the list of `tx` received from `ProposeTx` are _not_ passed through `CheckTx`,
-it is probably a good idea to provide a means of differentiatiating "internal" transactions
-from user-generated ones, in case the app developer needs/wants to take extra measures to
-ensure validity of the proposed transactions.
+`ProposeTx`から受信した` tx`のリストは `CheckTx`を通過しないので、
+「内部」トランザクションを区別する方法を提供することは良い考えかもしれません
+ユーザー生成から、アプリケーション開発者が追加の対策を講じる必要がある/したい場合
+提案されたトランザクションの有効性を確認します。
 
-Therefore, the `RequestDeliverTx` message should be changed to provide an additional flag, like so:
+したがって、「RequestDeliverTx」メッセージを変更して、次のように追加のフラグを提供する必要があります。
 
 ```
 message RequestDeliverTx {
@@ -149,35 +148,35 @@ message RequestDeliverTx {
 }
 ```
 
-Alternatively, an additional method `DeliverProposeTx` may be added as an accompanient to
-`ProposeTx`. However, it is not clear at this stage if this additional overhead is necessary
-to preserve consensus guarantees given that a simple flag may suffice for now.
+または、コンパニオンとしてメソッド「DeliverProposeTx」を追加できます
+`ProposeTx`。ただし、追加費用が必要かどうかは明確ではありません
+今では、コンセンサスの保証を維持するには、単純なロゴで十分かもしれません。
 
-## Status
+## ステータス
 
-Pending
+する
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Tendermint ABCI apps will be able to function as minimally viable Plasma chains.
-- It will thereby become possible to add an extension to `cosmos-sdk` to enable
-  ABCI apps to support both IBC and Plasma, maximising interop.
-- ABCI apps will have great control and flexibility in managing blockchain state,
-  without having to resort to non-deterministic hacks and/or unsafe workarounds
+-Tendermint ABCIアプリケーションは、最小限の実行可能なプラズマチェーンとして動作できるようになります。
+-`cosmos-sdk`に拡張機能を追加して有効にすることができます
+  ABCIアプリケーションは、相互運用性を最大化するためにIBCとPlasmaをサポートします。
+-ABCIアプリケーションは、ブロックチェーンの状態を管理する上で優れた制御と柔軟性を備えています。
+  非決定論的なハッカーや安全でないソリューションに頼る必要はありません
 
-### Negative
+### ネガティブ
 
-- Maintenance overhead of exposing additional ABCI method
-- Potential security issues that may have been overlooked and must now be tested extensively
+-追加のABCIメソッドのメンテナンスオーバーヘッドを公開します
+-見落とされていた可能性があるが、今は広範囲にテストする必要がある潜在的なセキュリティ問題
 
-### Neutral
+### ニュートラル
 
-- ABCI developers must deal with increased (albeit nominal) API surface area.
+-ABCI開発者は、(名目ではありますが)増加したAPI表面積に対処する必要があります。
 
-## References
+## 参照する
 
-- [#1776 Plasma and "Internal" Transactions in ABCI Apps](https://github.com/tendermint/tendermint/issues/1776)
-- [Minimal Viable Plasma](https://ethresear.ch/t/minimal-viable-plasma/426)
-- [Plasma Cash: Plasma with much less per-user data checking](https://ethresear.ch/t/plasma-cash-plasma-with-much-less-per-user-data-checking/1298)
+-[#1776プラズマおよびABCIアプリケーションの「内部」トランザクション](https://github.com/tendermint/tendermint/issues/1776)
+-[Minimal Living Plasma](https://ethresear.ch/t/minimal-viable-plasma/426)
+-[Plasma Cash:Plasmaのユーザーあたりのデータチェックははるかに少ない](https://ethresear.ch/t/plasma-cash-plasma-with-much-less-per-user-data-checking/1298)

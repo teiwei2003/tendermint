@@ -510,42 +510,42 @@ max-open-connections = 3
 namespace = "tendermint"
 ```
 
-## Empty blocks VS no empty blocks
+## 空块 VS 没有空块
 
 ### create-empty-blocks = true
 
-If `create-empty-blocks` is set to `true` in your config, blocks will be
-created ~ every second (with default consensus parameters). You can regulate
-the delay between blocks by changing the `timeout-commit`. E.g. `timeout-commit = "10s"` should result in ~ 10 second blocks.
+如果在您的配置中将 `create-empty-blocks` 设置为 `true`，则块将是
+每秒创建~(使用默认共识参数)。你可以调节
+通过更改`timeout-commit`来延迟块之间的延迟。例如。 `timeout-commit = "10s"` 应该导致大约 10 秒的块。
 
 ### create-empty-blocks = false
 
-In this setting, blocks are created when transactions received.
+在此设置中，在收到交易时创建块。
 
-Note after the block H, Tendermint creates something we call a "proof block"
-(only if the application hash changed) H+1. The reason for this is to support
-proofs. If you have a transaction in block H that changes the state to X, the
-new application hash will only be included in block H+1. If after your
-transaction is committed, you want to get a light-client proof for the new state
-(X), you need the new block to be committed in order to do that because the new
-block has the new application hash for the state X. That's why we make a new
-(empty) block if the application hash changes. Otherwise, you won't be able to
-make a proof for the new state.
+注意在块 H 之后，Tendermint 创建了一个我们称之为“证明块”的东西
+(仅当应用程序哈希更改时) H+1。这样做的原因是为了支持
+证明。如果您在区块 H 中有一笔交易将状态更改为 X，则
+新的应用程序哈希将只包含在块 H+1 中。如果在你之后
+交易已提交，您想获得新状态的轻客户端证明
+(X)，您需要提交新块才能做到这一点，因为新块
+块具有状态 X 的新应用程序哈希值。这就是我们创建一个新应用程序的原因
+(空)如果应用程序哈希更改则阻止。否则，你将无法
+为新状态做一个证明。
 
-Plus, if you set `create-empty-blocks-interval` to something other than the
-default (`0`), Tendermint will be creating empty blocks even in the absence of
-transactions every `create-empty-blocks-interval`. For instance, with
-`create-empty-blocks = false` and `create-empty-blocks-interval = "30s"`,
-Tendermint will only create blocks if there are transactions, or after waiting
-30 seconds without receiving any transactions.
+另外，如果您将 `create-empty-blocks-interval` 设置为除
+默认(`0`)，Tendermint 将创建空块，即使没有
+交易每个`create-empty-blocks-interval`。例如，与
+`create-empty-blocks = false` 和 `create-empty-blocks-interval = "30s"`，
+Tendermint 只会在有交易或等待后创建区块
+30 秒没有收到任何交易。
 
-## Consensus timeouts explained
+## 共识超时解释
 
-There's a variety of information about timeouts in [Running in
-production](../tendermint-core/running-in-production.md)
+在 [Running in
+生产](../tendermint-core/running-in-production.md)
 
-You can also find more detailed technical explanation in the spec: [The latest
-gossip on BFT consensus](https://arxiv.org/abs/1807.04938).
+您还可以在规范中找到更详细的技术说明:[最新的
+关于 BFT 共识的八卦](https://arxiv.org/abs/1807.04938)。
 
 ```toml
 [consensus]

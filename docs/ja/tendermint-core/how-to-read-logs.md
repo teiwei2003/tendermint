@@ -1,3 +1,3 @@
-# How to read logs
+# ログの読み方
 
-This file has moved to the [node section](../nodes/logging.md).
+このファイルは[ノードセクション](../nodes/logging.md)に移動されました。

@@ -57,13 +57,13 @@ tx 节流和 MaxBytes 只是作为总数的上限
 
 当我们需要从内存池中获取 ReapMaxBytes 时，我们计算上限如下:
 
-``
-ExactLastCommitBytes = {当前启用的验证器数量} * {MaxVoteBytes}
+```
+ExactLastCommitBytes = {number of validators currently enabled} * {MaxVoteBytes}
 MaxEvidenceBytesPerBlock = MaxBytes / 10
 ExactEvidenceBytes = cs.evpool.PendingEvidence(MaxEvidenceBytesPerBlock) * MaxEvidenceBytes
 
 mempool.ReapMaxBytes(MaxBytes - MaxAminoOverheadForBlock - ExactLastCommitBytes - ExactEvidenceBytes - MaxHeaderBytes)
-``
+```
 
 其中 MaxVoteBytes、MaxEvidenceBytes、MaxHeaderBytes 和 MaxAminoOverheadForBlock
 是在 `types` 包中定义的常量:

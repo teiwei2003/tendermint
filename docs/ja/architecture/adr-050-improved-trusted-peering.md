@@ -1,58 +1,58 @@
-# ADR 50: Improved Trusted Peering
+# ADR 50:信頼できるピアの相互接続の改善
 
-## Changelog
-* 22-10-2019: Initial draft
-* 05-11-2019: Modify `maximum-dial-period` to `persistent-peers-max-dial-period`
+##変更ログ
+* 22-10-2019:最初のドラフト
+* 05-11-2019: `maximum-dial-period`を` persistent-peers-max-dial-period`に変更
 
-## Context
+## 環境
 
-When `max-num-inbound-peers` or `max-num-outbound-peers` of a node is reached, the node cannot spare more slots to any peer 
-by inbound or outbound. Therefore, after a certain period of disconnection, any important peering can be lost indefinitely 
-because all slots are consumed by other peers, and the node stops trying to dial the peer anymore.
+ノードの `max-num-inbound-peers`または` max-num-outbound-peers`に到達すると、ノードはどのピアにもそれ以上のタイムスロットを割り当てることができません。
+インバウンドまたはアウトバウンドを渡します。したがって、一定期間の切断後、重要なピアツーピア接続が無期限に失われる可能性があります
+すべてのタイムスロットが他のピアによって消費されるため、ノードはピアにダイヤルしようとしなくなります。
 
-This is happening because of two reasons, exponential backoff and absence of unconditional peering feature for trusted peers.
+この状況には、指数バックオフと信頼できるピアの無条件ピアリング機能の欠如という2つの理由があります。
 
 
-## Decision
+## 決定
 
-We would like to suggest solving this problem by introducing two parameters in `config.toml`, `unconditional-peer-ids` and 
-`persistent-peers-max-dial-period`. 
+`config.toml`に` unconditional-peer-ids`と2つのパラメータを導入することでこの問題を解決することをお勧めします
+「永続的なピアツーピアの最大ダイヤル期間」。
 
-1) `unconditional-peer-ids`
+1) `無条件のピアID`
 
-A node operator inputs list of ids of peers which are allowed to be connected by both inbound or outbound regardless of 
-`max-num-inbound-peers` or `max-num-outbound-peers` of user's node reached or not.
+ノードオペレータは、インバウンド接続またはアウトバウンド接続を許可するピアノードのIDのリストを入力します。
+ユーザーノードの「max-num-inbound-peers」または「max-num-outbound-peers」が到着したかどうか。
 
 2) `persistent-peers-max-dial-period`
 
-Terms between each dial to each persistent peer will not exceed `persistent-peers-max-dial-period` during exponential backoff. 
-Therefore, `dial-period` = min(`persistent-peers-max-dial-period`, `exponential-backoff-dial-period`)
+指数バックオフ期間中、各ダイヤルアップから各永続ピアまでの期間は、「persistent-peers-max-dial-period」を超えることはありません。
+したがって、 `dial-period` = min(` persistent-peers-max-dial-period`、 `exponential-backoff-dial-period`)
 
-Alternative approach
+別の方法
 
-Persistent-peers is only for outbound, therefore it is not enough to cover the full utility of `unconditional-peer-ids`. 
-@creamers158(https://github.com/Creamers158) suggested putting id-only items into persistent-peers to be handled as 
-`unconditional-peer-ids`, but it needs very complicated struct exception for different structure of items in persistent-peers.
-Therefore we decided to have `unconditional-peer-ids` to independently cover this use-case.
+Persistent-peerはアウトバウンドにのみ使用されるため、「unconditional-peer-ids」の完全なユーティリティをカバーするだけでは不十分です。
+@ creamers158(https://github.com/Creamers158)は、IDのみのプロジェクトを永続的なピアに配置することを提案しています。
+`unconditional-peer-ids`ですが、永続的なピアノードで異なる構造を持つアイテムを処理するには、非常に複雑な構造上の例外が必要です。
+したがって、このユースケースを個別にカバーするために「unconditional-peer-ids」を使用することにしました。
 
-## Status
+## ステータス
 
-Proposed
+提案
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-A node operator can configure two new parameters in `config.toml` so that he/she can assure that tendermint will allow connections
-from/to peers in `unconditional-peer-ids`. Also he/she can assure that every persistent peer will be dialed at least once in every 
-`persistent-peers-max-dial-period` term. It achieves more stable and persistent peering for trusted peers.
+ノードオペレータは、 `config.toml`で2つの新しいパラメータを設定できるため、tendermintが接続を許可していることを確認できます。
+`unconditional-peer-ids`のピアから/へ。さらに、彼/彼女は各永続的なピアが少なくとも
+`persistent-peers-max-dial-period`用語。信頼できるピアに対して、より安定した永続的なピアツーピア相互接続を実現します。
 
-### Negative
+### ネガティブ
 
-The new feature introduces two new parameters in `config.toml` which needs explanation for node operators.
+この新機能により、 `config.toml`に2つの新しいパラメーターが導入され、ノードオペレーターの説明が必要になります。
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する
 
-* two p2p feature enhancement proposal(https://github.com/tendermint/tendermint/issues/4053)
+* 2つのp2p機能拡張の提案(https://github.com/tendermint/tendermint/issues/4053)

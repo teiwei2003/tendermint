@@ -11,7 +11,7 @@ Tendermint 全节点运行 Blocksync Reactor 作为提供区块的服务
 一旦赶上，“fast_sync”模式被禁用，节点切换到
 使用(并打开)Consensus Reactor。
 
-##架构和算法
+## 架构和算法
 
 Blocksync 反应器被组织为一组并发任务:
 

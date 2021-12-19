@@ -1,69 +1,68 @@
-# ADR 040: Blockchain Reactor Refactor
+# ADR 040:ブロックチェーンリアクターの再構築
 
-## Changelog
+## 変更ログ
 
-19-03-2019: Initial draft
+2019年3月19日:最初のドラフト
 
-## Context
+## 環境
 
-The Blockchain Reactor's high level responsibility is to enable peers who are far behind the current state of the
-blockchain to quickly catch up by downloading many blocks in parallel from its peers, verifying block correctness, and
-executing them against the ABCI application. We call the protocol executed by the Blockchain Reactor `fast-sync`.
-The current architecture diagram of the blockchain reactor can be found here:
+ブロックチェーンリアクターの高レベルの責任は、ピアノードを現在の状態よりはるかに遅れさせることです。
+ブロックチェーンは、ピアから多数のブロックを並行してダウンロードし、ブロックの正当性を検証することで、すぐに追いつきます。
+ABCIアプリケーション用に実行します。ブロックチェーンリアクターによって実装されるプロトコルを「高速同期」と呼びます。
+ブロックチェーンリアクターの現在のアーキテクチャ図は、次の場所にあります。
 
-![Blockchain Reactor Architecture Diagram](img/bc-reactor.png)
+！[ブロックチェーンリアクタアーキテクチャ図](img/bc-reactor.png)
 
-The current architecture consists of dozens of routines and it is tightly depending on the `Switch`, making writing
-unit tests almost impossible. Current tests require setting up complex dependency graphs and dealing with concurrency.
-Note that having dozens of routines is in this case overkill as most of the time routines sits idle waiting for
-something to happen (message to arrive or timeout to expire). Due to dependency on the `Switch`, testing relatively
-complex network scenarios and failures (for example adding and removing peers) is very complex tasks and frequently lead
-to complex tests with not deterministic behavior ([#3400]). Impossibility to write proper tests makes confidence in
-the code low and this resulted in several issues (some are fixed in the meantime and some are still open):
-[#3400], [#2897], [#2896], [#2699], [#2888], [#2457], [#2622], [#2026].
+現在のアーキテクチャは数十のルーチンで構成されており、 `Switch`に密接に依存しており、
+ユニットテストはほとんど不可能です。現在のテストでは、複雑な依存関係グラフを設定し、同時実行性を処理する必要があります。
+この場合、ほとんどの時間ルーチンがアイドル待機状態にあるため、数十のルーチンを持つことは冗長であることに注意してください。
+何が起こりますか(メッセージの到着またはタイムアウトが期限切れになります)。 `Switch`に依存しているため、テストは比較的
+複雑なネットワークシナリオと障害(ピアの追加や削除など)は非常に複雑なタスクであり、多くの場合、
+動作が不確実な複雑なテスト([#3400])。適切なテストを書くことができないと、人々は感じます
+コードが低いため、いくつかの問題が発生しました(その間に修正されたものもあれば、まだ開いているものもあります)。
+[#3400]、[#2897]、[#2896]、[#2699]、[#2888]、[#2457]、[#2622]、[#2026]。
 
-## Decision
+## 決定
 
-To remedy these issues we plan a major refactor of the blockchain reactor. The proposed architecture is largely inspired
-by ADR-30 and is presented on the following diagram:
-![Blockchain Reactor Refactor Diagram](img/bc-reactor-refactor.png)
+これらの問題を解決するために、ブロックチェーン原子炉の大規模な再建を行う予定です。提案されたアーキテクチャは主に触発されています
+次の図に示すように、ADR-30によって提供されます。
+！[ブロックチェーンリアクター再構築図](img/bc-reactor-refactor.png)
 
-We suggest a concurrency architecture where the core algorithm (we call it `Controller`) is extracted into a finite
-state machine. The active routine of the reactor is called `Executor` and is responsible for receiving and sending
-messages from/to peers and triggering timeouts. What messages should be sent and timeouts triggered is determined mostly
-by the `Controller`. The exception is `Peer Heartbeat` mechanism which is `Executor` responsibility. The heartbeat
-mechanism is used to remove slow and unresponsive peers from the peer list. Writing of unit tests is simpler with
-this architecture as most of the critical logic is part of the `Controller` function. We expect that simpler concurrency
-architecture will not have significant negative effect on the performance of this reactor (to be confirmed by
-experimental evaluation).
+コアアルゴリズム(これを「コントローラー」と呼びます)を限定的に抽出する並行アーキテクチャーを採用することを提案します。
+ステートマシン。原子炉の活動ルーチンは「エグゼキュータ」と呼ばれ、送受信を担当します
+ピアとの間でメッセージを送信し、タイムアウトをトリガーします。送信するメッセージとトリガータイムアウトは主に決定されます
+`コントローラー`によって。例外は、「エグゼキュータ」の責任である「ピアハートビート」メカニズムです。ハートビート
+このメカニズムは、低速で応答のないピアをピアリストから削除するために使用されます。単体テストを作成する方が簡単です
+このアーキテクチャは、ほとんどの主要なロジックとしての「コントローラ」機能の一部です。より単純な同時実行性を期待します
+アーキテクチャは、この原子炉の性能に重大な悪影響を与えることはありません(確認済み)
+実験的評価)。
 
 
-### Implementation changes
+### 変更を実装する
 
-We assume the following system model for "fast sync" protocol:
+「クイック同期」プロトコルのシステムモデルは次のとおりであると想定しています。
 
-* a node is connected to a random subset of all nodes that represents its peer set. Some nodes are correct and some
-  might be faulty. We don't make assumptions about ratio of faulty nodes, i.e., it is possible that all nodes in some
-	peer set are faulty.
-* we assume that communication between correct nodes is synchronous, i.e., if a correct node `p` sends a message `m` to
-  a correct node `q` at time `t`, then `q` will receive message the latest at time `t+Delta` where `Delta` is a system
-	parameter that is known by network participants. `Delta` is normally chosen to be an order of magnitude higher than
-	the real communication delay (maximum) between correct nodes. Therefore if a correct node `p` sends a request message
-	to a correct node `q` at time `t` and there is no the corresponding reply at time `t + 2*Delta`, then `p` can assume
-	that `q` is faulty. Note that the network assumptions for the consensus reactor are different (we assume partially
-	synchronous model there).
+*ノードは、そのピアセットを表すすべてのノードのランダムなサブセットに接続されています。一部のノードは正しい、一部のノードは正しい
+  問題がある可能性があります。障害が発生したノードの比率については想定していません。つまり、一部のノードのすべてのノードが発生する可能性があります。
+ピアリングの設定に問題があります。
+*正しいノード間の通信は同期的であると想定します。つまり、正しいノード `p`がメッセージ` m`を
+  正しいノード「q」が時刻「t」にある場合、「q」は時刻「t + Delta」に最新ニュースを受信します。ここで、「Delta」はシステムです。
+ネットワーク参加者に知られているパラメータ。 `Delta`は通常、1桁より大きくなるように選択されます
+正しいノード間の実際の通信遅延(最大)。したがって、正しいノード `p`がリクエストメッセージを送信した場合
+時間 `t`が正しいノード` q`に到達し、時間 `t + 2 * Delta`に対応する応答がない場合、` p`を想定できます。
+その `q`には問題があります。コンセンサスリアクターのネットワークの仮定は異なることに注意してください(部分的に仮定します
+同期モデル)。
 
-The requirements for the "fast sync" protocol are formally specified as follows:
+「QuickSync」プロトコルの要件は、正式には次のように規定されています。
 
-- `Correctness`: If a correct node `p` is connected to a correct node `q` for a long enough period of time, then `p`
-- will eventually download all requested blocks from `q`.
-- `Termination`: If a set of peers of a correct node `p` is stable (no new nodes are added to the peer set of `p`) for
-- a long enough period of time, then protocol eventually terminates.
-- `Fairness`: A correct node `p` sends requests for blocks to all peers from its peer set.
+-`Correctness`:正しいノード `p`が正しいノード` q`に十分な長さで接続されている場合、 `p`
+-最終的に、要求されたすべてのブロックが `q`からダウンロードされます。
+-`Termination`:正しいノード `p`のピアのセットが安定している場合(` p`のピアのセットに新しいノードは追加されません)
+-十分な長さで、契約は最終的に終了します。
+-`Fairness`:正しいノード `p`は、ブロックの要求をそのピアセット内のすべてのピアノードに送信します。
 
-As explained above, the `Executor` is responsible for sending and receiving messages that are part of the `fast-sync`
-protocol. The following messages are exchanged as part of `fast-sync` protocol:
-
+上記のように、「Executor」は「fast-sync」に属するメッセージの送受信を担当します。
+プロトコル。次のメッセージは、「QuickSync」プロトコルの一部として交換されます。
 ``` go
 type Message int
 const (
@@ -74,18 +73,18 @@ const (
   MessageBlockResponse
 )
 ```
-`MessageStatusRequest` is sent periodically to all peers as a request for a peer to provide its current height. It is
-part of the `Peer Heartbeat` mechanism and a failure to respond timely to this message results in a peer being removed
-from the peer set. Note that the `Peer Heartbeat` mechanism is used only while a peer is in `fast-sync` mode. We assume
-here existence of a mechanism that gives node a possibility to inform its peers that it is in the `fast-sync` mode.
+`MessageStatusRequest`は、現在の高さ要求を提供するピアとして、すべてのピアに定期的に送信されます。 それは
+「ピアハートビート」メカニズムの一部であり、このメッセージに時間内に応答しないと、ピアが削除されます
+ピアグループから。 「ピアツーピアハートビート」メカニズムは、ピアが「クイック同期」モードの場合にのみ使用されることに注意してください。 私たちは推測します
+ここには、ノードが「クイック同期」モードであることをピアに通知できるようにするメカニズムがあります。
 
 ``` go
 type MessageStatusRequest struct {
   SeqNum int64     // sequence number of the request
 }
 ```
-`MessageStatusResponse` is sent as a response to `MessageStatusRequest` to inform requester about the peer current
-height.
+`MessageStatusResponse`は` MessageStatusRequest`への応答として送信され、現在のピアのリクエスターに通知します
+高い。
 
 ``` go
 type MessageStatusResponse struct {
@@ -94,7 +93,7 @@ type MessageStatusResponse struct {
 }
 ```
 
-`MessageBlockRequest` is used to make a request for a block and the corresponding commit certificate at a given height.
+`MessageBlockRequest`は、指定された高さでブロックと対応する送信証明書を要求するために使用されます。
 
 ``` go
 type MessageBlockRequest struct {
@@ -102,8 +101,8 @@ type MessageBlockRequest struct {
 }
 ```
 
-`MessageBlockResponse` is a response for the corresponding block request. In addition to providing the block and the
-corresponding commit certificate, it contains also a current peer height.
+`MessageBlockResponse`は、対応するブロック要求への応答です。 ブロックを提供することに加えて
+対応する提出証明書。現在のピアの高さも含まれています。
 
 ``` go
 type MessageBlockResponse struct {
@@ -114,8 +113,8 @@ type MessageBlockResponse struct {
 }
 ```
 
-In addition to sending and receiving messages, and `HeartBeat` mechanism, controller is also managing timeouts
-that are triggered upon `Controller` request. `Controller` is then informed once a timeout expires.
+メッセージの送受信に加えて、 `HeartBeat`メカニズムがあり、コントローラーはタイムアウトも管理します
+「コントローラー」から要求されたときにトリガーされます。 タイムアウトが経過すると、「コントローラー」に通知されます。
 
 ``` go
 type TimeoutTrigger int
@@ -126,20 +125,20 @@ const (
 )
 ```
 
-The `Controller` can be modelled as a function with clearly defined inputs:
+`Controller`は、明確に定義された入力を持つ関数としてモデル化できます。
 
-* `State` - current state of the node. Contains data about connected peers and its behavior, pending requests,
-* received blocks, etc.
-* `Event` - significant events in the network.
+* `State`-ノードの現在の状態。 接続されたピアとその動作、保留中のリクエスト、
+*受け取ったブロックなど。
+* `Event`-ネットワーク内の重要なイベント。
 
-producing clear outputs:
+明確な出力を生成します。
 
-* `State` - updated state of the node,
-* `MessageToSend` - signal what message to send and to which peer
-* `TimeoutTrigger` - signal that timeout should be triggered.
+* `State`-ノードの更新状態。
+* `MessageToSend`-どのメッセージをどのピアに送信するかを示します
+* `TimeoutTrigger`-タイムアウトをトリガーする必要があることを示します。
 
 
-We consider the following `Event` types:
+次の「イベント」タイプを検討します。
 
 ``` go
 type Event int
@@ -216,11 +215,11 @@ type MessageToSend struct {
 }
 ```
 
-The Controller state machine can be in two modes: `ModeFastSync` when
-a node is trying to catch up with the network by downloading committed blocks,
-and `ModeConsensus` in which it executes Tendermint consensus protocol. We
-consider that `fast sync` mode terminates once the Controller switch to
-`ModeConsensus`.
+コントローラのステートマシンは、次の2つのモードにすることができます。
+ノードは、コミットされたブロックをダウンロードすることによってネットワークに追いつくことを試みています。
+Tendermintコンセンサスプロトコルを実行する `ModeConsensus`。 我々
+コントローラがに切り替わると、「高速同期」モードが終了することを考慮してください
+`ModeConsensus`。
 
 ``` go
 type Mode int
@@ -510,25 +509,25 @@ func verifyBlocks(state State) State {
 }
 ```
 
-In the proposed architecture `Controller` is not active task, i.e., it is being called by the `Executor`. Depending on
-the return values returned by `Controller`,`Executor` will send a message to some peer (`msg` != nil), trigger a
-timeout (`timeout` != nil) or deal with errors (`error` != nil).
-In case a timeout is triggered, it will provide as an input to `Controller` the corresponding timeout event once
-timeout expires.
+提案されたアーキテクチャでは、「コントローラ」はアクティブなタスクではありません。つまり、「エグゼキュータ」によって呼び出されます。 によると
+`Controller`と` Executor`によって返される戻り値は、ピアにメッセージを送信し( `msg`！= nil)、トリガーします。
+タイムアウト( `timeout`！= nil)またはエラーの処理(` error`！= nil)。
+タイムアウトがトリガーされると、対応するタイムアウトイベントとともに `Controller`への入力として提供されます
+タイムアウトが期限切れになりました。
 
 
-## Status
+## ステータス
 
-Draft.
+下書き。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- isolated implementation of the algorithm
-- improved testability - simpler to prove correctness
-- clearer separation of concerns - easier to reason
+-アルゴリズムの分離された実装
+-改善されたテスト容易性-正当性を証明するのがより簡単
+-関心の分離の明確化-推論の容易化
 
-### Negative
+### ネガティブ
 
-### Neutral
+### ニュートラル

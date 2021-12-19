@@ -1,159 +1,159 @@
-# ADR 067: Mempool Refactor
+# ADR 067:メモリプールの再構築
 
-- [ADR 067: Mempool Refactor](#adr-067-mempool-refactor)
-  - [Changelog](#changelog)
-  - [Status](#status)
-  - [Context](#context)
-    - [Current Design](#current-design)
-  - [Alternative Approaches](#alternative-approaches)
-  - [Prior Art](#prior-art)
-    - [Ethereum](#ethereum)
-    - [Diem](#diem)
-  - [Decision](#decision)
-  - [Detailed Design](#detailed-design)
-    - [CheckTx](#checktx)
-    - [Mempool](#mempool)
-    - [Eviction](#eviction)
-    - [Gossiping](#gossiping)
-    - [Performance](#performance)
-  - [Future Improvements](#future-improvements)
-  - [Consequences](#consequences)
-    - [Positive](#positive)
-    - [Negative](#negative)
-    - [Neutral](#neutral)
-  - [References](#references)
+-[ADR 067:メモリプールのリファクタリング](#adr-067-mempool-refactor)
+  -[変更ログ](#changelog)
+  -[状態](#State)
+  -[コンテキスト](#context)
+    -[現在のデザイン](#current-design)
+  -[代替方法](#alternative-approaches)
+  -[既存のテクノロジー](#prior-art)
+    -[イーサリアム](#ethereum)
+    -[Diem](#diem)
+  -[決定](#decision)
+  -[詳細設計](#detailed-design)
+    -[CheckTx](#checktx)
+    -[メモリプール](#mempool)
+    -[Eviction](#eviction)
+    -[八卦](#八卦)
+    -[演](#演)
+  -[将来の改善](#future-improvements)
+  -[結果](#consequences)
+    -[正](#positive)
+    -[ネガティブ](#ネガティブ)
+    -[ニュートラル](#neutral)
+  -[参照](#references)
 
-## Changelog
+## 変更ログ
 
-- April 19, 2021: Initial Draft (@alexanderbez)
+-2021年4月19日:最初のドラフト(@alexanderbez)
 
-## Status
+## ステータス
 
-Accepted
+受け入れられました
 
-## Context
+## 環境
 
-Tendermint Core has a reactor and data structure, mempool, that facilitates the
-ephemeral storage of uncommitted transactions. Honest nodes participating in a
-Tendermint network gossip these uncommitted transactions to each other if they
-pass the application's `CheckTx`. In addition, block proposers select from the
-mempool a subset of uncommitted transactions to include in the next block.
+Tendermint Coreには、リアクターとデータ構造のmempoolがあり、これが役立ちます。
+コミットされていないトランザクションの一時的な保存。参加している正直なノード
+Tendermintネットワークは、これらのコミットされていないトランザクションが相互にゴシップする場合、
+アプリケーションの `CheckTx`を介して。さらに、からのブロック提案者
+メモリプールには、コミットされていないトランザクションのサブセットが次のブロックに含まれます。
 
-Currently, the mempool in Tendermint Core is designed as a FIFO queue. In other
-words, transactions are included in blocks as they are received by a node. There
-currently is no explicit and prioritized ordering of these uncommitted transactions.
-This presents a few technical and UX challenges for operators and applications.
+現在、TendermintCoreのmempoolはFIFOキューとして設計されています。他の
+つまり、トランザクションは、ノードによって受信されたときにブロックに含まれます。三
+現在、これらのコミットされていないトランザクションの明確で優先順位はありません。
+これは、オペレーターとアプリケーションにいくつかの技術的およびユーザーエクスペリエンスの課題をもたらします。
 
-Namely, validators are not able to prioritize transactions by their fees or any
-incentive aligned mechanism. In addition, the lack of prioritization also leads
-to cascading effects in terms of DoS and various attack vectors on networks,
-e.g. [cosmos/cosmos-sdk#8224](https://github.com/cosmos/cosmos-sdk/discussions/8224).
+言い換えれば、バリデーターは彼らの料金や
+インセンティブと調整メカニズム。さらに、優先順位の欠如はまたにつながります
+DoSおよびネットワーク上のさまざまな攻撃ベクトルに対するカスケード効果、
+たとえば、[cosmos/cosmos-sdk#8224](https://github.com/cosmos/cosmos-sdk/discussions/8224)です。
 
-Thus, Tendermint Core needs the ability for an application and its users to
-prioritize transactions in a flexible and performant manner. Specifically, we're
-aiming to either improve, maintain or add the following properties in the
-Tendermint mempool:
+したがって、Tendermint Coreでは、アプリケーションとそのユーザーが次のことができるようにする必要があります。
+柔軟で効率的な方法でトランザクションに優先順位を付けます。具体的には、
+以下の属性を改善、維持、または追加することを目的としています
+テンダーミントメモリープール:
 
-- Allow application-determined transaction priority.
-- Allow efficient concurrent reads and writes.
-- Allow block proposers to reap transactions efficiently by priority.
-- Maintain a fixed mempool capacity by transaction size and evict lower priority
-  transactions to make room for higher priority transactions.
-- Allow transactions to be gossiped by priority efficiently.
-- Allow operators to specify a maximum TTL for transactions in the mempool before
-  they're automatically evicted if not selected for a block proposal in time.
-- Ensure the design allows for future extensions, such as replace-by-priority and
-  allowing multiple pending transactions per sender, to be incorporated easily.
+-アプリケーションがトランザクションの優先度を決定できるようにします。
+-効率的な同時読み取りと書き込みを可能にします。
+-ブロック提案者が優先度によってトランザクションを効率的に取得できるようにします。
+-トランザクションサイズに基づいて固定メモリプール容量を維持し、優先度を低くします
+  優先度の高いトランザクションのための余地を作ります。
+-優先度による効率的なゴシップトランザクションを可能にします。
+-オペレーターが前にメモリープール内のトランザクションの最大TTLを指定できるようにする
+  ブロックプロポーザルが時間内に選択されない場合、それらは自動的に削除されます。
+-設計が優先順位の置き換えなどの将来の拡張を可能にすることを確認します。
+  各送信者が複数の保留中のトランザクションを持つことを許可します。これは簡単にマージできます。
 
-Note, not all of these properties will be addressed by the proposed changes in
-this ADR. However, this proposal will ensure that any unaddressed properties
-can be addressed in an easy and extensible manner in the future.
+これらのプロパティのすべてが提案された変更で解決されるわけではないことに注意してください
+このADR。ただし、提案は未解決のプロパティを保証します
+将来的には、シンプルでスケーラブルな方法で解決できます。
 
-### Current Design
+### 現在のデザイン
 
-![mempool](./img/mempool-v0.jpeg)
+！[mempool](./ img/mempool-v0.jpeg)
 
-At the core of the `v0` mempool reactor is a concurrent linked-list. This is the
-primary data structure that contains `Tx` objects that have passed `CheckTx`.
-When a node receives a transaction from another peer, it executes `CheckTx`, which
-obtains a read-lock on the `*CListMempool`. If the transaction passes `CheckTx`
-locally on the node, it is added to the `*CList` by obtaining a write-lock. It
-is also added to the `cache` and `txsMap`, both of which obtain their own respective
-write-locks and map a reference from the transaction hash to the `Tx` itself.
+`v0`メモリプールリアクタのコアは、同時リンクリストです。これは
+「CheckTx」を通過した「Tx」オブジェクトのメインデータ構造が含まれます。
+ノードが別のノードからトランザクションを受信すると、「CheckTx」を実行します。
+`* CListMempool`の読み取りロックを取得します。トランザクションが `CheckTx`に合格した場合
+ノードのローカルで、書き込みロックを取得して `* CList`に追加します。それ
+`cache`と` txsMap`にも追加されました。どちらも独自のものを持っています
+ロックを書き込み、トランザクションハッシュの参照を「Tx」自体にマップします。
 
-Transactions are continuously gossiped to peers whenever a new transaction is added
-to a local node's `*CList`, where the node at the front of the `*CList` is selected.
-Another transaction will not be gossiped until the `*CList` notifies the reader
-that there are more transactions to gossip.
+新しいトランザクションが追加されるたびに、トランザクションはピアに継続的に送信されます
+ローカルノードの「* CList」に対して、「* CList」より前のノードを選択します。
+`* CList`がリーダーに通知する前に、別のトランザクションはゴシップされません
+ゴシップにはもっと多くの取引があります。
 
-When a proposer attempts to propose a block, they will execute `ReapMaxBytesMaxGas`
-on the reactor's `*CListMempool`. This call obtains a read-lock on the `*CListMempool`
-and selects as many transactions as possible starting from the front of the `*CList`
-moving to the back of the list.
+提案者がブロックを提案しようとすると、 `ReapMaxBytesMaxGas`が実行されます。
+リアクターの `* CListMempool`について。この呼び出しは、 `* CListMempool`の読み取りロックを取得します
+そして、 `* CList`の前からできるだけ多くのトランザクションを選択します
+リストの最後に移動します。
 
-When a block is finally committed, a caller invokes `Update` on the reactor's
-`*CListMempool` with all the selected transactions. Note, the caller must also
-explicitly obtain a write-lock on the reactor's `*CListMempool`. This call
-will remove all the supplied transactions from the `txsMap` and the `*CList`, both
-of which obtain their own respective write-locks. In addition, the transaction
-may also be removed from the `cache` which obtains it's own write-lock.
+ブロックが最終的に送信されると、呼び出し元はリアクターで「更新」を呼び出します
+`* CListMempool`には、選択したすべてのトランザクションが含まれます。発信者も
+リアクタの `* CListMempool`の書き込みロックを明示的に取得します。この呼び出し
+提供されたすべてのトランザクションは、 `txsMap`と` * CList`から削除されます。どちらも
+それぞれの書き込みロックを取得します。さらに、トランザクション
+独自の書き込みロックを取得する「キャッシュ」から削除することもできます。
 
-## Alternative Approaches
+## 代替方法
 
-When considering which approach to take for a priority-based flexible and
-performant mempool, there are two core candidates. The first candidate is less
-invasive in the required  set of protocol and implementation changes, which
-simply extends the existing `CheckTx` ABCI method. The second candidate essentially
-involves the introduction of new ABCI method(s) and would require a higher degree
-of complexity in protocol and implementation changes, some of which may either
-overlap or conflict with the upcoming introduction of [ABCI++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md).
+優先度ベースの柔軟性を実現するために採用する方法を検討し、
+高性能メモリプールには2つのコア候補があります。最初の候補者が少ない
+必要なプロトコルと実装の変更のセットに侵入します。
+既存の `CheckTx`ABCIメソッドを拡張するだけです。 2番目の候補は本質的に
+新しいABCIメソッドの導入を含み、より高度な学位を必要とします
+プロトコルと実装の複雑さが変化し、その一部は
+今後の[ABCI ++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md)と重複または競合します。
 
-For more information on the various approaches and proposals, please see the
-[mempool discussion](https://github.com/tendermint/tendermint/discussions/6295).
+さまざまな方法と推奨事項の詳細については、を参照してください。
+[メモリプールディスカッション](https://github.com/tendermint/tendermint/discussions/6295)。
 
-## Prior Art
+## 現在のテクノロジー
 
-### Ethereum
+### イーサリアム
 
-The Ethereum mempool, specifically [Geth](https://github.com/ethereum/go-ethereum),
-contains a mempool, `*TxPool`, that contains various mappings indexed by account,
-such as a `pending` which contains all processable transactions for accounts
-prioritized by nonce. It also contains a `queue` which is the exact same mapping
-except it contains not currently processable transactions. The mempool also
-contains a `priced` index of type `*txPricedList` that is a priority queue based
-on transaction price.
+イーサリアムメモリプール、特に[Geth](https://github.com/ethereum/go-ethereum)、
+アカウントによってインデックス付けされたさまざまなマッピングを含むメモリプール `* TxPool`が含まれています。
+たとえば、「保留中」には、アカウントで処理できるすべてのトランザクションが含まれます
+ノンスによる優先順位。また、まったく同じマッピングである「キュー」も含まれています
+現在処理できないトランザクションが含まれている場合を除きます。メモリープールも
+優先キューに基づくタイプ「* txPricedList」の「価格設定」インデックスが含まれています
+取引価格で。
 
-### Diem
+### 薄暗い
 
-The [Diem mempool](https://github.com/diem/diem/blob/master/mempool/README.md#implementation-details)
-contains a similar approach to the one we propose. Specifically, the Diem mempool
-contains a mapping from `Account:[]Tx`. On top of this primary mapping from account
-to a list of transactions, are various indexes used to perform certain actions.
+[Diemメモリプール](https://github.com/diem/diem/blob/master/mempool/README.md#implementation-details)
+推奨する方法と同様の方法が含まれています。具体的には、Diemメモリプール
+`Account:[] Tx`からのマッピングが含まれています。アカウントからのこのメインマッピングに加えて
+トランザクションリストには、特定の操作を実行するために使用されるさまざまなインデックスがあります。
 
-The main index, `PriorityIndex`. is an ordered queue of transactions that are
-“consensus-ready” (i.e., they have a sequence number which is sequential to the
-current sequence number for the account). This queue is ordered by gas price so
-that if a client is willing to pay more (than other clients) per unit of
-execution, then they can enter consensus earlier.
+プライマリインデックス、 `PriorityIndex`。順序付けられたトランザクションキューです
+「コンセンサスレディ」(つまり、シリアル番号が
+アカウントの現在のシリアル番号)。このキューはガス価格でソートされています
+顧客が(他の顧客よりも)ユニットあたりより多く支払うことをいとわない場合
+実装すれば、彼らはより早く合意に達することができます。
 
-## Decision
+## 決定
 
-To incorporate a priority-based flexible and performant mempool in Tendermint Core,
-we will introduce new fields, `priority` and `sender`, into the `ResponseCheckTx`
-type.
+優先度ベースの柔軟で高性能なメモリプールをTendermintCoreに追加するために、
+`ResponseCheckTx`に新しいフィールド` priority`と `sender`を導入します
+タイプ。
 
-We will introduce a new versioned mempool reactor, `v1` and assume an implicit
-version of the current mempool reactor as `v0`. In the new `v1` mempool reactor,
-we largely keep the functionality the same as `v0` except we augment the underlying
-data structures. Specifically, we keep a mapping of senders to transaction objects.
-On top of this mapping, we index transactions to provide the ability to efficiently
-gossip and reap transactions by priority.
+メモリプールリアクタの新しいバージョンである `v1`を導入し、暗黙的なものを想定します
+現在のメモリプールリアクタのバージョンは「v0」です。新しい「v1」メモリプールリアクタでは、
+最下層を増やすことを除いて、 `v0`と同じ機能を大幅に維持します
+データ構造。具体的には、送信者からトランザクションオブジェクトへのマッピングを維持します。
+このマッピングに加えて、効果的なサービスを提供するためにトランザクションにインデックスを付けます
+ゴシップと取引の優先順位付け。
 
-## Detailed Design
+## 詳細設計
 
 ### CheckTx
 
-We introduce the following new fields into the `ResponseCheckTx` type:
+`ResponseCheckTx`タイプに次の新しいフィールドが導入されました。
 
 ```diff
 message ResponseCheckTx {
@@ -170,27 +170,28 @@ message ResponseCheckTx {
 }
 ```
 
-It is entirely up the application in determining how these fields are populated
-and with what values, e.g. the `sender` could be the signer and fee payer 
-of the transaction, the `priority` could be the cumulative sum of the fee(s).
 
-Only `sender` is required, while `priority` can be omitted which would result in
-using the default value of zero.
+これらのフィールドへの入力方法を決定するのは、完全にアプリケーション次第です。
+そして、たとえば「送信​​者」が署名者と支払者になることができる値
+トランザクションでは、「優先度」は手数料の累積額になります。
 
-### Mempool
+`sender`のみが必要であり、` priority`は省略できます。
+デフォルト値のゼロを使用します。
 
-The existing concurrent-safe linked-list will be replaced by a thread-safe map
-of `<sender:*Tx>`, i.e a mapping from `sender` to a single `*Tx` object, where
-each `*Tx` is the next valid and processable transaction from the given `sender`.
+### メモリプール
 
-On top of this mapping, we index all transactions by priority using a thread-safe
-priority queue, i.e. a [max heap](https://en.wikipedia.org/wiki/Min-max_heap).
-When a proposer is ready to select transactions for the next block proposal,
-transactions are selected from this priority index by highest priority order.
-When a transaction is selected and reaped, it is removed from this index and
-from the `<sender:*Tx>` mapping.
+既存の同時セーフリンクリストは、スレッドセーフマッピングに置き換えられます
+`<sender:* Tx>`、つまり、 `sender`から単一の` * Tx`オブジェクトへのマッピング。
+各 `* Tx`は、指定された` sender`からの次の有効で処理可能なトランザクションです。
 
-We define `Tx` as the following data structure:
+このマッピングに加えて、スレッドセーフな方法を使用して、すべてのトランザクションを優先度でインデックス付けします
+優先キュー、つまり[最大ヒープ](https://en.wikipedia.org/wiki/Min-max_heap)。
+提案者が次のブロック提案のトランザクションを選択する準備ができたら、
+優先度の高い順にトランザクションを優先度インデックスから選択します。
+トランザクションが選択されて収集されると、このインデックスから削除され、
+`<sender:* Tx>`マッピングから。
+
+`Tx`を次のデータ構造として定義します。
 
 ```go
 type Tx struct {
@@ -212,92 +213,92 @@ type Tx struct {
 }
 ```
 
-### Eviction
+### 国外追放
 
-Upon successfully executing `CheckTx` for a new `Tx` and the mempool is currently
-full, we must check if there exists a `Tx` of lower priority that can be evicted
-to make room for the new `Tx` with higher priority and with sufficient size
-capacity left.
+新しい「Tx」に対して「CheckTx」を正常に実行した後、メモリプールは現在
+満杯の場合、削除できる優先度の低い「Tx」があるかどうかを確認する必要があります
+優先度が高く、十分なサイズの新しい「Tx」用のスペースを確保します
+残りの容量。
 
-If such a `Tx` exists, we find it by obtaining a read lock and sorting the
-priority queue index. Once sorted, we find the first `Tx` with lower priority and
-size such that the new `Tx` would fit within the mempool's size limit. We then
-remove this `Tx` from the priority queue index as well as the `<sender:*Tx>`
-mapping.
+そのような `Tx`がある場合、読み取りロックを取得してソートすることでそれを見つけます
+優先キューインデックス。並べ替え後、優先度の低い最初の「Tx」が見つかり、次に
+新しい「Tx」がメモリプールのサイズ制限に合うようにサイズを設定します。その後、私たちは
+この `Tx`と` <sender:* Tx> `を優先キューインデックスから削除します
+マッピング。
 
-This will require additional `O(n)` space and `O(n*log(n))` runtime complexity. Note that the space complexity does not depend on the size of the tx.
+これには、追加の「O(n)」スペースと「O(n * log(n))」ランタイムの複雑さが必要になります。スペースの複雑さはtxのサイズに依存しないことに注意してください。
 
-### Gossiping
+### ゴシップ
 
-We keep the existing thread-safe linked list as an additional index. Using this
-index, we can efficiently gossip transactions in the same manner as they are
-gossiped now (FIFO).
+既存のスレッドセーフリンクリストを追加のインデックスとして保持します。これを使って
+インデックス、私たちはそれらと同じ方法で効果的にゴシップトランザクションを行うことができます
+今ゴシップ(FIFO)。
 
-Gossiping transactions will not require locking any other indexes.
+ゴシップトランザクションは、他のインデックスをロックする必要はありません。
 
-### Performance
+### パフォーマンス
 
-Performance should largely remain unaffected apart from the space overhead of
-keeping an additional priority queue index and the case where we need to evict
-transactions from the priority queue index. There should be no reads which
-block writes on any index
+スペースのオーバーヘッドに加えて、パフォーマンスはほとんど影響を受けないはずです
+追加の優先キューインデックスと、削除する必要のある状況を保持します
+優先キューインデックスからのトランザクション。読むべきではない
+任意のインデックスへの書き込みをブロックする
 
-## Future Improvements
+## 将来の改善
 
-There are a few considerable ways in which the proposed design can be improved or
-expanded upon. Namely, transaction gossiping and for the ability to support
-multiple transactions from the same `sender`.
+提案された設計を改善または改善するためのいくつかの重要な方法があります
+拡張されました。つまり、ゴシップとサポートを交換する能力
+同じ「送信者」からの複数のトランザクション。
 
-With regards to transaction gossiping, we need empirically validate whether we
-need to gossip by priority. In addition, the current method of gossiping may not
-be the most efficient. Specifically, broadcasting all the transactions a node
-has in it's mempool to it's peers. Rather, we should explore for the ability to
-gossip transactions on a request/response basis similar to Ethereum and other
-protocols. Not only does this reduce bandwidth and complexity, but also allows
-for us to explore gossiping by priority or other dimensions more efficiently.
+ゴシップの取引については、経験から確認する必要があります。
+ゴシップを優先する必要があります。さらに、現在のゴシップメソッドはそうではないかもしれません
+最も効率的になります。具体的には、ノードのすべてのトランザクションをブロードキャストします
+メモリプールに対応するものがあります。代わりに、機能を調査する必要があります
+要求/応答に基づくゴシップトランザクションは、イーサリアムなどに似ています
+プロトコル。これにより、帯域幅と複雑さが軽減されるだけでなく、
+優先順位やその他の側面でゴシップをより効果的に探求できるようにするためです。
 
-Allowing for multiple transactions from the same `sender` is important and will
-most likely be a needed feature in the future development of the mempool, but for
-now it suffices to have the preliminary design agreed upon. Having the ability
-to support multiple transactions per `sender` will require careful thought with
-regards to the interplay of the corresponding ABCI application. Regardless, the
-proposed design should allow for adaptations to support this feature in a
-non-contentious and backwards compatible manner.
+同じ「送信者」からの複数のトランザクションを許可することは重要であり、
+将来のメモリープール開発に必要な機能かもしれませんが、
+今のところ、予備設計に同意するだけで十分です。できる
+「送信者」ごとに複数のトランザクションをサポートするには、慎重に検討する必要があります
+対応するABCIアプリケーションの相互作用について。とにかく、
+提案された設計では、この機能をサポートするための調整が可能である必要があります
+物議を醸す下位互換性のある方法。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Transactions are allowed to be prioritized by the application.
+-アプリケーションがトランザクションに優先順位を付けることを許可します。
 
-### Negative
+### ネガティブ
 
-- Increased size of the `ResponseCheckTx` Protocol Buffer type.
-- Causal ordering is NOT maintained.
-  - It is possible that certain transactions broadcasted in a particular order may
-  pass `CheckTx` but not end up being committed in a block because they fail
-  `CheckTx` later. e.g. Consider Tx<sub>1</sub> that sends funds from existing
-  account Alice to a _new_ account Bob with priority P<sub>1</sub> and then later
-  Bob's _new_ account sends funds back to Alice in Tx<sub>2</sub> with P<sub>2</sub>,
-  such that P<sub>2</sub> > P<sub>1</sub>. If executed in this order, both
-  transactions will pass `CheckTx`. However, when a proposer is ready to select
-  transactions for the next block proposal, they will select Tx<sub>2</sub> before
-  Tx<sub>1</sub> and thus Tx<sub>2</sub> will _fail_ because Tx<sub>1</sub> must
-  be executed first. This is because there is a _causal ordering_,
-  Tx<sub>1</sub> ➝ Tx<sub>2</sub>. These types of situations should be rare as
-  most transactions are not causally ordered and can be circumvented by simply
-  trying again at a later point in time or by ensuring the "child" priority is
-  lower than the "parent" priority. In other words, if parents always have
-  priories that are higher than their children, then the new mempool design will
-  maintain causal ordering.  
+-`ResponseCheckTx`プロトコルバッファタイプのサイズを増やしました。
+-因果関係を維持しません。
+  -特定の順序でブロードキャストされる特定のトランザクションは、
+  `CheckTx`に合格しましたが、失敗したためブロックでコミットしませんでした
+  後で `CheckTx`。たとえば、既存のTx <sub> 1 </ sub>から資金を送ることを検討してください。
+  アカウントアリスは優先度P <sub> 1 </ sub>の_新しい_アカウントボブに行き、その後
+  ボブの_new_アカウントは、Tx <sub> 2 </ sub>とP <sub> 2 </ sub>でアリスに資金を送り返します。
+  P <sub> 2 </ sub >> P <sub> 1 </ sub>にします。この順序で実行すると、両方
+  トランザクションは `CheckTx`を通過します。しかし、提案者が選択する準備ができたら
+  次のブロック提案トランザクションでは、前にTx <sub> 2 </ sub>を選択します
+  Tx <sub> 1 </ sub>はTx <sub> 1 </ sub>でなければならないため、Tx <sub> 1 </ sub>とTx <sub> 2 </ sub>は_失敗_します
+  最初に実行されます。これは、_因果シーケンス_があるためです。
+  Tx <sub> 1 </ sub>→Tx <sub> 2 </ sub>。これらのタイプの状況はまれであるはずです。
+  ほとんどのトランザクションは因果関係がなく、簡単に回避できます
+  後で再試行するか、「子」の優先順位が
+  「親」の優先度よりも低い。言い換えれば、親が常に持っている場合
+  子供よりも優先度が高い場合、新しいメモリプールの設計は
+  原因と結果の順序を維持します。
 
-### Neutral
+### ニュートラル
 
-- A transaction that passed `CheckTx` and entered the mempool can later be evicted
-  at a future point in time if a higher priority transaction entered while the
-  mempool was full.
+-`CheckTx`を通過してメモリプールに入るトランザクションは、後で削除できます
+  将来のある時点で、
+  メモリプールがいっぱいです。
 
-## References
+## 参照する
 
-- [ABCI++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md)
-- [Mempool Discussion](https://github.com/tendermint/tendermint/discussions/6295)
+-[ABCI ++](https://github.com/tendermint/spec/blob/master/rfc/004-abci%2B%2B.md)
+-[メモリプールディスカッション](https://github.com/tendermint/tendermint/discussions/6295)

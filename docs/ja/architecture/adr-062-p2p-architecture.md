@@ -1,73 +1,73 @@
-# ADR 062: P2P Architecture and Abstractions
+# ADR 062:P2Pアーキテクチャと抽象化
 
-## Changelog
+## 変更ログ
 
-- 2020-11-09: Initial version (@erikgrinaker)
+-2020-11-09:初期バージョン(@erikgrinaker)
 
-- 2020-11-13: Remove stream IDs, move peer errors onto channel, note on moving PEX into core (@erikgrinaker)
+-2020年11月13日:ストリームIDを削除し、ピアエラーをチャネルに移動し、PEXをコアに移動することに注意してください(@erikgrinaker)
 
-- 2020-11-16: Notes on recommended reactor implementation patterns, approve ADR (@erikgrinaker)
+-2020-11-16:推奨される原子炉実施モードの説明、ADRの承認(@erikgrinaker)
 
-- 2021-02-04: Update with new P2P core and Transport API changes (@erikgrinaker).
+-2021年2月4日:新しいP2PコアとトランスポートAPIの変更で更新されました(@erikgrinaker)。
 
-## Context
+## 環境
 
-In [ADR 061](adr-061-p2p-refactor-scope.md) we decided to refactor the peer-to-peer (P2P) networking stack. The first phase is to redesign and refactor the internal P2P architecture, while retaining protocol compatibility as far as possible.
+[ADR 061](adr-061-p2p-refactor-scope.md)では、ピアツーピア(P2P)ネットワークスタックをリファクタリングすることにしました。最初の段階は、プロトコルの互換性を可能な限り維持しながら、内部P2Pアーキテクチャを再設計および再構築することです。
 
-## Alternative Approaches
+## 代替方法
 
-Several variations of the proposed design were considered, including e.g. calling interface methods instead of passing messages (like the current architecture), merging channels with streams, exposing the internal peer data structure to reactors, being message format-agnostic via arbitrary codecs, and so on. This design was chosen because it has very loose coupling, is simpler to reason about and more convenient to use, avoids race conditions and lock contention for internal data structures, gives reactors better control of message ordering and processing semantics, and allows for QoS scheduling and backpressure in a very natural way.
+たとえば、メッセージを渡す代わりにインターフェイスメソッドを呼び出す(現在のアーキテクチャのように)、チャネルとストリームをマージする、内部のピアツーピアデータ構造をリアクタに公開する、任意のパスを渡すなど、提案された設計のいくつかのバリエーションが検討されました。コーデックとメッセージフォーマット何もありません、待ってください。この設計が選択されたのは、結合が非常に緩く、推論が簡単で使いやすく、競合状態や内部データ構造のロック競合を回避し、reactorがメッセージの順序付けと処理のセマンティクスをより適切に制御できるようにし、QoSディスパッチを可能にするためです。そして非常に自然な方法で背圧。
 
-[multiaddr](https://github.com/multiformats/multiaddr) was considered as a transport-agnostic peer address format over regular URLs, but it does not appear to have very widespread adoption, and advanced features like protocol encapsulation and tunneling do not appear to be immediately useful to us.
+[multiaddr](https://github.com/multiformats/multiaddr)は、通常のURLを介した送信とは関係のないピアツーピアアドレス形式と見なされますが、広く採用されているようには見えず、プロトコルのカプセル化やトンネリングなどの高度な機能は、すぐには役に立たないようです。
 
-There were also proposals to use LibP2P instead of maintaining our own P2P stack, which were rejected (for now) in [ADR 061](adr-061-p2p-refactor-scope.md).
+独自のP2Pスタックを維持する代わりにLibP2Pを使用するためのいくつかの提案もあります。これらの提案は、[ADR 061](adr-061-p2p-refactor-scope.md)で(現在)拒否されています。
 
-The initial version of this ADR had a byte-oriented multi-stream transport API, but this had to be abandoned/postponed to maintain backwards-compatibility with the existing MConnection protocol which is message-oriented. See the rejected RFC in [tendermint/spec#227](https://github.com/tendermint/spec/pull/227) for details.
+このADRの初期バージョンにはバイト指向のマルチストリーム送信APIがありますが、既存のメッセージ指向のMConnectionプロトコルとの下位互換性を維持するために、放棄/延期する必要があります。詳細については、[tendermint/spec#227](https://github.com/tendermint/spec/pull/227)で拒否されたRFCを参照してください。
 
-## Decision
+## 決定
 
-The P2P stack will be redesigned as a message-oriented architecture, primarily relying on Go channels for communication and scheduling. It will use a message-oriented transport to binary messages with individual peers, bidirectional peer-addressable channels to send and receive Protobuf messages, a router to route messages between reactors and peers, and a peer manager to manage peer lifecycle information. Message passing is asynchronous with at-most-once delivery.
+P2Pスタックは、メッセージ指向アーキテクチャとして再設計され、主に通信とスケジューリングをGoチャネルに依存します。単一のピア、双方向のピアツーピアアドレス可能チャネルを使用したバイナリメッセージへのメッセージ指向の送信を使用して、Protobufメッセージ、リアクターとピア間でメッセージをルーティングするルーターを送受信し、定期的な情報のピアライフピアマネージャーを管理します。メッセージ配信は、最大1回の配信と非同期です。
 
-## Detailed Design
+## 詳細設計
 
-This ADR is primarily concerned with the architecture and interfaces of the P2P stack, not implementation details. The interfaces described here should therefore be considered a rough architecture outline, not a complete and final design.
+ADRは、実装の詳細ではなく、主にP2Pスタックのアーキテクチャとインターフェイスに焦点を当てています。したがって、ここで説明するインターフェイスは、完全な最終設計ではなく、大まかなアーキテクチャの概要と見なす必要があります。
 
-Primary design objectives have been:
+主な設計目標は次のとおりです。
 
-* Loose coupling between components, for a simpler, more robust, and test-friendly architecture.
-* Pluggable transports (not necessarily networked).
-* Better scheduling of messages, with improved prioritization, backpressure, and performance.
-* Centralized peer lifecycle and connection management.
-* Better peer address detection, advertisement, and exchange.
-* Wire-level backwards compatibility with current P2P network protocols, except where it proves too obstructive.
+*コンポーネント間の結合を緩めて、よりシンプルで堅牢でテストに適したアーキテクチャを実現します。
+*プラガブル伝送(必ずしもネットワーク化されている必要はありません)。
+*より良いメッセージスケジューリング、改善された優先度、バックプレッシャーおよびパフォーマンス。
+*一元化されたピアツーピアのライフサイクルと接続管理。
+*ピアアドレスの検出、アドバタイズ、交換が改善されました。
+*障害物が多すぎることが判明しない限り、現在のP2Pネットワークプロトコルとの回線レベルの下位互換性。
 
-The main abstractions in the new stack are:
+新しいスタックの主な抽象化は次のとおりです。
 
-* `Transport`: An arbitrary mechanism to exchange binary messages with a peer across a `Connection`.
-* `Channel`: A bidirectional channel to asynchronously exchange Protobuf messages with peers using node ID addressing.
-* `Router`: Maintains transport connections to relevant peers and routes channel messages.
-* `PeerManager`: Manages peer lifecycle information, e.g. deciding which peers to dial and when, using a `peerStore` for storage.
-* Reactor: A design pattern loosely defined as "something which listens on a channel and reacts to messages".
+* `Transport`:` Connection`を介してピアとバイナリメッセージを交換するための任意のメカニズム。
+* `Channel`:ノードIDを使用して、ピアとのProtobufメッセージの非同期交換用の双方向チャネルをアドレス指定します。
+* `Router`:関連するピアおよびルートチャネルメッセージとの送信接続を維持します。
+* `PeerManager`:ストレージに「peerStore」を使用して、呼び出すピアや呼び出すタイミングの決定など、ピアのライフサイクル情報を管理します。
+* Reactor:「チャネルをリッスンしてメッセージに反応するもの」として大まかに定義されたデザインパターン。
 
-These abstractions are illustrated in the following diagram (representing the internals of node A) and described in detail below.
+これらの抽象化は、以下の図(ノードAの内部構造を表す)に示され、以下で詳細に説明されています。
 
-![P2P Architecture Diagram](img/adr-062-architecture.svg)
+！[P2Pアーキテクチャ図](img/adr-062-architecture.svg)
 
-### Transports
+### 交通
 
-Transports are arbitrary mechanisms for exchanging binary messages with a peer. For example, a gRPC transport would connect to a peer over TCP/IP and send data using the gRPC protocol, while an in-memory transport might communicate with a peer running in another goroutine using internal Go channels. Note that transports don't have a notion of a "peer" or "node" as such - instead, they establish connections between arbitrary endpoint addresses (e.g. IP address and port number), to decouple them from the rest of the P2P stack.
+トランスポートは、バイナリメッセージをピアと交換するために使用されるメカニズムです。たとえば、gRPC送信はTCP/IPを介してピアに接続し、gRPCプロトコルを使用してデータを送信しますが、メモリ内送信は内部Goチャネルを使用して別のゴルーチンで実行されているピアと通信する場合があります。トランスポート自体には「ピア」または「ノード」の概念がないことに注意してください。代わりに、任意のエンドポイントアドレス(IPアドレスやポート番号など)間の接続を確立して、残りのP2Pスタックから分離します。
 
-Transports must satisfy the following requirements:
+輸送は次の要件を満たしている必要があります。
 
-* Be connection-oriented, and support both listening for inbound connections and making outbound connections using endpoint addresses.
+*コネクション型で、インバウンド接続の監視とエンドポイントアドレスを使用したアウトバウンド接続の確立をサポートします。
 
-* Support sending binary messages with distinct channel IDs (although channels and channel IDs are a higher-level application protocol concept explained in the Router section, they are threaded through the transport layer as well for backwards compatibilty with the existing MConnection protocol).
+*異なるチャネルIDでのバイナリメッセージの送信をサポートします(チャネルとチャネルIDは、ルーターのセクションで説明されている高レベルのアプリケーションプロトコルの概念ですが、トランスポート層を介してスレッド化され、既存のMConnectionプロトコルと下位互換性があります)。
 
-* Exchange the MConnection `NodeInfo` and public key via a node handshake, and possibly encrypt or sign the traffic as appropriate.
+*ノードハンドシェイクを介してMConnection`NodeInfo`と公開鍵を交換し、トラフィックを適切に暗号化または署名する場合があります。
 
-The initial transport is a port of the current MConnection protocol currently used by Tendermint, and should be backwards-compatible at the wire level. An in-memory transport for testing has also been implemented. There are plans to explore a QUIC transport that may replace the MConnection protocol.
+最初の送信は、Tendermintによって現在使用されている現在のMConnectionプロトコルのポートであり、回線レベルで下位互換性がある必要があります。テスト用のメモリ内送信も実装されています。 MConnectionプロトコルに取って代わる可能性のあるQUIC送信を調査する計画があります。
 
-The `Transport` interface is as follows:
+`Transport`のインターフェースは次のとおりです。
 
 ```go
 // Transport is a connection-oriented mechanism for exchanging data with a peer.
@@ -94,13 +94,13 @@ type Transport interface {
 }
 ```
 
-How the transport configures listening is transport-dependent, and not covered by the interface. This typically happens during transport construction, where a single instance of the transport is created and set to listen on an appropriate network interface before being passed to the router.
+送信がリッスンするように構成されている方法は、送信によって異なり、インターフェイスには含まれていません。 これは通常、トランスポートの構築中に発生します。トランスポートインスタンスが作成され、ルーターに渡される前に適切なネットワークインターフェイスでリッスンするように設定されます。
 
-#### Endpoints
+#### 終点
 
-`Endpoint` represents a transport endpoint (e.g. an IP address and port). A connection always has two endpoints: one at the local node and one at the remote peer. Outbound connections to remote endpoints are made via `Dial()`, and inbound connections to listening endpoints are returned via `Accept()`.
+「エンドポイント」は、送信エンドポイント(IPアドレスやポートなど)を示します。 接続には常に2つのエンドポイントがあります。1つはローカルノードに、もう1つはリモートノードにあります。 リモートエンドポイントへのアウトバウンド接続は `Dial()`を介して確立され、リスニングエンドポイントへのインバウンド接続は `Accept()`を介して返されます。
 
-The `Endpoint` struct is:
+`Endpoint`構造は次のとおりです。
 
 ```go
 // Endpoint represents a transport connection endpoint, either local or remote.
@@ -128,17 +128,17 @@ type Endpoint struct {
 type Protocol string
 ```
 
-Endpoints are arbitrary transport-specific addresses, but if they are networked they must use IP addresses and thus rely on IP as a fundamental packet routing protocol. This enables policies for address discovery, advertisement, and exchange - for example, a private `192.168.0.0/24` IP address should only be advertised to peers on that IP network, while the public address `8.8.8.8` may be advertised to all peers. Similarly, any port numbers if given must represent TCP and/or UDP port numbers, in order to use [UPnP](https://en.wikipedia.org/wiki/Universal_Plug_and_Play) to autoconfigure e.g. NAT gateways.
+エンドポイントは任意の送信固有のアドレスですが、ネットワークに接続されている場合はIPアドレスを使用する必要があるため、基本的なパケットルーティングプロトコルとしてIPに依存しています。これにより、アドレスの検出、アドバタイズ、および交換の戦略が可能になります。たとえば、プライベート「192.168.0.0/24」IPアドレスは、そのIPネットワーク上のピアにのみアドバタイズする必要がありますが、パブリックアドレス「8.8.8.8」はすべての同僚にアドバタイズできます。 。同様に、NATゲートウェイなどの自動構成に[UPnP](https://en.wikipedia.org/wiki/Universal_Plug_and_Play)を使用するには、任意のポート番号がTCPおよび/またはUDPポート番号を表す必要があります。
 
-Non-networked endpoints (without an IP address) are considered local, and will only be advertised to other peers connecting via the same protocol. For example, the in-memory transport used for testing uses `Endpoint{Protocol: "memory", Path: "foo"}` as an address for the node "foo", and this should only be advertised to other nodes using `Protocol: "memory"`.
+ネットワークに接続されていないエンドポイント(IPアドレスなし)はローカルと見なされ、同じプロトコルを介して接続されている他のピアにのみアドバタイズされます。たとえば、テストに使用されるメモリ転送では、ノード「foo」のアドレスとして「Endpoint {Protocol: "memory"、Path: "foo"}」が使用されます。これは、「Protocol:」を使用して他のノードにのみアドバタイズする必要があります。メモリ "`。
 
-#### Connections
+#### 接続
 
-A connection represents an established transport connection between two endpoints (i.e. two nodes), which can be used to exchange binary messages with logical channel IDs (corresponding to the higher-level channel IDs used in the router). Connections are set up either via `Transport.Dial()` (outbound) or `Transport.Accept()` (inbound).
+接続は、2つのエンドポイント(つまり、2つのノード)間で確立された伝送接続を表し、論理チャネルID(ルーターで使用される上位レベルのチャネルIDに対応)とバイナリメッセージを交換するために使用できます。 `Transport.Dial()`(アウトバウンド)または `Transport.Accept()`(インバウンド)を介して接続を確立します。
 
-Once a connection is esablished, `Transport.Handshake()` must be called to perform a node handshake, exchanging node info and public keys to verify node identities. Node handshakes should not really be part of the transport layer (it's an application protocol concern), this exists for backwards-compatibility with the existing MConnection protocol which conflates the two. `NodeInfo` is part of the existing MConnection protocol, but does not appear to be documented in the specification -- refer to the Go codebase for details.
+接続が確立されたら、「Transport.Handshake()」を呼び出してノードハンドシェイクを実行し、ノード情報と公開鍵を交換してノードのIDを確認する必要があります。ノードハンドシェイクは、実際にはトランスポート層の一部であってはなりません(これはアプリケーションプロトコルの問題です)。これは、既存のMConnectionプロトコルとの下位互換性のためであり、2つを混同します。 `NodeInfo`は既存のMConnectionプロトコルの一部ですが、仕様に記載されていないようです。詳細については、Goコードベースを参照してください。
 
-The `Connection` interface is shown below. It omits certain additions that are currently implemented for backwards compatibility with the legacy P2P stack and are planned to be removed before the final release.
+`Connection`インターフェースを以下に示します。レガシーP2Pスタックとの下位互換性のために現在実装されている特定の追加を省略し、最終バージョンの前にそれらを削除する予定です。
 
 ```go
 // Connection represents an established connection between two endpoints.
@@ -166,20 +166,11 @@ type Connection interface {
 }
 ```
 
-This ADR initially proposed a byte-oriented multi-stream connection API that follows more typical networking API conventions (using e.g. `io.Reader` and `io.Writer` interfaces which easily compose with other libraries). This would also allow moving the responsibility for message framing, node handshakes, and traffic scheduling to the common router instead of reimplementing this across transports, and would allow making better use of multi-stream protocols such as QUIC. However, this would require minor breaking changes to the MConnection protocol which were rejected, see [tendermint/spec#227](https://github.com/tendermint/spec/pull/227) for details. This should be revisited when starting work on a QUIC transport.
+このADRは当初、バイト指向のマルチストリーム接続APIを提案しました。これは、より一般的なネットワークAPI規則に従います(たとえば、他のライブラリと簡単に組み合わせることができる `io.Reader`および` io.Writer`インターフェイスを使用します)。これにより、メッセージフレーム、ノードハンドシェイク、およびトラフィックスケジューリングの責任を、送信間で再実装するのではなく、パブリックルーターに転送し、QUICなどのマルチストリームプロトコルをより適切に使用できるようになります。ただし、これには、拒否されたMConnectionプロトコルにマイナーおよびメジャーの変更を加える必要があります。詳細については、[tendermint/spec#227](https://github.com/tendermint/spec/pull/227)を参照してください。 QUICトランスポートの作業を開始するときは、これを再検討する必要があります。
 
-### Peer Management
+### ピア管理
 
-Peers are other Tendermint nodes. Each peer is identified by a unique `NodeID` (tied to the node's private key).
-
-#### Peer Addresses
-
-Nodes have one or more `NodeAddress` addresses expressed as URLs that they can be reached at. Examples of node addresses might be e.g.:
-
-* `mconn://nodeid@host.domain.com:25567/path`
-* `memory:nodeid`
-
-Addresses are resolved into one or more transport endpoints, e.g. by resolving DNS hostnames into IP addresses. Peers should always be expressed as address URLs rather than endpoints (which are a lower-level transport construct).
+ピアは他のTendermintノードです。各ピアは、(ノードの秘密鍵に関連付けられた)一意の「NodeID」によって識別されます。
 
 ```go
 // NodeID is a hex-encoded crypto.Address. It must be lowercased
@@ -209,31 +200,31 @@ func ParseNodeAddress(urlString string) (NodeAddress, error)
 func (a NodeAddress) Resolve(ctx context.Context) ([]Endpoint, error)
 ```
 
-#### Peer Manager
+#### ピアマネージャー
 
-The P2P stack needs to track a lot of internal state about peers, such as their addresses, connection state, priorities, availability, failures, retries, and so on. This responsibility has been separated out to a `PeerManager`, which track this state for the `Router` (but does not maintain the actual transport connections themselves, which is the router's responsibility).
+P2Pスタックは、アドレス、接続ステータス、優先度、可用性、障害、再試行など、ピアに関する多くの内部ステータスを追跡する必要があります。この責任は、「ルーター」のこの状態を追跡する「PeerManager」に分離されています(ただし、ルーターの責任である実際の伝送接続自体は維持されません)。
 
-The `PeerManager` is a synchronous state machine, where all state transitions are serialized (implemented as synchronous method calls holding an exclusive mutex lock). Most peer state is intentionally kept internal, stored in a `peerStore` database that persists it as appropriate, and the external interfaces pass the minimum amount of information necessary in order to avoid shared state between router goroutines. This design significantly simplifies the model, making it much easier to reason about and test than if it was baked into the asynchronous ball of concurrency that the P2P networking core must necessarily be. As peer lifecycle events are expected to be relatively infrequent, this should not significantly impact performance either.
+`PeerManager`は同期ステートマシンであり、すべての状態遷移がシリアル化されます(同期メソッド呼び出しとして実装され、排他的なミューテックスロックを保持します)。ピア状態のほとんどは意図的に内部に保持され、適切に永続化する「peerStore」データベースに保存されます。外部インターフェイスは、ルーターのゴルーチン間で状態を共有しないようにするために必要な最小限の情報を送信します。この設計はモデルを大幅に簡素化し、P2Pネットワークのコアにモデルを配置するよりも推論とテストが容易であり、非同期で並行している必要があります。ピアツーピアのライフサイクルイベントは比較的少ないと予想されるため、これがパフォーマンスに大きな影響を与えることはありません。
 
-The `Router` uses the `PeerManager` to request which peers to dial and evict, and reports in with peer lifecycle events such as connections, disconnections, and failures as they occur. The manager can reject these events (e.g. reject an inbound connection) by returning errors. This happens as follows:
+`Router`は` PeerManager`を使用して、どのピアにダイヤルして削除するかを要求し、接続、切断、障害などのピアライフサイクルイベントを報告します。マネージャは、エラーを返すことでこれらのイベントを拒否できます(たとえば、インバウンド接続を拒否します)。これは次のように発生します。
 
-* Outbound connections, via `Transport.Dial`:
-    * `DialNext()`: returns a peer address to dial, or blocks until one is available.
-    * `DialFailed()`: reports a peer dial failure.
-    * `Dialed()`: reports a peer dial success.
-    * `Ready()`: reports the peer as routed and ready.
-    * `Disconnected()`: reports a peer disconnection.
+* `Transport.Dial`を介したアウトバウンド接続:
+    * `DialNext()`:ダイヤル用のピアアドレスを返すか、使用可能になるまでブロックします。
+    * `DialFailed()`:反対側でのダイヤルの失敗を報告します。
+    * `Dialed()`:ピアが正常にダイヤルしたことを報告します。
+    * `Ready()`:ピアルーティングと準備状況を報告します。
+    * `Disconnected()`:ピアが切断されたことを報告します。
 
-* Inbound connections, via `Transport.Accept`:
-    * `Accepted()`: reports an inbound peer connection.
-    * `Ready()`: reports the peer as routed and ready.
-    * `Disconnected()`: reports a peer disconnection.
+* `Transport.Accept`を介したインバウンド接続:
+    * `Accepted()`:インバウンドピアツーピア接続を報告します。
+    * `Ready()`:ピアルーティングと準備状況を報告します。
+    * `Disconnected()`:ピアが切断されたことを報告します。
 
-* Evictions, via `Connection.Close`:
-    * `EvictNext()`: returns a peer to disconnect, or blocks until one is available.
-    * `Disconnected()`: reports a peer disconnection.
+*追放するには、 `Connection.Close`を使用します。
+    * `EvictNext()`:切断するピアを返すか、使用可能になるまでブロックします。
+    * `Disconnected()`:ピアが切断されたことを報告します。
 
-These calls have the following interface:
+これらの呼び出しには、次のインターフェイスがあります。
 
 ```go
 // DialNext returns a peer address to dial, blocking until one is available.
@@ -258,11 +249,11 @@ func (m *PeerManager) EvictNext(ctx context.Context) (NodeID, error)
 func (m *PeerManager) Disconnected(peerID NodeID) error
 ```
 
-Internally, the `PeerManager` uses a numeric peer score to prioritize peers, e.g. when deciding which peers to dial next. The scoring policy has not yet been implemented, but should take into account e.g. node configuration such a `persistent_peers`, uptime and connection failures, performance, and so on. The manager will also attempt to automatically upgrade to better-scored peers by evicting lower-scored peers when a better one becomes available (e.g. when a persistent peer comes back online after an outage).
+内部的には、「PeerManager」は数値のピアスコアを使用して、ピアノードの優先度を決定します。たとえば、次に呼び出すピアを決定する場合などです。 スコアリングポリシーはまだ実装されていませんが、たとえば、「persistent_peers」などのノード構成、稼働時間と接続の障害、パフォーマンスなどを考慮に入れる必要があります。 より適切なノードが使用可能な場合(たとえば、中断後に永続ノードがオンラインに戻った場合)、マネージャーは、スコアの低いノードを削除することにより、より高いノードに自動的にアップグレードしようとします。
 
-The `PeerManager` should also have an API for reporting peer behavior from reactors that affects its score (e.g. signing a block increases the score, double-voting decreases it or even bans the peer), but this has not yet been designed and implemented.
+`PeerManager`には、スコアに影響を与えるリアクターからのピアの動作を報告するAPIも必要です(たとえば、ブロックに署名するとスコアが上がり、二重投票するとスコアが下がり、ピアリングが禁止されます)が、これは設計されておらず、実装されました。
 
-Additionally, the `PeerManager` provides `PeerUpdates` subscriptions that will receive `PeerUpdate` events whenever significant peer state changes happen. Reactors can use these e.g. to know when peers are connected or disconnected, and take appropriate action. This is currently fairly minimal:
+さらに、 `PeerManager`は` PeerUpdates`サブスクリプションを提供します。これは、ピアステータスが大幅に変更されるたびに `PeerUpdate`イベントを受信します。 リアクタは、これらを使用して、たとえば、ピアが接続または切断されたことを認識し、適切な対策を講じることができます。 これは現在非常に小さいです:
 
 ```go
 // Subscribe subscribes to peer updates. The caller must consume the peer updates
@@ -294,15 +285,15 @@ func (pu *PeerUpdates) Updates() <-chan PeerUpdate
 func (pu *PeerUpdates) Close()
 ```
 
-The `PeerManager` will also be responsible for providing peer information to the PEX reactor that can be gossipped to other nodes. This requires an improved system for peer address detection and advertisement, that e.g. reliably detects peer and self addresses and only gossips private network addresses to other peers on the same network, but this system has not yet been fully designed and implemented.
+`PeerManager`は、他のノードによってゴシップされる可能性のあるPEXリアクターにピアツーピア情報を提供する役割も果たします。 これには、ピアアドレスとセルフアドレスの信頼性の高い検出や、同じネットワーク上の他のピアにのみプライベートアドレスを送信するなど、改善されたピアアドレス検出およびアドバタイズシステムが必要ですが、このシステムはまだ完全に設計および実装されていません。
 
-### Channels
+### チャネル
 
-While low-level data exchange happens via the `Transport`, the high-level API is based on a bidirectional `Channel` that can send and receive Protobuf messages addressed by `NodeID`. A channel is identified by an arbitrary `ChannelID` identifier, and can exchange Protobuf messages of one specific type (since the type to unmarshal into must be predefined). Message delivery is asynchronous and at-most-once.
+低レベルのデータ交換は「送信」を通じて行われますが、高レベルのAPIは、「NodeID」によってアドレス指定されたProtobufメッセージを送受信できる双方向の「チャネル」に基づいています。 チャネルは任意の「ChannelID」識別子によって識別され、特定のタイプのProtobufメッセージを交換できます(マーシャリングされないタイプは事前定義されている必要があるため)。 メッセージ配信は非同期で、多くても1回です。
 
-The channel can also be used to report peer errors, e.g. when receiving an invalid or malignant message. This may cause the peer to be disconnected or banned depending on `PeerManager` policy, but should probably be replaced by a broader peer behavior API that can also report good behavior.
+このチャネルは、無効な情報や悪意のある情報を受信した場合など、ピアツーピアエラーを報告するためにも使用できます。 「PeerManager」ポリシーによると、これによりピアが切断または禁止される可能性がありますが、より広範なピア動作APIに置き換える必要があります。これにより、良好な動作も報告される可能性があります。
 
-A `Channel` has this interface:
+`Channel`には次のインターフェースがあります。
 
 ```go
 // ChannelID is an arbitrary channel ID.
@@ -335,9 +326,9 @@ type PeerError struct {
 }
 ```
 
-A channel can reach any connected peer, and will automatically (un)marshal the Protobuf messages. Message scheduling and queueing is a `Router` implementation concern, and can use any number of algorithms such as FIFO, round-robin, priority queues, etc. Since message delivery is not guaranteed, both inbound and outbound messages may be dropped, buffered, reordered, or blocked as appropriate.
+チャネルは接続されている任意のピアに到達でき、Protobufメッセージを自動的に(キャンセル)マーシャルします。 メッセージのスケジューリングとキューイングは「ルーター」実装の問題であり、FIFO、ループ、優先キューなど、任意の数のアルゴリズムを使用できます。 メッセージの配信は保証されないため、必要に応じて、受信メッセージと送信メッセージの両方が破棄、バッファリング、並べ替え、またはブロックされる場合があります。
 
-Since a channel can only exchange messages of a single type, it is often useful to use a wrapper message type with e.g. a Protobuf `oneof` field that specifies a set of inner message types that it can contain. The channel can automatically perform this (un)wrapping if the outer message type implements the `Wrapper` interface (see [Reactor Example](#reactor-example) for an example):
+チャネルは単一のタイプのメッセージしか交換できないため、含めることができる内部メッセージタイプのセットを指定するProtobuf`oneof`フィールドなどのラッパーメッセージタイプを使用すると便利なことがよくあります。 外部メッセージタイプが `Wrapper`インターフェースを実装している場合([Reactor Example](#reactor-example)の例を参照)、チャネルはこの(アン)ラッピングを自動的に実行できます。
 
 ```go
 // Wrapper is a Protobuf message that can contain a variety of inner messages.
@@ -355,13 +346,13 @@ type Wrapper interface {
 }
 ```
 
-### Routers
+### ルーター
 
-The router exeutes P2P networking for a node, taking instructions from and reporting events to the `PeerManager`, maintaining transport connections to peers, and routing messages between channels and peers.
+ルーターはノードのP2Pネットワークを実装し、「PeerManager」から命令を取得して「PeerManager」にイベントを報告し、ピアとの伝送接続を維持し、チャネルとピアの間でメッセージをルーティングします。
 
-Practically all concurrency in the P2P stack has been moved into the router and reactors, while as many other responsibilities as possible have been moved into separate components such as the `Transport` and `PeerManager` that can remain largely synchronous. Limiting concurrency to a single core component makes it much easier to reason about since there is only a single concurrency structure, while the remaining components can be serial, simple, and easily testable.
+実際、P2Pスタック内のすべての同時実行性はルーターとリアクターに移動され、他の多くの責任は「Transport」や「PeerManager」などの個別のコンポーネントに移動されました。これらのコンポーネントは大幅に同期を保つことができます。 "。 同時実行を単一のコアコンポーネントに制限すると、同時実行構造が1つだけであり、残りのコンポーネントをシリアル化でき、単純で、テストが容易になるため、推論が容易になります。
 
-The `Router` has a very minimal API, since it is mostly driven by `PeerManager` and `Transport` events:
+`Router`のAPIは非常に小さいため、主に` PeerManager`イベントと `Transport`イベントによって駆動されます。
 
 ```go
 // Router maintains peer transport connections and routes messages between
@@ -395,7 +386,7 @@ func (r *Router) Start() error
 func (r *Router) Stop() error
 ```
 
-All Go channel sends in the `Router` and reactors are blocking (the router also selects on signal channels for closure and shutdown). The responsibility for message scheduling, prioritization, backpressure, and load shedding is centralized in a core `queue` interface that is used at contention points (i.e. from all peers to a single channel, and from all channels to a single peer):
+すべてのGoチャネルは「ルーター」で送信され、リアクターはブロックされます(ルーターは信号チャネルを閉じることも選択します)。 メッセージのスケジューリング、優先順位付け、バックプレッシャ、およびロードシェディングの責任は、競合ポイント(つまり、すべてのピアから単一のチャネルへ、およびすべてのチャネルから単一のペアへ)に使用されるコア「キュー」インターフェイスに集中します。 。待つ):
 
 ```go
 // queue does QoS scheduling for Envelopes, enqueueing and dequeueing according
@@ -419,9 +410,9 @@ type queue interface {
 }
 ```
 
-The current implementation is `fifoQueue`, which is a simple unbuffered lossless queue that passes messages in the order they were received and blocks until the message is delivered (i.e. it is a Go channel). The router will need a more sophisticated queueing policy, but this has not yet been implemented.
+現在の実装は「fifoQueue」です。これは、メッセージを受信した順序で配信し、メッセージが配信されるまでブロックする単純なバッファなしのロスレスキューです(つまり、Goチャネルです)。 ルーターには、より複雑なキューイング戦略が必要になりますが、これはまだ実装されていません。
 
-The internal `Router` goroutine structure and design is described in the `Router` GoDoc, which is included below for reference:
+内部の `Router`ゴルーチンの構造と設計は、` Router` GoDocで説明されており、参考のために以下が含まれています。
 
 ```go
 // On startup, three main goroutines are spawned to maintain peer connections:
@@ -460,13 +451,13 @@ The internal `Router` goroutine structure and design is described in the `Router
 // quality of service.
 ```
 
-### Reactor Example
+### リアクターの例
 
-While reactors are a first-class concept in the current P2P stack (i.e. there is an explicit `p2p.Reactor` interface), they will simply be a design pattern in the new stack, loosely defined as "something which listens on a channel and reacts to messages".
+リアクターは現在のP2Pスタックのファーストクラスの概念ですが(つまり、明確な `p2p.Reactor`インターフェースがあります)、それらは新しいスタックの単なるデザインパターンであり、大まかに「チャネルでリッスンするもの」として定義されます。 、およびニュースに応答する」。
 
-Since reactors have very few formal constraints, they can be implemented in a variety of ways. There is currently no recommended pattern for implementing reactors, to avoid overspecification and scope creep in this ADR. However, prototyping and developing a reactor pattern should be done early during implementation, to make sure reactors built using the `Channel` interface can satisfy the needs for convenience, deterministic tests, and reliability.
+原子炉に形式的な制約があることはめったにないので、それらはさまざまな方法で達成することができます。 現在、このADRでの過度の仕様と範囲の広がりを回避するために推奨されるリアクター実装モデルはありません。 ただし、プロトタイプの設計と原子炉モデルの開発は、「チャネル」インターフェースを使用して構築された原子炉が利便性、決定論的テスト、および信頼性の要件を満たすことができるように、実装プロセスのできるだけ早い段階で完了する必要があります。
 
-Below is a trivial example of a simple echo reactor implemented as a function. The reactor will exchange the following Protobuf messages:
+以下は、関数として実装された単純なエコーリアクターの簡単な例です。 リアクタは、次のProtobufメッセージを交換します。
 
 ```protobuf
 message EchoMessage {
@@ -485,7 +476,7 @@ message PongMessage {
 }
 ```
 
-Implementing the `Wrapper` interface for `EchoMessage` allows transparently passing `PingMessage` and `PongMessage` through the channel, where it will automatically be (un)wrapped in an `EchoMessage`:
+`EchoMessage`に` Wrapper`インターフェースを実装すると、チャネルを介した `PingMessage`と` PongMessage`の透過的な送信が可能になり、自動的に(キャンセル) `EchoMessage`にラップされます。
 
 ```go
 func (m *EchoMessage) Wrap(inner proto.Message) error {
@@ -512,7 +503,7 @@ func (m *EchoMessage) Unwrap() (proto.Message, error) {
 }
 ```
 
-The reactor itself would be implemented e.g. like this:
+リアクター自体は、たとえば次のように実装されます。
 
 ```go
 // RunEchoReactor wires up an echo reactor to a router and runs it.
@@ -575,41 +566,41 @@ func EchoReactor(ctx context.Context, channel *p2p.Channel, peerUpdates *p2p.Pee
 }
 ```
 
-## Status
+## ステータス
 
-Partially implemented ([#5670](https://github.com/tendermint/tendermint/issues/5670))
+部分的な実装([#5670](https://github.com/tendermint/tendermint/issues/5670))
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-* Reduced coupling and simplified interfaces should lead to better understandability, increased reliability, and more testing.
+*結合を減らし、インターフェースを単純化すると、理解しやすく、信頼性が高くなり、テストが増えるはずです。
 
-* Using message passing via Go channels gives better control of backpressure and quality-of-service scheduling.
+* Goチャネルを介して配信されるメッセージを使用して、バックプレッシャーとサービス品質のスケジューリングをより適切に制御します。
 
-* Peer lifecycle and connection management is centralized in a single entity, making it easier to reason about.
+*ピアのライフサイクルと接続管理は単一のエンティティに一元化されているため、推論が容易になります。
 
-* Detection, advertisement, and exchange of node addresses will be improved.
+*ノードアドレスの検出、通知、交換が改善されます。
 
-* Additional transports (e.g. QUIC) can be implemented and used in parallel with the existing MConn protocol.
+*追加の送信(QUICなど)を実装して、既存のMConnプロトコルと並行して使用できます。
 
-* The P2P protocol will not be broken in the initial version, if possible.
+*可能であれば、初期バージョンではP2Pプロトコルが壊れることはありません。
 
-### Negative
+### ネガティブ
 
-* Fully implementing the new design as indended is likely to require breaking changes to the P2P protocol at some point, although the initial implementation shouldn't.
+*期待どおりに新しい設計を完全に実現するには、ある時点でP2Pプロトコルに大幅な変更が必要になる場合がありますが、最初の実装では必要ありません。
 
-* Gradually migrating the existing stack and maintaining backwards-compatibility will be more labor-intensive than simply replacing the entire stack.
+*既存のスタックを段階的に移行して下位互換性を維持することは、単にスタック全体を置き換えるよりも手間がかかります。
 
-* A complete overhaul of P2P internals is likely to cause temporary performance regressions and bugs as the implementation matures.
+*実装が成熟するにつれて、P2P内部構造を徹底的に検査すると、一時的なパフォーマンスの低下やエラーが発生する可能性があります。
 
-* Hiding peer management information inside the `PeerManager` may prevent certain functionality or require additional deliberate interfaces for information exchange, as a tradeoff to simplify the design, reduce coupling, and avoid race conditions and lock contention.
+*「PeerManager」でピア管理情報を非表示にすると、設計を簡素化し、結合を減らし、競合状態とロックの競合を回避するためのトレードオフとして、特定の機能が妨げられたり、情報交換のための追加の意図的なインターフェイスが必要になる場合があります。
 
-### Neutral
+### ニュートラル
 
-* Implementation details around e.g. peer management, message scheduling, and peer and endpoint advertisement are not yet determined.
+*ピア管理、メッセージスケジューリング、ピアおよびエンドポイントのアドバタイズなどの実装の詳細はまだ決定されていません。
 
-## References
+## 参照する
 
-* [ADR 061: P2P Refactor Scope](adr-061-p2p-refactor-scope.md)
-* [#5670 p2p: internal refactor and architecture redesign](https://github.com/tendermint/tendermint/issues/5670)
+* [ADR 061:P2Pリファクタリングスコープ](adr-061-p2p-refactor-scope.md)
+* [#5670 p2p:内部リファクタリングとアーキテクチャの再設計](https://github.com/tendermint/tendermint/issues/5670)

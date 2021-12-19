@@ -1,54 +1,54 @@
-# ADR 053: State Sync Prototype
+# ADR 053:状態同期のプロトタイプ
 
-State sync is now [merged](https://github.com/tendermint/tendermint/pull/4705). Up-to-date ABCI documentation is [available](https://github.com/tendermint/spec/pull/90), refer to it rather than this ADR for details.
+ステータスの同期が[マージ]されました(https://github.com/tendermint/tendermint/pull/4705)。最新のABCIドキュメント[利用可能](https://github.com/tendermint/spec/pull/90)。詳細については、このADRの代わりに参照してください。
 
-This ADR outlines the plan for an initial state sync prototype, and is subject to change as we gain feedback and experience. It builds on discussions and findings in [ADR-042](./adr-042-state-sync.md), see that for background information.
+このADRは、初期状態の同期プロトタイプの計画の概要を示しており、フィードバックと経験を積むにつれて変更される可能性があります。これは、[ADR-042](./ adr-042-state-sync.md)での議論と発見に基づいています。背景情報については、これを参照してください。
 
-## Changelog
+## 変更ログ
 
-* 2020-01-28: Initial draft (Erik Grinaker)
+* 2020-01-28:最初のドラフト(Eric Greenac)
 
-* 2020-02-18: Updates after initial prototype (Erik Grinaker)
-    * ABCI: added missing `reason` fields.
-    * ABCI: used 32-bit 1-based chunk indexes (was 64-bit 0-based).
-    * ABCI: moved `RequestApplySnapshotChunk.chain_hash` to `RequestOfferSnapshot.app_hash`.
-    * Gaia: snapshots must include node versions as well, both for inner and leaf nodes.
-    * Added experimental prototype info.
-    * Added open questions and implementation plan.
+* 2020-02-18:初期プロトタイプ後の更新(Erik Grinaker)
+    * ABCI:欠落している「理由」フィールドを追加しました。
+    * ABCI:32ビットの1ベースのブロックインデックス(0に基づく64ビット)を使用します。
+    * ABCI: `RequestApplySnapshotChunk.chain_hash`を` RequestOfferSnapshot.app_hash`に移動します。
+    * Gaia:スナップショットには、内部ノードとリーフノードを含むノードバージョンも含まれている必要があります。
+    *実験的なプロトタイプ情報を追加しました。
+    *未解決の質問と実装計画を追加しました。
 
-* 2020-03-29: Strengthened and simplified ABCI interface (Erik Grinaker)
-    * ABCI: replaced `chunks` with `chunk_hashes` in `Snapshot`.
-    * ABCI: removed `SnapshotChunk` message.
-    * ABCI: renamed `GetSnapshotChunk` to `LoadSnapshotChunk`.
-    * ABCI: chunks are now exchanged simply as `bytes`.
-    * ABCI: chunks are now 0-indexed, for parity with `chunk_hashes` array.
-    * Reduced maximum chunk size to 16 MB, and increased snapshot message size to 4 MB.
+* 2020-03-29:拡張および簡素化されたABCIインターフェース(Erik Grinaker)
+    * ABCI: `Snapshot`の` chunks`を `chunk_hashes`に置き換えました。
+    * ABCI: `SnapshotChunk`メッセージを削除しました。
+    * ABCI: `GetSnapshotChunk`の名前を` LoadSnapshotChunk`に変更しました。
+    * ABCI:ブロックが単に「バイト」に交換されるようになりました。
+    * ABCI:チャンクは0インデックスになり、 `chunk_hashes`配列でのパリティチェックに使用されます。
+    *最大ブロックサイズを16MBに減らし、スナップショットメッセージサイズを4MBに増やします。
 
-* 2020-04-29: Update with final released ABCI interface (Erik Grinaker)
+* 2020-04-29:ABCIインターフェースの最終リリースを更新(Erik Grinaker)
 
-## Context
+## 環境
 
-State sync will allow a new node to receive a snapshot of the application state without downloading blocks or going through consensus. This bootstraps the node significantly faster than the current fast sync system, which replays all historical blocks.
+状態の同期により、新しいノードは、ブロックをダウンロードしたり、コンセンサスを渡したりすることなく、アプリケーションの状態のスナップショットを受信できます。これにより、ノードの起動速度は、すべての履歴ブロックを再生する現在の高速同期システムよりも大幅に高速になります。
 
-Background discussions and justifications are detailed in [ADR-042](./adr-042-state-sync.md). Its recommendations can be summarized as:
+[ADR-042](./ adr-042-state-sync.md)詳細な背景説明と理由。推奨事項は次のように要約できます。
 
-* The application periodically takes full state snapshots (i.e. eager snapshots).
+*アプリケーションは定期的に完全なステータススナップショット(つまり、熱心なスナップショット)を取得します。
 
-* The application splits snapshots into smaller chunks that can be individually verified against a chain app hash.
+*アプリケーションはスナップショットを小さなブロックに分割します。これは、チェーンアプリケーションハッシュに基づいて個別に検証できます。
 
-* Tendermint uses the light client to obtain a trusted chain app hash for verification.
+* Tendermintは、ライトクライアントを使用して、検証用の信頼できるチェーンアプリケーションハッシュを取得します。
 
-* Tendermint discovers and downloads snapshot chunks in parallel from multiple peers, and passes them to the application via ABCI to be applied and verified against the chain app hash.
+* Tendermintは、複数のピアから並行してスナップショットブロックを検出してダウンロードし、チェーンアプリケーションハッシュに基づくアプリケーションと検証のために、ABCIを介してアプリケーションに渡します。
 
-* Historical blocks are not backfilled, so state synced nodes will have a truncated block history.
+*履歴ブロックは埋め戻されないため、状態が同期されているノードには切り捨てられたブロック履歴があります。
 
-## Tendermint Proposal
+## テンダーミントの提案
 
-This describes the snapshot/restore process seen from Tendermint. The interface is kept as small and general as possible to give applications maximum flexibility.
+これは、Tendermintから見たスナップショット/復元プロセスについて説明しています。インターフェースは、アプリケーションに最大限の柔軟性を提供するために、可能な限り小さく、普遍的です。
 
-### Snapshot Data Structure
+### スナップショットデータ構造
 
-A node can have multiple snapshots taken at various heights. Snapshots can be taken in different application-specified formats (e.g. MessagePack as format `1` and Protobuf as format `2`, or similarly for schema versioning). Each snapshot consists of multiple chunks containing the actual state data, for parallel downloads and reduced memory usage.
+ノードは、さまざまな高さで複数のスナップショットを取得できます。スナップショットは、さまざまなアプリケーション固有の形式にすることができます(たとえば、形式「1」のMessagePackと形式「2」のProtobuf、または同様のモードバージョン管理)。各スナップショットは、実際の状態データを含む複数のブロックで構成されています。これらのブロックは、並列ダウンロードに使用され、メモリ使用量を削減します。
 
 ```proto
 message Snapshot {
@@ -60,7 +60,7 @@ message Snapshot {
 }
 ```
 
-Chunks are exchanged simply as `bytes`, and cannot be larger than 16 MB. `Snapshot` messages should be less than 4 MB.
+ブロックは「バイト」としてのみ交換され、16MBを超えることはできません。 `Snapshot`メッセージは4MB未満である必要があります。
 
 ### ABCI Interface
 
@@ -123,132 +123,132 @@ message ResponseApplySnapshotChunk {
 }
 ```
 
-### Taking Snapshots
+### スナップショットを撮る
 
-Tendermint is not aware of the snapshotting process at all, it is entirely an application concern. The following guarantees must be provided:
+Tendermintはスナップショットプロセスをまったく知りません。これは完全にアプリケーションの問題です。次の保証を提供する必要があります。
 
-* **Periodic:** snapshots must be taken periodically, not on-demand, for faster restores, lower load, and less DoS risk.
+* **定期的:**より高速なリカバリ、より低い負荷、およびより低いDoSリスクを実現するには、スナップショットをオンデマンドではなく定期的に取得する必要があります。
 
-* **Deterministic:** snapshots must be deterministic, and identical across all nodes - typically by taking a snapshot at given height intervals.
+* **決定論的:**スナップショットは決定論的であり、すべてのノードで同じである必要があります。通常は、特定の高さ間隔でスナップショットを取得します。
 
-* **Consistent:** snapshots must be consistent, i.e. not affected by concurrent writes - typically by using a data store that supports versioning and/or snapshot isolation.
+* **一貫性:**スナップショットは一貫性がある必要があります。つまり、同時書き込みの影響を受けない必要があります。通常、バージョン管理やスナップショット分離をサポートするデータストレージが使用されます。
 
-* **Asynchronous:** snapshots must be asynchronous, i.e. not halt block processing and state transitions.
+* **非同期:**スナップショットは非同期である必要があります。つまり、ブロック処理と状態遷移は停止されません。
 
-* **Chunked:** snapshots must be split into chunks of reasonable size (on the order of megabytes), and each chunk must be verifiable against the chain app hash.
+* **チャンク:**スナップショットは適切なサイズのブロック(メガバイト単位)に分割する必要があり、各ブロックはチェーンアプリケーションハッシュに基づいて検証可能である必要があります。
 
-* **Garbage collected:** snapshots must be garbage collected periodically.
+* **ガベージコレクション:**スナップショットは定期的にガベージコレクションする必要があります。
 
-### Restoring Snapshots
+### スナップショットを復元する
 
-Nodes should have options for enabling state sync and/or fast sync, and be provided a trusted header hash for the light client.
+ノードには、状態の同期や高速同期を有効にし、ライトクライアントに信頼できるヘッダーハッシュを提供するオプションが必要です。
 
-When starting an empty node with state sync and fast sync enabled, snapshots are restored as follows:
+状態の同期と高速同期を有効にして空のノードを起動すると、スナップショットは次のように復元されます。
 
-1. The node checks that it is empty, i.e. that it has no state nor blocks.
+1.ノードは、ノードが空であるかどうか、つまり、状態もブロックもないかどうかをチェックします。
 
-2. The node contacts the given seeds to discover peers.
+2.ノードは指定されたシードに接続してピアを見つけます。
 
-3. The node contacts a set of full nodes, and verifies the trusted block header using the given hash via the light client.
+3.ノードは完全なノードのグループに接続し、指定されたハッシュを使用して、ライトクライアントを介して信頼できるブロックヘッダーを検証します。
 
-4. The node requests available snapshots via P2P from peers, via `RequestListSnapshots`. Peers will return the 10 most recent snapshots, one message per snapshot.
+4.ノードは、「RequestListSnapshots」を介してP2Pを介してピアから利用可能なスナップショットを要求します。ピアは、スナップショットごとに1つのメッセージとともに、最新の10個のスナップショットを返します。
 
-5. The node aggregates snapshots from multiple peers, ordered by height and format (in reverse). If there are mismatches between different snapshots, the one hosted by the largest amount of peers is chosen. The node iterates over all snapshots in reverse order by height and format until it finds one that satisfies all of the following conditions:
+5.ノードは、複数のピアからのスナップショットを、高さと形式(逆)でソートして集約します。異なるスナップショット間に不一致がある場合は、ほとんどのピアによってホストされているスナップショットが選択されます。ノードは、次のすべての条件を満たすスナップショットが見つかるまで、高さと形式に従ってすべてのスナップショットを逆の順序でトラバースします。
 
-    * The snapshot height's block is considered trustworthy by the light client (i.e. snapshot height is greater than trusted header and within unbonding period of the latest trustworthy block).
+    *スナップショットの高さを持つブロックは、ライトクライアントによって信頼できると見なされます(つまり、スナップショットの高さは信頼できるヘッダーよりも大きく、最新の信頼できるブロックのバインド解除期間内にあります)。
 
-    * The snapshot's height or format hasn't been explicitly rejected by an earlier `RequestOfferSnapshot`.
+    *スナップショットの高さまたは形式は、以前の `RequestOfferSnapshot`によって明示的に拒否されませんでした。
 
-    * The application accepts the `RequestOfferSnapshot` call.
+    *アプリケーションは `RequestOfferSnapshot`の呼び出しを受け入れます。
 
-6. The node downloads chunks in parallel from multiple peers, via `RequestLoadSnapshotChunk`. Chunk messages cannot exceed 16 MB.
+6.ノードは、 `RequestLoadSnapshotChunk`を介して複数のピアからチャンクを並行してダウンロードします。ブロックメッセージは16MBを超えることはできません。
 
-7. The node passes chunks sequentially to the app via `RequestApplySnapshotChunk`.
+7.ノードは、「RequestApplySnapshotChunk」を介してデータブロックをアプリケーションに順番に渡します。
 
-8. Once all chunks have been applied, the node compares the app hash to the chain app hash, and if they do not match it either errors or discards the state and starts over.
+8.すべてのブロックが適用されると、ノードはアプリケーションハッシュをチェーンアプリケーションハッシュと比較します。それらが一致しない場合、エラーが発生するか、状態を破棄して再開します。
 
-9. The node switches to fast sync to catch up blocks that were committed while restoring the snapshot.
+9.ノードは高速同期に切り替わり、スナップショットが復元されたときにコミットされたブロックに追いつきます。
 
-10. The node switches to normal consensus mode.
+10.ノードは通常のコンセンサスモードに切り替わります。
 
-## Gaia Proposal
+## ガイア提案
 
-This describes the snapshot process seen from Gaia, using format version `1`. The serialization format is unspecified, but likely to be compressed Amino or Protobuf.
+これは、フォーマットバージョン「1」を使用して、Gaiaから見たスナップショットプロセスについて説明しています。シリアル化形式は指定されていませんが、圧縮されたAminoまたはProtobufである可能性があります。
 
-### Snapshot Metadata
+### スナップショットメタデータ
 
-In the initial version there is no snapshot metadata, so it is set to an empty byte buffer.
+初期バージョンにはスナップショットメタデータがないため、空のバイトバッファに設定されます。
 
-Once all chunks have been successfully built, snapshot metadata should be stored in a database and served via `RequestListSnapshots`.
+すべてのブロックが正常に構築されたら、スナップショットメタデータをデータベースに保存し、「RequestListSnapshots」を介して提供する必要があります。
 
-### Snapshot Chunk Format
+### スナップショットブロック形式
 
-The Gaia data structure consists of a set of named IAVL trees. A root hash is constructed by taking the root hashes of each of the IAVL trees, then constructing a Merkle tree of the sorted name/hash map.
+Gaiaデータ構造は、名前付きIAVLツリーのセットで構成されています。ルートハッシュは、各IAVLツリーのルートハッシュを取得することによって構築され、次に、ソートされた名前/ハッシュマッピングのマークルツリーを構築します。
 
-IAVL trees are versioned, but a snapshot only contains the version relevant for the snapshot height. All historical versions are ignored.
+IAVLツリーはバージョン管理されていますが、スナップショットには、スナップショットとの関連性が高いバージョンのみが含まれています。すべての履歴バージョンは無視されます。
 
-IAVL trees are insertion-order dependent, so key/value pairs must be set in an appropriate insertion order to produce the same tree branching structure. This insertion order can be found by doing a breadth-first scan of all nodes (including inner nodes) and collecting unique keys in order. However, the node hash also depends on the node's version, so snapshots must contain the inner nodes' version numbers as well.
+IAVLツリーは挿入順序に依存するため、同じツリーブランチ構造を生成するには、キーと値のペアを適切な挿入順序で設定する必要があります。この挿入順序は、すべてのノード(内部ノードを含む)で幅優先スキャンを実行し、一意のキーを順番に収集することで見つけることができます。ただし、ノードのハッシュ値はノードのバージョンにも依存するため、スナップショットには内部ノードのバージョン番号も含まれている必要があります。
 
-For the initial prototype, each chunk consists of a complete dump of all node data for all nodes in an entire IAVL tree. Thus the number of chunks equals the number of persistent stores in Gaia. No incremental verification of chunks is done, only a final app hash comparison at the end of the snapshot restoration.
+初期プロトタイプの場合、各ブロックには、IAVLツリー全体のすべてのノードのすべてのノードデータの完全なダンプが含まれています。したがって、ブロックの数はGaiaの永続ストレージの数と同じです。ブロックの増分検証は実行されず、最終的なアプリケーションハッシュ比較はスナップショットリカバリの最後にのみ実行されます。
 
-For a production version, it should be sufficient to store key/value/version for all nodes (leaf and inner) in insertion order, chunked in some appropriate way. If per-chunk verification is required, the chunk must also contain enough information to reconstruct the Merkle proofs all the way up to the root of the multistore, e.g. by storing a complete subtree's key/value/version data plus Merkle hashes of all other branches up to the multistore root. The exact approach will depend on tradeoffs between size, time, and verification. IAVL RangeProofs are not recommended, since these include redundant data such as proofs for intermediate and leaf nodes that can be derived from the above data.
+本番バージョンの場合、すべてのノード(リーフノードと内部ノード)のキー/値/バージョンを挿入順に格納し、適切な方法でパーティション化するだけで十分です。各ブロックの検証が必要な場合、ブロックには、たとえば完全なサブツリーのキー/値/バージョンデータとのメルケルを格納することによって、複数のストレージのルートに至るまで、メルケル証明を再構築するのに十分な情報も含まれている必要があります他のすべてのブランチマルチストアルートまでのハッシュ値。正確な方法は、サイズ、時間、および検証の間のトレードオフによって異なります。 IAVL RangeProofsの使用は、上記のデータから導出できる中間ノードやリーフノードのプルーフなどの冗長データが含まれているため、お勧めしません。
 
-Chunks should be built greedily by collecting node data up to some size limit (e.g. 10 MB) and serializing it. Chunk data is stored in the file system as `snapshots/<height>/<format>/<chunk>`, and a SHA-256 checksum is stored along with the snapshot metadata.
+特定のサイズ制限(たとえば、10 MB)を超えないノードデータを収集してシリアル化することにより、貪欲にブロックを構築する必要があります。チャンクデータは `snapshots/<height>/<format>/<chunk>`としてファイルシステムに保存され、SHA-256チェックサムはスナップショットメタデータと一緒に保存されます。
 
-### Snapshot Scheduling
+###スナップショットのスケジューリング
 
-Snapshots should be taken at some configurable height interval, e.g. every 1000 blocks. All nodes should preferably have the same snapshot schedule, such that all nodes can serve chunks for a given snapshot.
+スナップショットは、1000ブロックごとなど、構成可能な高さの間隔で取得する必要があります。理想的には、すべてのノードが特定のスナップショットにブロックを提供できるように、すべてのノードが同じスナップショットスケジュールを持つ必要があります。
 
-Taking consistent snapshots of IAVL trees is greatly simplified by them being versioned: simply snapshot the version that corresponds to the snapshot height, while concurrent writes create new versions. IAVL pruning must not prune a version that is being snapshotted.
+IAVLツリーのバージョン管理により、IAVLツリーの一貫性のあるスナップショットを大幅に簡素化できます。スナップショットを作成するにはスナップショットの高さに対応するバージョンのみが必要であり、新しいバージョンを作成するには同時書き込みが必要です。 IAVLプルーニングは、スナップショットされているバージョンをプルーニングしてはなりません。
 
-Snapshots must also be garbage collected after some configurable time, e.g. by keeping the latest `n` snapshots.
+スナップショットは、たとえば最新の `n`スナップショットを保持するなど、構成可能な時間の後にガベージコレクションする必要もあります。
 
-## Resolved Questions
+## 解決済みの問題
 
-* Is it OK for state-synced nodes to not have historical blocks nor historical IAVL versions?
+*状態同期ノードに履歴ブロックまたは履歴IAVLバージョンがない可能性はありますか？
 
-    > Yes, this is as intended. Maybe backfill blocks later.
+    >はい、予想通りです。後でブロックを埋め戻すかもしれません。
 
-* Do we need incremental chunk verification for first version?
+*最初のバージョンではインクリメンタルブロック検証が必要ですか？
 
-    > No, we'll start simple. Can add chunk verification via a new snapshot format without any breaking changes in Tendermint. For adversarial conditions, maybe consider support for whitelisting peers to download chunks from.
+    >いいえ、簡単に始めます。ブロック検証は、Tendermintに大きな変更を加えることなく、新しいスナップショット形式で追加できます。敵対的な状況では、ノードをホワイトリストに登録してそこからブロックをダウンロードするためのサポートを検討できます。
 
-* Should the snapshot ABCI interface be a separate optional ABCI service, or mandatory?
+*スナップショットABCIインターフェイスは個別のオプションのABCIサービスである必要がありますか、それとも必須ですか？
 
-    > Mandatory, to keep things simple for now. It will therefore be a breaking change and push the release. For apps using the Cosmos SDK, we can provide a default implementation that does not serve snapshots and errors when trying to apply them.
+    >必須です。今のところシンプルにしてください。したがって、これは画期的な変更であり、リリースを促進します。 Cosmos SDKを使用するアプリケーションの場合、スナップショットやエラーを適用しようとしたときに提供されないデフォルトの実装を提供できます。
 
-* How can we make sure `ListSnapshots` data is valid? An adversary can provide fake/invalid snapshots to DoS peers.
+* `ListSnapshots`データが有効であることをどのように確認しますか？攻撃者は、偽/無効なスナップショットをDoSピアに提供できます。
 
-    > For now, just pick snapshots that are available on a large number of peers. Maybe support whitelisting. We may consider e.g. placing snapshot manifests on the blockchain later.
+    >現在、多数のピアで利用可能なスナップショットを選択するだけです。たぶんホワイトリストをサポートします。たとえば、後でスナップショットリストをブロックチェーンに配置することを検討できます。
 
-* Should we punish nodes that provide invalid snapshots? How?
+*無効なスナップショットを提供するノードを罰する必要がありますか？どうやって？
 
-    > No, these are full nodes not validators, so we can't punish them. Just disconnect from them and ignore them.
+    >いいえ、これらは完全なノードであり、バリデーターではないため、罰することはできません。それらを切断して無視してください。
 
-* Should we call these snapshots? The SDK already uses the term "snapshot" for `PruningOptions.SnapshotEvery`, and state sync will introduce additional SDK options for snapshot scheduling and pruning that are not related to IAVL snapshotting or pruning.
+*これらのスナップショットを呼び出す必要がありますか？ SDKは `PruningOptions.SnapshotEvery`に「スナップショット」という用語を使用しており、状態の同期により、スナップショットのスケジューリングとプルーニングに追加のSDKオプションが導入されます。これらのオプションは、IAVLスナップショットやプルーニングとは関係ありません。
 
-    > Yes. Hopefully these concepts are distinct enough that we can refer to state sync snapshots and IAVL snapshots without too much confusion.
+    >はい。これらの概念が十分に明確であることを願って、あまり混乱を引き起こすことなく、状態同期スナップショットとIAVLスナップショットを参照できます。
 
-* Should we store snapshot and chunk metadata in a database? Can we use the database for chunks?
+*スナップショットとブロックメタデータをデータベースに保存する必要がありますか？データベースをブロックに使用できますか？
 
-    > As a first approach, store metadata in a database and chunks in the filesystem.
+    >最初の方法として、メタデータをデータベースに保存し、ブロックをファイルシステムに保存します。
 
-* Should a snapshot at height H be taken before or after the block at H is processed? E.g. RPC `/commit` returns app_hash after _previous_ height, i.e. _before_  current height.
+*高さHのスナップショットは、Hのブロックが処理される前または後に取得する必要がありますか？例えば。 RPC `/ commit`は、現在の高さの_before_である_previous_heightの後にapp_hashを返します。
 
-    > After commit.
+    >提出後。
 
-* Do we need to support all versions of blockchain reactor (i.e. fast sync)?
+*ブロックチェーンリアクターのすべてのバージョンをサポートする必要がありますか(つまり、高速同期)？
 
-    > We should remove the v1 reactor completely once v2 has stabilized.
+    > v2が安定したら、v1リアクターを完全に削除する必要があります。
 
-* Should `ListSnapshots` be a streaming API instead of a request/response API?
+* `ListSnapshots`はリクエスト/レスポンスAPIではなくストリーミングAPIである必要がありますか？
 
-    > No, just use a max message size.
+    >いいえ、最大メッセージサイズを使用してください。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## References
+## 参照する
 
-* [ADR-042](./adr-042-state-sync.md) and its references
+* [ADR-042](./ adr-042-state-sync.md)とその参照

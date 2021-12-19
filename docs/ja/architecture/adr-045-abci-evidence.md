@@ -1,140 +1,140 @@
-# ADR 45 - ABCI Evidence Handling
+# ADR45-ABCI証拠処理
 
-## Changelog
-* 21-09-2019: Initial draft
+## 変更ログ
+* 2019年9月21日:最初のドラフト
 
-## Context
+## 環境
 
-Evidence is a distinct component in a Tendermint block and has it's own reactor
-for high priority gossipping. Currently, Tendermint supports only a single form of evidence, an explicit
-equivocation, where a validator signs conflicting blocks at the same
-height/round. It is detected in real-time in the consensus reactor, and gossiped
-through the evidence reactor. Evidence can also be submitted through the RPC.
+プルーフはテンダーミントブロックのユニークなコンポーネントであり、独自のリアクターを備えています
+優先度の高いゴシップに使用されます。現在、テンダーミントは単一の形式の証拠、明確な証拠のみをサポートしています
+あいまいな、バリデーターは同時に競合するブロックに署名します
+高さ/ラウンド。コンセンサスリアクターでリアルタイムに検出され、ゴシップされます
+証拠リアクターを通過します。証拠はRPCを介して提出することもできます。
 
-Currently, Tendermint does not gracefully handle a fork on the main chain.
-If a fork is detected, the node panics. At this point manual intervention and
-social consensus are required to reconfigure. We'd like to do something more
-graceful here, but that's for another day.
+現在、Tendermintはメインチェーンのフォークを適切に処理できません。
+フォークが検出されると、ノードはパニックになります。現時点では、手動による介入と
+社会的コンセンサスを再構成する必要があります。もっとやりたい
+ここはエレガントですが、それはまた別の日です。
 
-It's possible to fool lite clients without there being a fork on the
-main chain - so called Fork-Lite. See the
-[fork accountability](https://docs.tendermint.com/master/spec/light-client/accountability/)
-document for more details. For a sequential lite client, this can happen via
-equivocation or amnesia attacks. For a skipping lite client this can also happen
-via lunatic validator attacks. There must be some way for applications to punish
-all forms of misbehaviour.
+フォークなしでライトクライアントをだますことができます
+メインチェーン-いわゆるFork-Lite。見る
+[フォークの説明責任](https://docs.tendermint.com/master/spec/light-client/accountability/)
+詳細については、ドキュメントを参照してください。クライアントの合理化されたバージョンの場合、これは次の方法で実行できます。
+あいまいな攻撃または記憶喪失の攻撃。スキップライトクライアントの場合、これも発生する可能性があります
+クレイジーなバリデーターを介して攻撃します。アプリケーションには、罰する方法が必要です
+あらゆる形態の不正行為。
 
-The essential question is whether Tendermint should manage the evidence
-verification, or whether it should treat evidence more like a transaction (ie.
-arbitrary bytes) and let the application handle it (including all the signature
-checking).
+重要な問題は、テンダーミントが証拠を管理すべきかどうかです
+検証、または証拠がトランザクションのようなものである必要があるかどうか(つまり、
+任意のバイト)そしてアプリケーションにそれを処理させます(すべての署名を含む)
+試験)。
 
-Currently, evidence verification is handled by Tendermint. Once committed,
-[evidence is passed over
+現在、証拠の検証はテンダーミントによって処理されています。約束したら、
+[証拠は通過しました
 ABCI](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto#L354)
-in BeginBlock in a reduced form that includes only
-the type of evidence, its height and timestamp, the validator it's from, and the
-total voting power of the validator set at the height. The app trusts Tendermint
-to perform the evidence verification, as the ABCI evidence does not contain the
-signatures and additional data for the app to verify itself.
+BeginBlockの簡略化された形式では、
+証拠の種類、その高さとタイムスタンプ、それが由来するバリデーター、および
+バリデーターの総投票権は高いレベルに設定されています。アプリケーションはTendermintを信頼します
+ABCI証拠には含まれていないため、証拠検証を実行します
+自己検証のためのアプリケーションの署名およびその他のデータ。
 
-Arguments in favor of leaving evidence handling in Tendermint:
+テンダーミントでの証拠の取り扱いを支持する議論:
 
-1) Attacks on full nodes must be detectable by full nodes in real time, ie. within the consensus reactor.
-  So at the very least, any evidence involved in something that could fool a full
-  node must be handled natively by Tendermint as there would otherwise be no way
-  for the ABCI app to detect it (ie. we don't send all votes we receive during
-  consensus to the app ... ).
+1)フルノードへの攻撃は、フルノードがリアルタイムで検出できる必要があります。コンセンサスリアクター内。
+  したがって、少なくとも、何かを含む証拠は完全にだまされる可能性があります
+  ノードはTendermintによってローカルで処理される必要があります。そうでない場合、方法はありません。
+  ABCIアプリがそれを検出するために使用します(つまり、この期間中に受け取ったすべての投票を送信するわけではありません
+  アプリケーションに関するコンセンサス...)。
 
-2) Amensia attacks can not be easily detected - they require an interactive
-  protocol among all the validators to submit justification for their past
-  votes. Our best notion of [how to do this
-  currently](https://github.com/tendermint/tendermint/blob/c67154232ca8be8f5c21dff65d154127adc4f7bb/docs/spec/consensus/fork-detection.md)
-  is via a centralized
-  monitor service that is trusted for liveness to aggregate data from
-  current and past validators, but which produces a proof of misbehaviour (ie.
-  via amnesia) that can be verified by anyone, including the blockchain.
-  Validators must submit all the votes they saw for the relevant consensus
-  height to justify their precommits. This is quite specific to the Tendermint
-  protocol and may change if the protocol is upgraded. Hence it would be awkward
-  to co-ordinate this from the app.
+2)Amensia攻撃は簡単に検出できません-インタラクティブな攻撃が必要です
+  過去の理由を提出するためのすべてのバリデーター間の合意
+  チケット。私たちは[これを行う方法について
+  現在](https://github.com/tendermint/tendermint/blob/c67154232ca8be8f5c21dff65d154127adc4f7bb/docs/spec/consensus/fork-detection.md)
+  一元化された
+  データを集約するための信頼できるライブネス監視サービス
+  現在および過去のバリデーター。ただし、不正行為の証拠が作成されます(つまり、
+  記憶喪失を通して)、ブロックチェーンを含め、誰でも確認できます。
+  バリデーターは、関連するすべてのコンセンサス投票を提出する必要があります
+  彼らの事前コミットメントを正当化する高さ。これはテンダーミント独自のものです
+  契約がアップグレードされると、契約が変更される場合があります。恥ずかしいです
+  アプリケーションからこれを調整します。
 
-3) Evidence gossipping is similar to tx gossipping, but it should be higher
-  priority. Since the mempool does not support any notion of priority yet,
-  evidence is gossipped through a distinct Evidence reactor. If we just treated
-  evidence like any other transaction, leaving it entirely to the application,
-  Tendermint would have no way to know how to prioritize it, unless/until we
-  significantly upgrade the mempool. Thus we would need to continue to treat evidence
-  distinctly and update the ABCI to either support sending Evidence through
-  CheckTx/DeliverTx, or to introduce new CheckEvidence/DeliverEvidence methods.
-  In either case we'd need to make more changes to ABCI then if Tendermint
-  handled things and we just added support for another evidence type that could be included
-  in BeginBlock.
+3)エビデンスゴシップはtxゴシップに似ていますが、もっと高いはずです
+  優先順位。メモリプールはまだ優先順位の概念をサポートしていないため、
+  証拠は、ユニークな証拠リアクターを介したゴシップです。ただ扱うなら
+  他のトランザクションと同様に、証拠は完全にアプリケーションに委ねられます。
+  テンダーミントは、私たちがいない限り、優先順位を決定する方法を知ることができません
+  メモリプールを大幅にアップグレードします。したがって、証拠の処理を継続する必要があります
+  ABCIを明確にして更新し、次の方法で証拠の送信をサポートします
+  CheckTx / DeliverTx、または新しいCheckEvidence / DeliverEvidenceメソッドを導入します。
+  いずれの場合も、ABCIにさらに変更を加える必要があり、Tendermintの場合はさらに変更を加える必要があります。
+  問題に対処するために、含めることができる別の種類の証拠のサポートを追加しました
+  スターティングブロック内。
 
-4) All ABCI application frameworks will benefit from most of the heavy lifting
-  being handled by Tendermint, rather than each of them needing to re-implement
-  all the evidence verification logic in each language.
+4)すべてのABCIアプリケーションフレームワークは、大部分の重い作業の恩恵を受けます
+  テンダーミントによって処理されます。全員が再実装する必要はありません。
+  各言語のすべての証拠検証ロジック。
 
-Arguments in favor of moving evidence handling to the application:
+証拠処理をアプリに移行することを支持する議論:
 
-5) Skipping lite clients require us to track the set of all validators that were
-  bonded over some period in case validators that are unbonding but still
-  slashable sign invalid headers to fool lite clients. The Cosmos-SDK
-  staking/slashing modules track this, as it's used for slashing.
-  Tendermint does not currently track this, though it does keep track of the
-  validator set at every height. This leans in favour of managing evidence in
-  the app to avoid redundantly managing the historical validator set data in
-  Tendermint
+5)liteクライアントをスキップして、すべてのバリデーターのコレクションを追跡するように要求します
+  バリデーターがバインドを解除したが、それでも
+  スラッシュ可能なフラグは、ライトクライアントをだますための無効なヘッダーです。 Cosmos-SDK
+  ステーキング/スラッシュモジュールは、スラッシュに使用されるため、これを追跡します。
+  Tendermintは現在これを追跡していませんが、追跡しています
+  バリデーターは各高さに設定されます。これは証拠を管理する傾向があります
+  アプリケーションは、履歴バリデーターセットデータの冗長な管理を回避します
+  肌の若返り
 
-6) Applications supporting cross-chain validation will be required to process
-  evidence from other chains. This data will come in the form of a transaction,
-  but it means the app will be required to have all the functionality to process
-  evidence, even if the evidence for its own chain is handled directly by
-  Tendermint.
+6)クロスチェーン検証をサポートするアプリケーションを処理する必要があります
+  他のチェーンからの証拠。これらのデータは、トランザクションの形式で表示されます。
+  ただし、これは、アプリが処理するすべての機能を備えている必要があることを意味します
+  自身のチェーンの証拠が直接処理されたとしても、証拠
+  肌の若返り。
 
-7) Evidence from lite clients may be large and constitute some form of DoS
-  vector against full nodes. Putting it in transactions allows it to engage the application's fee
-  mechanism to pay for cost of executions in the event the evidence is false.
-  This means the evidence submitter must be able to afford the fees for the
-  submission, but of course it should be refunded if the evidence is valid.
-  That said, the burden is mostly on full nodes, which don't necessarily benefit
-  from fees.
+7)ライトクライアントからの証拠は大きく、何らかの形のDoSを構成している可能性があります
+  完全なノードのベクトル。トランザクションに入れると、アプリケーションの料金を請求できます
+  虚偽の証拠があった場合に執行費用を支払うメカニズム。
+  これは、証拠提出者が余裕がなければならないことを意味します
+  提出しますが、証拠が有効な場合は、もちろん返送する必要があります。
+  つまり、負担は主にノード全体にあり、必ずしもメリットがあるとは限りません。
+  コストから。
 
 
-## Decision
+## 決定
 
-The above mostly seems to suggest that evidence detection belongs in Tendermint.
-(5) does not impose particularly large obligations on Tendermint and (6) just
-means the app can use Tendermint libraries. That said, (7) is potentially
-cause for some concern, though it could still attack full nodes that weren't associated with validators
-(ie. that don't benefit from fees). This could be handled out of band, for instance by
-full nodes offering the light client service via payment channels or via some
-other payment service. This can also be mitigated by banning client IPs if they
-send bad data. Note the burden is on the client to actually send us a lot of
-data in the first place.
+上記のほとんどは、証拠テストがテンダーミントに属していることを示しているようです。
+(5)テンダーミントには特に大きな義務は課せられず、(6)のみ
+アプリケーションがTendermintライブラリを使用できることを意味します。言い換えれば、(7)は潜在的です
+バリデーターとは関係のない完全なノードを攻撃する可能性はありますが、いくつかの懸念が生じます
+(つまり、費用の恩恵を受けないでください)。これは、たとえば帯域外で処理できます
+すべてのノードは、支払いチャネルまたは特定のチャネルを介してライトクライアントサービスを提供します
+その他の支払いサービス。これは、クライアントIPを禁止することで軽減することもできます。
+不良データを送信します。お客様からは実際にたくさん送られてきますのでご注意ください
+データが最初に来ます。
 
-A separate ADR will describe how Tendermint will handle these new forms of
-evidence, in terms of how it will engage the monitoring protocol described in
-the [fork
-detection](https://github.com/tendermint/tendermint/blob/c67154232ca8be8f5c21dff65d154127adc4f7bb/docs/spec/consensus/fork-detection.md) document,
-and how it will track past validators and manage DoS issues.
+別のADRは、Tendermintがこれらの新しい形式の
+説明されている監視プロトコルにどのように参加するかについての証拠
+フォーク
+検出](https://github.com/tendermint/tendermint/blob/c67154232ca8be8f5c21dff65d154127adc4f7bb/docs/spec/consensus/fork-detection.md)ドキュメント、
+また、過去のバリデーターを追跡し、DoSの問題を管理する方法。
 
-## Status
+## ステータス
 
-Proposed.
+提案しました。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- No real changes to ABCI
-- Tendermint handles evidence for all apps
+-ABCIに実際の変更はありません
+-Tendermintはすべてのアプリケーション証拠を処理します
 
-### Neutral
+### ニュートラル
 
-- Need to be careful about denial of service on the Tendermint RPC
+-TendermintRPCでのサービス拒否に注意を払う必要があります
 
-### Negative
+### ネガティブ
 
-- Tendermint duplicates data by tracking all pubkeys that were validators during
-  the unbonding period
+-Tendermintは、この期間中にバリデーターとして機能したすべての公開鍵を追跡することにより、データをコピーします
+  拘束力のない期間

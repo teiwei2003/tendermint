@@ -53,24 +53,24 @@ lite 客户端实现了尝试使用二分搜索的二分算法
 解绑期连接到网络。具体来说，节点需要
 在从用户输入同步之前初始化以下结构:
 
-``
-类型 TrustOptions 结构 {
-    // 必需:只有信任提交到这个旧的。
-    // 应该等于解绑期减去一些证据报告的增量。
+```
+type TrustOptions struct {
+    // Required: only trust commits up to this old.
+    // Should be equal to the unbonding period minus some delta for evidence reporting.
     TrustPeriod time.Duration `json:"trust-period"`
 
-    // 选项 1:可以同时提供 TrustHeight 和 TrustHash
-    // 强制信任特定的高度和哈希值。
-    // 如果最新的可信高度/哈希值是最近的，那么这个选项是
-    // 忽略。
-    TrustHeight int64 `json:"trust-height"`
-    TrustHash []byte `json:"trust-hash"`
+    // Option 1: TrustHeight and TrustHash can both be provided
+    // to force the trusting of a particular height and hash.
+    // If the latest trusted height/hash is more recent, then this option is
+    // ignored.
+    TrustHeight int64  `json:"trust-height"`
+    TrustHash   []byte `json:"trust-hash"`
 
-    // 选项2:可以设置回调来实现确认
-    // 如果信任存储未初始化或过期，则执行步骤。
-    回调函数(height int64, hash []byte) 错误
+    // Option 2: Callback can be set to implement a confirmation
+    // step if the trust store is uninitialized, or expired.
+    Callback func(height int64, hash []byte) error
 }
-``
+```
 
 期望用户将从可信来源获得此信息
 例如验证者、朋友或安全网站。更人性化
@@ -87,7 +87,7 @@ lite 客户端实现了尝试使用二分搜索的二分算法
 规则](https://docs.tendermint.com/master/spec/blockchain/blockchain.html#validation)
 到每个块。
 
-###二等分验证
+### 二等分验证
 
 二分验证是一种带宽和计算密集型机制，
 在最乐观的情况下需要一个轻客户端只下载两个块

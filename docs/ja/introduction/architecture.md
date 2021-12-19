@@ -1,70 +1,70 @@
-# Tendermint Architectural Overview
+# Tendermintアーキテクチャの概要
 
 
-> **November 2019**
+> ** 2019年11月**
 
-Over the next few weeks, @brapse, @marbar3778 and I (@tessr) are having a series of meetings to go over the architecture of Tendermint Core. These are my notes from these meetings, which will either serve as an artifact for onboarding future engineers; or will provide the basis for such a document.
+今後数週間で、@ brapse、@ marbar3778、および私(@tessr)は、TendermintCoreのアーキテクチャについて話し合うための一連の会議を開催します。これらは、これらの会議での私のメモです。これらは、将来のエンジニアエントリの成果物として機能するか、そのようなドキュメントの基礎を提供します。
 
-## Communication
+## 伝える
 
-There are three forms of communication (e.g., requests, responses, connections) that can happen in Tendermint Core: *internode communication*, *intranode communication*, and *client communication*.
+Tendermint Coreでは、*ノード間通信*、*ノード内通信*、*クライアント通信*の3つの形式の通信(要求、応答、接続など)が発生する可能性があります。
 
-- Internode communication: Happens between a node and other peers. This kind of communication happens over TCP or HTTP. More on this below.
-- Intranode communication: Happens within the node itself (i.e., between reactors or other components). These are typically function or method calls, or occasionally happen through an event bus.
+-ノード間通信:ノードと他のピア間で発生します。この通信は、TCPまたはHTTPを介して実行されます。これについては、以下で詳しく説明します。
+-ノード内通信:ノード内(つまり、reactorまたは他のコンポーネント間)で発生します。これらは通常、関数またはメソッドの呼び出しであるか、イベントバスを介して発生する場合があります。
 
-- Client communication: Happens between a client (like a wallet or a browser) and a node on the network.
+-クライアント通信:クライアント(ウォレットやブラウザなど)とネットワークノード間で発生します。
 
-### Internode Communication
+### ノード間通信
 
-Internode communication can happen in two ways:
+ノード間の通信は、次の2つの方法で発生します。
 
-1. TCP connections through the p2p package
-    - Most common form of internode communication
-    - Connections between nodes are persisted and shared across reactors, facilitated by the switch. (More on the switch below.)
+1.p2pパケットを介したTCP接続
+    -ノード間の通信の最も一般的な形式
+    -ノード間の接続は、スイッチによって促進され、リアクター間で維持および共有されます。 (スイッチの詳細については、以下をご覧ください。)
 2. RPC over HTTP
-    - Reserved for short-lived, one-off requests
-    - Example: reactor-specific state, like height
-    - Also possible: web-sockets connected to channels for notifications (like new transactions)
+    -短期間の1回限りのリクエスト用に予約済み
+    -例:高さなど、原子炉の状態に固有
+    -また可能:通知チャネルに接続されたWebソケット(例:新しいトランザクション)
 
-### P2P Business (the Switch, the PEX, and the Address Book)
+### P2Pビジネス(スイッチ、PEX、名簿)
 
-When writing a p2p service, there are two primary responsibilities:
+p2pサービスを作成する場合、2つの主な責任があります。
 
-1. Routing: Who gets which messages?
-2. Peer management: Who can you talk to? What is their state? And how can you do peer discovery?
+1.ルーティング:誰がどのメッセージを受信しますか？
+2.ピア管理:誰と話すことができますか？彼らのステータスは何ですか？ピアディスカバリーをどのように実行しますか？
 
-The first responsibility is handled by the Switch:
+最初の責任はSwitchによって処理されます。
 
-- Responsible for routing connections between peers
-- Notably _only handles TCP connections_; RPC/HTTP is separate
-- Is a dependency for every reactor; all reactors expose a function `setSwitch`
-- Holds onto channels (channels on the TCP connection--NOT Go channels) and uses them to route
-- Is a global object, with a global namespace for messages
-- Similar functionality to libp2p
+-ピア間の接続ルーティングを担当します
+-_TCP接続のみを処理する_; RPC/HTTPは分離されていることに注意してください
+-これは各reactorの依存関係です。すべてのreactorは関数 `setSwitch`を公開します。
+-チャネル(TCP接続上のチャネル-Goチャネルではない)を保持し、ルーティングに使用します
+-メッセージのグローバル名前空間を持つグローバルオブジェクトです
+-libp2pと同様の機能
 
-TODO: More information (maybe) on the implementation of the Switch.
+TODO:スイッチの実装に関する詳細情報(おそらく)。
 
-The second responsibility is handled by a combination of the PEX and the Address Book.
+2番目の責任は、PEXと名簿の組み合わせによって処理されます。
 
- TODO: What is the PEX and the Address Book?
+ TODO:PEXと名簿とは何ですか？
 
-#### The Nature of TCP, and Introduction to the `mconnection`
+#### TCPの本質と `mconnection`の導入
 
-Here are some relevant facts about TCP:
+TCPに関するいくつかの関連する事実は次のとおりです。
 
-1. All TCP connections have a "frame window size" which represents the packet size to the "confidence;" i.e., if you are sending packets along a new connection, you must start out with small packets. As the packets are received successfully, you can start to send larger and larger packets. (This curve is illustrated below.) This means that TCP connections are slow to spin up.
-2. The syn/ack process also means that there's a high overhead for small, frequent messages
-3. Sockets are represented by file descriptors.
+1.すべてのTCP接続には、「信頼」に対するデータパケットのサイズを表す「フレームウィンドウサイズ」があります。つまり、新しい接続に沿ってデータパケットを送信する場合は、小さなデータパケットから開始する必要があります。 。パケットが正常に受信されると、ますます大きなパケットの送信を開始できます。 (この曲線は下の図に示されています。)これは、TCP接続の起動速度が非常に遅いことを意味します。
+2. syn/ackプロセスは、小さくて頻繁なメッセージのオーバーヘッドが高いことも意味します
+3.ソケットはファイル記述子で表されます。
 
-![tcp](../imgs/tcp-window.png)
+！[tcp](../../imgs/tcp-window.png)
 
-In order to have performant TCP connections under the conditions  created in Tendermint, we've created the `mconnection`, or the multiplexing connection. It is our own protocol built on top of TCP. It lets us reuse TCP connections to minimize overhead, and it keeps the window size high by sending auxiliary messages when necessary.
+Tendermintで作成された条件下で高性能TCP接続を確立するために、「mconnection」または多重化接続を作成しました。これは、TCP上に構築された独自のプロトコルです。 TCP接続を再利用してオーバーヘッドを最小限に抑え、必要に応じて補助メッセージを送信することでウィンドウサイズを高く保つことができます。
 
-The `mconnection` is represented by a struct, which contains a batch of messages, read and write buffers, and a map of channel IDs to reactors. It communicates with TCP via file descriptors, which it can write to. There is one `mconnection` per peer connection.
+`mconnection`は、メッセージのバッチ、読み取りおよび書き込みバッファ、およびチャネルIDのリアクトルへのマッピングを含む構造で表されます。ファイル記述子を介してTCPと通信し、書き込むことができます。ピアツーピア接続ごとに1つのmconnectionがあります。
 
-The `mconnection` has two methods: `send`, which takes a raw handle to the socket and writes to it; and `trySend`, which writes to a different buffer. (TODO: which buffer?)
+`mconnection`には2つのメソッドがあります。ソケットのrawハンドルを受け入れてそれに書き込む` send`と、別のバッファーに書き込む `trySend`です。 (TODO:どのバッファー？)
 
-The `mconnection` is owned by a peer, which is owned (potentially with many other peers) by a (global) transport, which is owned by the (global) switch:
+`mconnection`は、(おそらく他の多くのピアと一緒に)ピアによって所有され、(グローバル)スイッチによって所有される(グローバル)トランスポートによって所有されます。
 
 <!-- markdownlint-disable -->
 ```
@@ -81,52 +81,44 @@ switch
 
 ## node.go
 
-node.go is the entrypoint for running a node. It sets up reactors, sets up the switch, and registers all the RPC endpoints for a node.
+node.goは、ノードを実行するためのエントリポイントです。これは、reactorをセットアップし、スイッチを設定し、ノードのすべてのRPCエンドポイントを登録します。
 
-## Types of Nodes
-
-
-1. Validator Node:
-2. Full Node:
-3. Seed Node:
-
-TODO: Flesh out the differences between the types of nodes and how they're configured.
-
-## Reactors
-
-Here are some Reactor Facts:
-
-- Every reactor holds a pointer to the global switch (set through `SetSwitch()`)
-- The switch holds a pointer to every reactor (`addReactor()`)
-- Every reactor gets set up in node.go (and if you are using custom reactors, this is where you specify that)
-- `addReactor` is called by the switch; `addReactor` calls `setSwitch` for that reactor
-- There's an assumption that all the reactors are added before
-- Sometimes reactors talk to each other by fetching references to one another via the switch (which maintains a pointer to each reactor). **Question: Can reactors talk to each other in any other way?**
-
-Furthermore, all reactors expose:
-
-1. A TCP channel
-2. A `receive` method
-3. An `addReactor` call
-
-The `receive` method can be called many times by the mconnection. It has the same signature across all reactors.
-
-The `addReactor` call does a for loop over all the channels on the reactor and creates a map of channel IDs->reactors. The switch holds onto this map, and passes it to the _transport_, a thin wrapper around TCP connections.
-
-The following is an exhaustive (?) list of reactors:
-
-- Blockchain Reactor
-- Consensus Reactor
-- Evidence Reactor
-- Mempool Reactor
-- PEX Reactor
-
-Each of these will be discussed in more detail later.
+## ノードタイプ
 
 
-### Blockchain Reactor
+1.検証ノード:
+2.フルノード:
+3.シードノード:
 
-The blockchain reactor has two responsibilities:
+TODO:ノードタイプとその設定方法の違いを詳しく説明してください。
 
-1. Serve blocks at the request of peers
-2. TODO: learn about the second responsibility of the blockchain reactor
+## リアクター
+
+ここにいくつかの原子炉の事実があります:
+
+-各リアクトルには、グローバルスイッチへのポインタがあります( `SetSwitch()`で設定)
+-スイッチは各リアクターへのポインターを保持します( `addReactor()`)
+-各reactorはnode.goで設定されます(カスタムreactorを使用する場合は、これが指定する場所です)
+-`addReactor`はスイッチによって呼び出されます; `addReactor`はこのreactorに対して` setSwitch`を呼び出します
+-すべてのリアクターが以前に追加されたと仮定します
+-場合によっては、リアクターはスイッチ(各リアクターへのポインターを維持する)を使用して、相互に通信するための相互参照を取得します。 **質問:原子炉は他の方法で互いに通信できますか？ ****
+
+さらに、すべての原子炉が露出しています。
+
+1.TCPチャネル
+2.`receive`メソッド
+3.`addReactor`呼び出し
+
+`receive`メソッドはmconnectionによって複数回呼び出すことができます。それはすべての原子炉で同じ署名を持っています。
+
+`addReactor`は、reactorのすべてのチャネルでforループを実行し、チャネルID-> reactorマッピングを作成するために呼び出されます。スイッチはこのマッピングを維持し、TCP接続の薄いラッパーである_transport_に渡します。
+
+以下は、網羅的な(？)リアクターリストです。
+
+-ブロックチェーンリアクター
+-コンセンサスリアクター
+-証​​拠リアクター
+-メモリープールリアクター
+-PEXリアクター
+
+これらのそれぞれについては、後で詳しく説明します。

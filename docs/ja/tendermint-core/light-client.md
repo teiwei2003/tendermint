@@ -1,50 +1,50 @@
-# Light Client
+# ライトクライアント
 
-Light clients are an important part of the complete blockchain system for most
-applications. Tendermint provides unique speed and security properties for
-light client applications.
+ほとんどの人にとって、ライトクライアントは完全なブロックチェーンシステムの重要な部分です
+応用。テンダーミントは、独自の速度と安全性の属性を提供します
+ライトクライアントアプリケーション。
 
-See our [light
-package](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc).
+私たちの[光を参照してください
+パッケージ](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc)。
 
-## Overview
+## 概要
 
-The light client protocol verifies headers by retrieving a chain of headers,
-commits and validator sets from a trusted height to the target height, verifying
-the signatures of each of these intermediary signed headers till it reaches the
-target height. From there, all the application state is verifiable with
-[merkle proofs](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/encoding.md#iavl-tree).
+ライトクライアントプロトコルは、ヘッダーチェーンを取得することにより、ヘッダーを検証します。
+送信と検証は、信頼できる高さから目標の高さまで設定され、検証されます
+到達するまでのこれらの各中間署名ヘッダーの署名
+ターゲットの高さ。そこから、すべてのアプリケーションステータスを渡すことができます
+[マークルプルーフ](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/encoding.md#iavl-tree)。
 
-## Properties
+## 特徴
 
-- You get the full collateralized security benefits of Tendermint; no
-  need to wait for confirmations.
-- You get the full speed benefits of Tendermint; transactions
-  commit instantly.
-- You can get the most recent version of the application state
-  non-interactively (without committing anything to the blockchain). For
-  example, this means that you can get the most recent value of a name from the
-  name-registry without worrying about fork censorship attacks, without posting
-  a commit and waiting for confirmations. It's fast, secure, and free!
+-あなたはテンダーミントのすべてのセキュリティの権利と利益を得ることができます;いいえ
+  確認を待つ必要があります。
+-Tendermintのフルスピードの利点を得ることができます;トランザクション
+  今提出。
+-最新バージョンの申請状況を取得できます
+  非インタラクティブ(ブロックチェーンにコンテンツを送信しないでください)。にとって
+  たとえば、これはあなたが始めることができることを意味します
+  フォークレビュー攻撃の名前登録について心配する必要はなく、公開する必要もありません
+  送信して確認を待ちます。それは速く、安全で無料です！
 
-## Security
+## 安全性
 
-A light client is initialized from a point of trust using [Trust Options](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions),
-a provider and a set of witnesses. This sets the trust period: the period that
-full nodes should be accountable for faulty behavior and a trust level: the
-fraction of validators in a validator set with which we trust that at least one
-is correct. As Tendermint consensus can withstand 1/3 byzantine faults, this is
-the default trust level, however, for greater security you can increase it (max:
-1).
+ライトクライアントは、[信頼オプション](https://pkg.go.dev/github.com/tendermint/tendermint/light?tab=doc#TrustOptions)を使用して、信頼ポイントから初期化します。
+プロバイダーと証人のグループ。これにより、信頼期間が設定されます。
+完全なノードは、誤った動作と信頼レベルの原因となるはずです。
+バリデーターセット内のバリデーターの小さなグループ、少なくとも1つあると信じています
+正しい。テンダーミントのコンセンサスはビザンチンの失敗の1/3に耐えることができるので、これは
+ただし、セキュリティを向上させるために、デフォルトの信頼レベルを上げることができます(最大:
+1)。
 
-Similar to a full node, light clients can also be subject to byzantine attacks.
-A light client also runs a detector process which cross verifies headers from a
-primary with witnesses. Therefore light clients should be set with enough witnesses.
+フルノードと同様に、ライトクライアントもビザンチン攻撃の対象となる可能性があります。
+ライトクライアントは、から相互検証する検出器プロセスも実行します
+主に目撃者がいます。したがって、ライトクライアントは十分な証人を設定する必要があります。
 
-If the light client observes a faulty provider it will report it to another provider
-and return an error.
+ライトクライアントが問題のあるプロバイダーを観察した場合、別のプロバイダーに報告します
+そして、エラーを返します。
 
-In summary, the light client is not safe when a) more than the trust level of
-validators are malicious and b) all witnesses are malicious.
+全体として、a)が信頼レベルを超えると、ライトクライアントは安全ではなくなります
+検証者は悪意があり、b)すべての目撃者は悪意があります。
 
-Information on how to run a light client is located in the [nodes section](../nodes/light-client.md).
+ライトクライアントの実行方法に関する情報は、[ノードセクション](../nodes/light-client.md)にあります。

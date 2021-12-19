@@ -1,34 +1,34 @@
-# Configure State-Sync
+# 構成ステータスの同期
 
-State sync will continuously work in the background to supply nodes with chunked data when bootstrapping.
+状態の同期は引き続きバックグラウンドで機能し、起動時にノードにチャンク化されたデータを提供します。
 
-> NOTE: Before trying to use state sync, see if the application you are operating a node for supports it.
+>注:状態同期を使用する前に、ノードを操作しているアプリケーションがサポートしているかどうかを確認してください。
 
-Under the state sync section in `config.toml` you will find multiple settings that need to be configured in order for your node to use state sync.
+「config.toml」のステータス同期セクションの下に、ノードがステータス同期を使用できるように構成する必要のある複数の設定があります。
 
-Lets breakdown the settings:
+設定を分解してみましょう:
 
-- `enable`: Enable is to inform the node that you will be using state sync to bootstrap your node.
-- `rpc_servers`: RPC servers are needed because state sync utilizes the light client for verification.
-    - 2 servers are required, more is always helpful.
-- `temp_dir`: Temporary directory is store the chunks in the machines local storage, If nothing is set it will create a directory in `/tmp`
+-`enable`:有効とは、状態同期を使用してノードをガイドすることをノードに通知することです。
+-`rpc_servers`:状態同期は検証にライトクライアントを使用するため、RPCサーバーが必要です。
+    -2台のサーバーが必要ですが、それ以上のサーバーが常に役立ちます。
+-`temp_dir`:一時ディレクトリは、マシンのローカルストレージにブロックを保存します。設定されていない場合、 `/ tmp`にディレクトリが作成されます。
 
-The next information you will need to acquire it through publicly exposed RPC's or a block explorer which you trust.
+公開されているRPCまたは信頼できるブロックエクスプローラーを介して次の情報を取得する必要があります。
 
-- `trust_height`: Trusted height defines at which height your node should trust the chain.
-- `trust_hash`: Trusted hash is the hash in the `BlockID` corresponding to the trusted height.
-- `trust_period`: Trust period is the period in which headers can be verified.
-  > :warning: This value should be significantly smaller than the unbonding period.
+-`trust_height`:信頼できる高さは、ノードが信頼する必要のあるチェーンの高さを定義します。
+-`trust_hash`:信頼できるハッシュは、信頼できる高さに対応する `BlockID`のハッシュ値です。
+-`trust_period`:信頼期間は、ヘッダーを検証できる期間です。
+  >:warning:この値は、バインド解除期間よりも大幅に短くする必要があります。
 
-If you are relying on publicly exposed RPC's to get the need information, you can use `curl`.
+公開されているRPCを使用して必要な情報を取得する場合は、 `curl`を使用できます。
 
-Example:
+例:
 
 ```bash
 curl -s https://233.123.0.140:26657/commit | jq "{height: .result.signed_header.header.height, hash: .result.signed_header.commit.block_id.hash}"
 ```
 
-The response will be:
+応答は次のようになります。
 
 ```json
 {

@@ -1,24 +1,24 @@
-# ADR 018: ABCI Validator Improvements
+# ADR 018:ABCIバリデーターの改善
 
-## Changelog
+##変更ログ
 
-016-08-2018: Follow up from review: - Revert changes to commit round - Remind about justification for removing pubkey - Update pros/cons
-05-08-2018: Initial draft
+016-08-2018:レビューとフォローアップ:-提出ラウンドへの変更を再開します-公開鍵を削除する理由を思い出させます-長所/短所を更新します
+2018年5月8日:最初のドラフト
 
-## Context
+## 環境
 
-ADR 009 introduced major improvements to the ABCI around validators and the use
-of Amino. Here we follow up with some additional changes to improve the naming
-and expected use of Validator messages.
+ADR 009は、バリデーターと使用法に関してABCIに大幅な改善を加えました
+アミノ。 ここでは、命名を改善するためにいくつかの追加の変更をフォローアップしました
+そして、バリデーターメッセージの使用目的。
 
-## Decision
+## 決定
 
-### Validator
+###バリデーター
 
-Currently a Validator contains `address` and `pub_key`, and one or the other is
-optional/not-sent depending on the use case. Instead, we should have a
-`Validator` (with just the address, used for RequestBeginBlock)
-and a `ValidatorUpdate` (with the pubkey, used for ResponseEndBlock):
+現在、バリデーターには `address`と` pub_key`が含まれており、そのうちの1つは
+オプション/非送信はユースケースによって異なります。 代わりに、
+`Validator`(アドレスのみ、RequestBeginBlockに使用)
+そして `ValidatorUpdate`(ResponseEndBlockの公開鍵付き):
 
 ```
 message Validator {
@@ -32,21 +32,21 @@ message ValidatorUpdate {
 }
 ```
 
-As noted in [ADR-009](adr-009-ABCI-design.md),
-the `Validator` does not contain a pubkey because quantum public keys are
-quite large and it would be wasteful to send them all over ABCI with every block.
-Thus, applications that want to take advantage of the information in BeginBlock
-are _required_ to store pubkeys in state (or use much less efficient lazy means
-of verifying BeginBlock data).
+[ADR-009](adr-009-ABCI-design.md)で説明されているように、
+クォンタム公開鍵は
+かなり大きく、ブロックごとにABCI全体に送信するのは無駄です。
+したがって、BeginBlockの情報を使用したいアプリケーション
+公開鍵を状態に保存するために_必要_(またははるかに効率の悪い怠惰な方法を使用する
+BeginBlockデータを確認します)。
 
 ### RequestBeginBlock
 
-LastCommitInfo currently has an array of `SigningValidator` that contains
-information for each validator in the entire validator set.
-Instead, this should be called `VoteInfo`, since it is information about the
-validator votes.
+LastCommitInfoには現在、 `SigningValidator`配列があります。
+バリデーター全体が、各バリデーターの情報を一元化します。
+代わりに、これは「VoteInfo」と呼ばれるべきです。
+検証者が投票します。
 
-Note that all votes in a commit must be from the same round.
+提出物のすべての投票は同じラウンドからのものでなければならないことに注意してください。
 
 ```
 message LastCommitInfo {
@@ -62,39 +62,39 @@ message VoteInfo {
 
 ### ResponseEndBlock
 
-Use ValidatorUpdates instead of Validators. Then it's clear we don't need an
-address, and we do need a pubkey.
+Validatorsの代わりにValidatorUpdatesを使用してください。 それなら明らかに必要ありません
+住所、公開鍵が必要です。
 
-We could require the address here as well as a sanity check, but it doesn't seem
-necessary.
+ここで住所と健全性チェックを依頼できますが、そうではないようです
+必要。
 
-### InitChain
+###初期化チェーン
 
-Use ValidatorUpdates for both Request and Response. InitChain
-is about setting/updating the initial validator set, unlike BeginBlock
-which is just informational.
+リクエストとレスポンスの両方にValidatorUpdatesを使用します。 初期チェーン
+BeginBlockとは異なり、初期バリデーターセットの設定/更新に関するものです
+これは情報提供のみです。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Clarifies the distinction between the different uses of validator information
+-ベリファイア情報のさまざまな使用法の違いを明確にしました
 
-### Negative
+### ネガティブ
 
-- Apps must still store the public keys in state to utilize the RequestBeginBlock info
+-アプリケーションは、RequestBeginBlock情報を使用するために、公開鍵を状態で保存する必要があります
 
-### Neutral
+### ニュートラル
 
-- ResponseEndBlock does not require an address
+-ResponseEndBlockはアドレスを必要としません
 
-## References
+## 参照する
 
-- [Latest ABCI Spec](https://github.com/tendermint/tendermint/blob/v0.22.8/docs/app-dev/abci-spec.md)
-- [ADR-009](https://github.com/tendermint/tendermint/blob/v0.22.8/docs/architecture/adr-009-ABCI-design.md)
-- [Issue #1712 - Don't send PubKey in
-  RequestBeginBlock](https://github.com/tendermint/tendermint/issues/1712)
+-[最新のABCI仕様](https://github.com/tendermint/tendermint/blob/v0.22.8/docs/app-dev/abci-spec.md)
+-[ADR-009](https://github.com/tendermint/tendermint/blob/v0.22.8/docs/architecture/adr-009-ABCI-design.md)
+-[問題#1712-PubKeyを送信しないでください
+   RequestBeginBlock](https://github.com/tendermint/tendermint/issues/1712)

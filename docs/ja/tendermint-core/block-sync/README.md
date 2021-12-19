@@ -1,32 +1,32 @@
-# Block Sync
-*Formerly known as Fast Sync*
+# 同期をブロックする
+*以前はQuickSyncと呼ばれていました*
 
-In a proof of work blockchain, syncing with the chain is the same
-process as staying up-to-date with the consensus: download blocks, and
-look for the one with the most total work. In proof-of-stake, the
-consensus process is more complex, as it involves rounds of
-communication between the nodes to determine what block should be
-committed next. Using this process to sync up with the blockchain from
-scratch can take a very long time. It's much faster to just download
-blocks and check the merkle tree of validators than to run the real-time
-consensus gossip protocol.
+プルーフオブワークブロックチェーンでは、チェーンとの同期は同じです
+コンセンサスとの同期を維持するプロセス:ブロックのダウンロード、および
+総ワークロードが最も多いものを探します。公平性の証明では、
+コンセンサスプロセスは複数のラウンドを伴うため、より複雑です
+どのブロックが必要かを決定するためのノード間の通信
+次にコミットします。このプロセスを使用して、ブロックチェーンと同期します
+ゼロから始めるには長い時間がかかる場合があります。直接ダウンロードははるかに高速になります
+リアルタイムで実行するのではなく、バリデーターのMerkelツリーをブロックして確認します
+コンセンサスゴシップ合意。
 
-## Using Block Sync
+## ブロック同期を使用する
 
-To support faster syncing, Tendermint offers a `blocksync` mode, which
-is enabled by default, and can be toggled in the `config.toml` or via
-`--blocksync.enable=false`.
+より高速な同期をサポートするために、Tendermintは「blocksync」モードを提供します。
+これはデフォルトで有効になっており、 `config.toml`または
+`--blocksync.enable = false`。
 
-In this mode, the Tendermint daemon will sync hundreds of times faster
-than if it used the real-time consensus process. Once caught up, the
-daemon will switch out of Block Sync and into the normal consensus mode.
-After running for some time, the node is considered `caught up` if it
-has at least one peer and it's height is at least as high as the max
-reported peer height. See [the IsCaughtUp
-method](https://github.com/tendermint/tendermint/blob/b467515719e686e4678e6da4e102f32a491b85a0/blockchain/pool.go#L128).
+このモードでは、Tendermintデーモンは何百回も同期します
+リアルタイムのコンセンサスプロセスを使用する代わりに。追いついたら、
+デーモンはブロック同期を終了し、通常のコンセンサスモードに入ります。
+一定期間実行した後、ノードが「追いついた」と見なされる場合
+少なくとも1つのピアがあり、その高さは少なくとも最大と同じくらい高い
+報告されたピアの高さ。 [IsCaughtUpを参照してください
+メソッド](https://github.com/tendermint/tendermint/blob/b467515719e686e4678e6da4e102f32a491b85a0/blockchain/pool.go#L128)。
 
-Note: There are multiple versions of Block Sync. Please use v0 as the other versions are no longer supported.
-  If you would like to use a different version you can do so by changing the version in the `config.toml`:
+注:BlockSyncには複数のバージョンがあります。他のバージョンはサポートされなくなったため、v0を使用してください。
+  別のバージョンを使用する場合は、 `config.toml`でバージョンを変更することで使用できます。
 
 ```toml
 #######################################################
@@ -45,19 +45,19 @@ enable = true
 version = "v0"
 ```
 
-If we're lagging sufficiently, we should go back to block syncing, but
-this is an [open issue](https://github.com/tendermint/tendermint/issues/129).
+十分に遅れている場合は、ブロック同期に戻る必要がありますが、
+これは[未解決の問題](https://github.com/tendermint/tendermint/issues/129)です。
 
-## The Block Sync event
-When the tendermint blockchain core launches, it might switch to the `block-sync`
-mode to catch up the states to the current network best height. the core will emits
-a fast-sync event to expose the current status and the sync height. Once it catched
-the network best height, it will switches to the state sync mechanism and then emit
-another event for exposing the fast-sync `complete` status and the state `height`.
+##ブロック同期イベント
+テンダーミントブロックチェーンコアが起動すると、 `block-sync`に切り替わる場合があります
+モデルは、現在のネットワークの最高の高さまで状態に追いつきます。 コアが発行されます
+現在の状態と同期の高さを開示するためのクイック同期イベント。 捕まえたら
+ネットワークの最適な高さ、それは状態同期メカニズムに切り替わり、次に発行します
+別のイベントは、高速同期の「完了」ステータスとステータス「高さ」を開示するために使用されます。
 
-The user can query the events by subscribing `EventQueryBlockSyncStatus`
-Please check [types](https://pkg.go.dev/github.com/tendermint/tendermint/types?utm_source=godoc#pkg-constants) for the details.
+ユーザーは `EventQueryBlockSyncStatus`にサブスクライブすることでイベントをクエリできます
+詳細については、[types](https://pkg.go.dev/github.com/tendermint/tendermint/types?utm_source=godoc#pkg-constants)を参照してください。
 
-## Implementation
+## 埋め込む
 
-To read more on the implamentation please see the [reactor doc](./reactor.md) and the [implementation doc](./implementation.md)
+実装の詳細については、[reactor doc](./reactor.md)および[implementation doc](./implementation.md)を参照してください。

@@ -1,38 +1,38 @@
-# ADR 037: Deliver Block
+# ADR 037:配信ブロック
 
-Author: Daniil Lashin (@danil-lashin)
+著者:ダニエル・ラシーン(@ danil-lashin)
 
-## Changelog
+## 変更ログ
 
-13-03-2019: Initial draft
+2019年3月13日:最初のドラフト
 
-## Context
+## 環境
 
-Initial conversation: https://github.com/tendermint/tendermint/issues/2901
+最初のダイアログ:https://github.com/tendermint/tendermint/issues/2901
 
-Some applications can handle transactions in parallel, or at least some
-part of tx processing can be parallelized. Now it is not possible for developer
-to execute txs in parallel because Tendermint delivers them consequentially.
+一部のアプリケーションは、トランザクションを並行して処理できます。または、少なくとも一部のアプリケーションは処理できます。
+tx処理の一部を並列化できます。今では開発者には不可能です
+Tendermintがそれに応じて提供するため、txを並行して実行します。
 
-## Decision
+## 決定
 
-Now Tendermint have `BeginBlock`, `EndBlock`, `Commit`, `DeliverTx` steps
-while executing block. This doc proposes merging this steps into one `DeliverBlock`
-step. It will allow developers of applications to decide how they want to
-execute transactions (in parallel or consequentially). Also it will simplify and
-speed up communications between application and Tendermint.
+これで、Tendermintには `BeginBlock`、` EndBlock`、 `Commit`、` DeliverTx`ステップがあります
+ブロックの実行中。このドキュメントでは、これらの手順を1つのDeliverBlockに結合することを推奨しています
+ステップ。これにより、アプリ開発者は希望する方法を決定できます
+トランザクションを実行します(並列または連続)。それはまた単純化し、
+アプリケーションとTendermint間の通信を高速化します。
 
-As @jaekwon [mentioned](https://github.com/tendermint/tendermint/issues/2901#issuecomment-477746128)
-in discussion not all application will benefit from this solution. In some cases,
-when application handles transaction consequentially, it way slow down the blockchain,
-because it need to wait until full block is transmitted to application to start
-processing it. Also, in the case of complete change of ABCI, we need to force all the apps
-to change their implementation completely. That's why I propose to introduce one more ABCI
-type.
+@jaekwonとして[言及](https://github.com/tendermint/tendermint/issues/2901#issuecomment-477746128)
+議論では、すべてのアプリケーションがこのソリューションの恩恵を受けるわけではありません。特定の状況下で、
+アプリケーションがそれに応じてトランザクションを処理すると、ブロックチェーンの速度が低下します。
+開始するには、ブロック全体がアプリケーションに転送されるまで待機する必要があるためです。
+それに対処します。さらに、ABCIが完全に変更された場合は、すべてのアプリケーションを強制する必要があります
+それらの実装を完全に変更します。これが私が別のABCIを紹介することを提案する理由です
+タイプ。
 
-# Implementation Changes
+# 変更を実装する
 
-In addition to default application interface which now have this structure
+現在この構造になっているデフォルトのアプリケーションインターフェイスに加えて
 
 ```go
 type Application interface {
@@ -76,25 +76,25 @@ type ResponseDeliverBlock struct {
 
 ```
 
-Also, we will need to add new config param, which will specify what kind of ABCI application uses.
-For example, it can be `abci_type`. Then we will have 2 types:
-- `advanced` - current ABCI
-- `simple` - proposed implementation
+さらに、ABCIアプリケーションで使用されるタイプを指定する新しい構成パラメーターを追加する必要があります。
+たとえば、 `abci_type`にすることができます。 次に、2つのタイプがあります。
+-`Advanced`-現在のABCI
+-`Simple`-推奨される実装
 
-## Status
+## ステータス
 
-In review
+レビュー中
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- much simpler introduction and tutorials for new developers (instead of implementing 5 methods whey
-will need to implement only 3)
-- txs can be handled in parallel
-- simpler interface
-- faster communications between Tendermint and application
+-5つのメソッドホエイを実装する代わりに、新しい開発者向けに簡単な紹介とチュートリアルを提供します
+実装する必要があるのは3)だけです
+-txsは並行して処理できます
+-よりシンプルなインターフェース
+-Tendermintとアプリ間のより高速な通信
 
-### Negative
+### ネガティブ
 
-- Tendermint should now support 2 kinds of ABCI
+-Tendermintは2種類のABCIをサポートするようになりました

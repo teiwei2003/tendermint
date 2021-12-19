@@ -1,24 +1,24 @@
-# ADR 005: Consensus Params
+# ADR 005:コンセンサスパラメータ
 
-## Context
+## 環境
 
-Consensus critical parameters controlling blockchain capacity have until now been hard coded, loaded from a local config, or neglected.
-Since they may be need to be different in different networks, and potentially to evolve over time within
-networks, we seek to initialize them in a genesis file, and expose them through the ABCI.
+これまでのところ、ブロックチェーンの容量を制御する主要なコンセンサスパラメータは、ハードコーディングされているか、ローカル構成からロードされているか、無視されています。
+それらは異なるネットワークで異なる必要があり、時間とともに進化する可能性があるためです
+ネットワークでは、ジェネシスファイルでそれらを初期化し、ABCIを介して公開しようとしました。
 
-While we have some specific parameters now, like maximum block and transaction size, we expect to have more in the future,
-such as a period over which evidence is valid, or the frequency of checkpoints.
+現在、最大ブロックやトランザクションサイズなど、いくつかの特定のパラメータがありますが、将来的にはさらに多くのパラメータが必要です。
+たとえば、証拠が有効である期間やチェックポイントの頻度などです。
 
-## Decision
+## 決定
 
-### ConsensusParams
+### コンセンサスパラメータ
 
-No consensus critical parameters should ever be found in the `config.toml`.
+`config.toml`に一貫したキーパラメータがないはずです。
 
-A new `ConsensusParams` is optionally included in the `genesis.json` file,
-and loaded into the `State`. Any items not included are set to their default value.
-A value of 0 is undefined (see ABCI, below). A value of -1 is used to indicate the parameter does not apply.
-The parameters are used to determine the validity of a block (and tx) via the union of all relevant parameters.
+新しいConsensusParamsは、オプションで `genesis.json`ファイルに含まれています。
+そして、「ステータス」にロードされます。 含まれていないアイテムはすべてデフォルト値に設定されます。
+値0は未定義です(以下のABCIを参照)。 値-1は、パラメーターが適用できないことを示すために使用されます。
+これらのパラメーターは、関連するすべてのパラメーターの結合を通じてブロック(およびtx)の有効性を判別するために使用されます。
 
 ```
 type ConsensusParams struct {
@@ -43,43 +43,43 @@ type BlockGossip struct {
 }
 ```
 
-The `ConsensusParams` can evolve over time by adding new structs that cover different aspects of the consensus rules.
+`ConsensusParams`は、コンセンサスルールのさまざまな側面をカバーする新しい構造を追加することにより、時間の経過とともに進化する可能性があります。
 
-The `BlockPartSizeBytes` and the `BlockSize.MaxBytes` are enforced to be greater than 0.
-The former because we need a part size, the latter so that we always have at least some sanity check over the size of blocks.
+`BlockPartSizeBytes`と` BlockSize.MaxBytes`は強制的に0より大きくなります。
+前者はパーツサイズが必要なためであり、後者はブロックサイズに対して少なくともいくつかの健全性チェックを常に実行できるようにするためです。
 
 ### ABCI
 
-#### InitChain
+#### 初期化チェーン
 
-InitChain currently takes the initial validator set. It should be extended to also take parts of the ConsensusParams.
-There is some case to be made for it to take the entire Genesis, except there may be things in the genesis,
-like the BlockPartSize, that the app shouldn't really know about.
+InitChainは現在、バリデーターの初期セットを使用しています。 ConsensusParamsの一部も含めるように拡張する必要があります。
+創造物に何かがない限り、それを創世記全体を占めるようにすることができるいくつかの状況があります、
+BlockPartSizeと同様に、アプリケーションは実際には認識すべきではありません。
 
-#### EndBlock
+#### エンドブロック
 
-The EndBlock response includes a `ConsensusParams`, which includes BlockSize and TxSize, but not BlockGossip.
-Other param struct can be added to `ConsensusParams` in the future.
-The `0` value is used to denote no change.
-Any other value will update that parameter in the `State.ConsensusParams`, to be applied for the next block.
-Tendermint should have hard-coded upper limits as sanity checks.
+EndBlock応答には、BlockSizeとTxSizeを含むConsensusParamsが含まれますが、BlockGossipは含まれません。
+将来、他のパラメータ構造を `ConsensusParams`に追加することができます。
+`0`の値は、変更がないことを示すために使用されます。
+その他の値は、「State.ConsensusParams」のパラメーターを更新して、次のブロックに適用します。
+Tendermintには、健全性チェックとしてハードコードされた上限が必要です。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Alternative capacity limits and consensus parameters can be specified without re-compiling the software.
-- They can also change over time under the control of the application
+-代替の容量制限とコンセンサスパラメータを指定するためにソフトウェアを再コンパイルする必要はありません。
+-アプリの制御下で時間の経過とともに変化することもあります
 
-### Negative
+### ネガティブ
 
-- More exposed parameters is more complexity
-- Different rules at different heights in the blockchain complicates fast sync
+-公開されるパラメータが多いほど、複雑になります
+-ブロックチェーンのさまざまな高さでのさまざまなルールにより、高速同期が複雑になります
 
-### Neutral
+## #ニュートラル
 
-- The TxSize, which checks validity, may be in conflict with the config's `max_block_size_tx`, which determines proposal sizes
+-有効性をチェックするためのTxSizeは、プロポーザルのサイズを決定する構成の `max_block_size_tx`と競合する可能性があります

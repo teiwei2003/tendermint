@@ -1,29 +1,29 @@
-# Overview
+# 概要
 
-Tendermint has some tools that are associated with it for:
+Tendermintには、それに関連するいくつかのツールがあります。
 
-- [Debugging](./debugging/pro.md)
-- [Benchmarking](#benchmarking)
-- [Testnets](#testnets)
+-[デバッグ](./debugging/pro.md)
+-[ベンチマーク](#benchmarking)
+-[TESTNET](#testnets)
 
-## Benchmarking
+## ベンチマーク
 
-- <https://github.com/informalsystems/tm-load-test>
+-<https://github.com/informalsystems/tm-load-test>
 
-`tm-load-test` is a distributed load testing tool (and framework) for load
-testing Tendermint networks.
+`tm-load-test`は、負荷用の分散型負荷テストツール(およびフレームワーク)です。
+Tendermintネットワークをテストします。
 
-## Testnets
+## テストネット
 
-- <https://github.com/informalsystems/testnets>
+-<https://github.com/informalsystems/testnets>
 
-This repository contains various different configurations of test networks for,
-and relating to, Tendermint.
+このリポジトリには、さまざまなテストネットワーク構成が含まれています。
+そしてテンダーミントに関連しています。
 
-Use [Docker Compose](./docker-compose.md) to spin up Tendermint testnets on your
-local machine.
+[Docker Compose](./docker-compose.md)を使用して、システムでTendermintテストネットを起動します
+ローカルマシン。
 
-Use [Terraform and Ansible](./terraform-and-ansible.md) to deploy Tendermint
-testnets to the cloud.
+[Terraform and Ansible](./terraform-and-ansible.md)を使用してTendermintをデプロイします
+クラウドへのテストネット。
 
-See the `tendermint testnet --help` command for more help initializing testnets.
+テストネットの初期化の詳細については、 `tendermint testnet--help`コマンドを参照してください。

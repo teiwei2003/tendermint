@@ -1,38 +1,38 @@
-# ADR 004: Historical Validators
+# ADR 004:履歴バリデーター
 
-## Context
+## 環境
 
-Right now, we can query the present validator set, but there is no history.
-If you were offline for a long time, there is no way to reconstruct past validators. This is needed for the light client and we agreed needs enhancement of the API.
+これで、現在のバリデーターセットを照会できますが、履歴はありません。
+長期間オフラインの場合、過去のバリデーターを再構築することはできません。これはライトクライアントが必要とするものであり、APIを拡張する必要があることに同意します。
 
-## Decision
+## 決定
 
-For every block, store a new structure that contains either the latest validator set,
-or the height of the last block for which the validator set changed. Note this is not
-the height of the block which returned the validator set change itself, but the next block,
-ie. the first block it comes into effect for.
+ブロックごとに、最新のバリデーターのセットを含む新しい構造を保存します。
+または、バリデーターセットによって変更された最後のブロックの高さ。これはそうではないことに注意してください
+バリデーターセットに戻るブロックの高さは自動的に変更されますが、次のブロックは
+IE。最初のブロックが有効になります。
 
-Storing the validators will be handled by the `state` package.
+ストレージバリデーターは `state`パッケージによって処理されます。
 
-At some point in the future, we may consider more efficient storage in the case where the validators
-are updated frequently - for instance by only saving the diffs, rather than the whole set.
+将来のある時点で、バリデーターの場合、より効率的なストレージの使用を検討する可能性があります
+頻繁に更新します。たとえば、コレクション全体ではなく、違いのみが保存されます。
 
-An alternative approach suggested keeping the validator set, or diffs of it, in a merkle IAVL tree.
-While it might afford cheaper proofs that a validator set has not changed, it would be more complex,
-and likely less efficient.
+別の方法では、バリデーターセットまたはその違いをMerkelIAVLツリーに保存することをお勧めします。
+ベリファイアセットが変更されていないことをより安価に証明できますが、より複雑になります。
+そして、それは効率が悪いかもしれません。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Can query old validator sets, with proof.
+-古いバリデーターセットをクエリできます。証拠があります。
 
-### Negative
+### ネガティブ
 
-- Writes an extra structure to disk with every block.
+-ブロックごとにディスクに追加の構造を書き込みます。
 
-### Neutral
+### ニュートラル

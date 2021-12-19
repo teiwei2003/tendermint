@@ -1,40 +1,40 @@
-# Terraform & Ansible
+# Terraform＆Ansible
 
-> Note: These commands/files are not being maintained by the tendermint team currently. Please use them carefully.
+>注:テンダーミントチームは現在、これらのコマンド/ファイルを管理していません。 慎重に使用してください。
 
-Automated deployments are done using
-[Terraform](https://www.terraform.io/) to create servers on Digital
-Ocean then [Ansible](http://www.ansible.com/) to create and manage
-testnets on those servers.
+自動展開は使用することです
+[Terraform](https://www.terraform.io/)デジタルでサーバーを作成する
+次にOcean [Ansible](http://www.ansible.com/)を作成して管理します
+これらのサーバー上のテストネット。
 
-## Install
+## インストール
 
-NOTE: see the [integration bash
-script](https://github.com/tendermint/tendermint/blob/master/networks/remote/integration.sh)
-that can be run on a fresh DO droplet and will automatically spin up a 4
-node testnet. The script more or less does everything described below.
+注:[Integratedbashを参照してください
+スクリプト](https://github.com/tendermint/tendermint/blob/master/networks/remote/integration.sh)
+新鮮なDO液滴で実行でき、自動的に回転します4
+ノードテストネットワーク。 このスクリプトは、以下に説明するすべてのことを多かれ少なかれ達成します。
 
-- Install [Terraform](https://www.terraform.io/downloads.html) and
-  [Ansible](http://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
-  on a Linux machine.
-- Create a [DigitalOcean API
-  token](https://cloud.digitalocean.com/settings/api/tokens) with read
-  and write capability.
-- Install the python dopy package (`pip install dopy`)
-- Create SSH keys (`ssh-keygen`)
-- Set environment variables:
+-[Terraform](https://www.terraform.io/downloads.html)をインストールして
+   [Ansible](http://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
+   Linuxマシンの場合。
+-[DigitalOceanAPIを作成します
+   トークン](https://cloud.digitalocean.com/settings/api/tokens)
+   そして書き込み機能。
+-python dopyパッケージをインストールします( `pip install dopy`)
+-SSHキーを作成します( `ssh-keygen`)
+-環境変数を設定します。
 
 ```sh
 export DO_API_TOKEN="abcdef01234567890abcdef01234567890"
 export SSH_KEY_FILE="$HOME/.ssh/id_rsa.pub"
 ```
 
-These will be used by both `terraform` and `ansible`.
+これらは `terraform`と` ansible`によって使用されます。
 
-## Terraform
+## 地形
 
-This step will create four Digital Ocean droplets. First, go to the
-correct directory:
+このステップでは、4つのデジタル海洋液滴を作成します。 まず、
+正しいディレクトリ:
 
 ```sh
 cd $GOPATH/src/github.com/tendermint/tendermint/networks/remote/terraform
@@ -47,65 +47,65 @@ terraform init
 terraform apply -var DO_API_TOKEN="$DO_API_TOKEN" -var SSH_KEY_FILE="$SSH_KEY_FILE"
 ```
 
-and you will get a list of IP addresses that belong to your droplets.
+ドロップレットに属するIPアドレスのリストが表示されます。
 
-With the droplets created and running, let's setup Ansible.
+ドロップレットを作成して実行したら、Ansibleをセットアップしましょう。
 
 ## Ansible
 
-The playbooks in [the ansible
-directory](https://github.com/tendermint/tendermint/tree/master/networks/remote/ansible)
-run ansible roles to configure the sentry node architecture. You must
-switch to this directory to run ansible
-(`cd $GOPATH/src/github.com/tendermint/tendermint/networks/remote/ansible`).
+[ansibleのスクリプト
+ディレクトリ](https://github.com/tendermint/tendermint/tree/master/networks/remote/ansible)
+ansibleロールを実行して、センチネルノードアーキテクチャを構成します。 絶対です
+このディレクトリに切り替えて、ansibleを実行します
+( `cd $ GOPATH/src/github.com/tendermint/tendermint/networks/remote/ansible`)。
 
-There are several roles that are self-explanatory:
+いくつかの役割は自明です:
 
-First, we configure our droplets by specifying the paths for tendermint
-(`BINARY`) and the node files (`CONFIGDIR`). The latter expects any
-number of directories named `node0, node1, ...` and so on (equal to the
-number of droplets created).
+まず、テンダーミントのパスを指定して液滴を構成します
+( `BINARY`)とノードファイル(` CONFIGDIR`)。 後者は
+「node0、node1、...」などの名前のディレクトリの数(
+生成された液滴の数)。
 
-To create the node files run:
+ノードファイルを作成するには、次のコマンドを実行します。
 
 ```sh
 tendermint testnet
 ```
 
-Then, to configure our droplets run:
+次に、ドロップレットを実行するように構成します。
 
 ```sh
 ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$GOPATH/src/github.com/tendermint/tendermint/build/tendermint -e CONFIGDIR=$GOPATH/src/github.com/tendermint/tendermint/networks/remote/ansible/mytestnet
 ```
 
-Voila! All your droplets now have the `tendermint` binary and required
-configuration files to run a testnet.
+見て！ すべてのドロップレットに `tendermin`バイナリが含まれるようになり、必須になります
+テストネットを実行するようにファイルを構成します。
 
-Next, we run the install role:
+次に、インストールの役割を実行します。
 
 ```sh
 ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
 ```
 
-which as you'll see below, executes
-`tendermint node --proxy-app=kvstore` on all droplets. Although we'll
-soon be modifying this role and running it again, this first execution
-allows us to get each `node_info.id` that corresponds to each
-`node_info.listen_addr`. (This part will be automated in the future). In
-your browser (or using `curl`), for every droplet, go to IP:26657/status
-and note the two just mentioned `node_info` fields. Notice that blocks
-aren't being created (`latest_block_height` should be zero and not
-increasing).
+以下に示すように、実行されます
+すべてのドロップレットの `tendermint node --proxy-app = kvstore`。 私たちはしますが
+この役割をすぐに変更して再実行します。これが最初の実行です
+それぞれに対応する各node_info.idを取得できます
+`node_info.listen_addr`。 (この部分は将来自動化されます)。 存在
+ブラウザ(または `curl`を使用)で、ドロップレットごとにIP:26657/statusに移動します
+そして、今述べた2つの `node_info`フィールドに注意してください。 注意ブロック
+作成されていません( `latest_block_height`はゼロではなくゼロにする必要があります
+増加)。
 
-Next, open `roles/install/templates/systemd.service.j2` and look for the
-line `ExecStart` which should look something like:
+次に、 `roles/install/templates/systemd.service.j2`を開いて、
+行 `ExecStart`は次のようになります。
 
 ```sh
 ExecStart=/usr/bin/tendermint node --proxy-app=kvstore
 ```
 
-and add the `--p2p.persistent-peers` flag with the relevant information
-for each node. The resulting file should look something like:
+そして、関連情報とともに `--p2p.persistent-peers`のフラグを追加します
+ノードごと。 結果のファイルは次のようになります。
 
 ```sh
 [Unit]
@@ -138,23 +138,23 @@ Finally, we run the install role again:
 ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
 ```
 
-to re-run `tendermint node` with the new flag, on all droplets. The
-`latest_block_hash` should now be changing and `latest_block_height`
-increasing. Your testnet is now up and running :)
+すべての液滴に新しいロゴを付けて「テンダーミントノード」を再実行します。 この
+`latest_block_hash`が変更され、` latest_block_height`が変更されます。
+増加。 これでテストネットが稼働しています:)
 
-Peek at the logs with the status role:
+ステータスロールでログを表示します。
 
 ```sh
 ansible-playbook -i inventory/digital_ocean.py -l sentrynet status.yml
 ```
 
-## Logging
+## 記録
 
-The crudest way is the status role described above. You can also ship
-logs to Logz.io, an Elastic stack (Elastic search, Logstash and Kibana)
-service provider. You can set up your nodes to log there automatically.
-Create an account and get your API key from the notes on [this
-page](https://app.logz.io/#/dashboard/data-sources/Filebeat), then:
+最も粗雑な方法は、上記のステータスロールです。 発送も可能です
+エラスティックスタックであるLogz.ioにログインします(Elastic Search、Logstash、Kibana)
+サービスプロバイダー。 自動的にログインするようにノードを設定できます。
+アカウントを作成し、[this
+ページ](https://app.logz.io/#/dashboard/data-sources/Filebeat)、次に:
 
 ```sh
 yum install systemd-devel || echo "This will only work on RHEL-based systems."
@@ -164,9 +164,9 @@ go get github.com/mheese/journalbeat
 ansible-playbook -i inventory/digital_ocean.py -l sentrynet logzio.yml -e LOGZIO_TOKEN=ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
 ```
 
-## Cleanup
+## 掃除
 
-To remove your droplets, run:
+ドロップレットを削除するには、次のコマンドを実行します。
 
 ```sh
 terraform destroy -var DO_API_TOKEN="$DO_API_TOKEN" -var SSH_KEY_FILE="$SSH_KEY_FILE"

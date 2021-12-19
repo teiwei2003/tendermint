@@ -1,84 +1,84 @@
-# ADR 015: Crypto encoding
+# ADR 015:暗号化コード
 
-## Context
+## 環境
 
-We must standardize our method for encoding public keys and signatures on chain.
-Currently we amino encode the public keys and signatures.
-The reason we are using amino here is primarily due to ease of support in
-parsing for other languages.
-We don't need its upgradability properties in cryptosystems, as a change in
-the crypto that requires adapting the encoding, likely warrants being deemed
-a new cryptosystem.
-(I.e. using new public parameters)
+チェーン上で公開鍵と署名をエンコードする方法を標準化する必要があります。
+現在、公開鍵と署名をアミノ基でエンコードしています。
+ここでアミノを使用する理由は、主にサポートのしやすさのためです
+他の言語を解析します。
+暗号化システムでのアップグレード性は必要ありません。
+調整が必要な暗号化された通貨は、考慮する必要がある場合があります
+新しいパスワードシステム。
+(つまり、新しいパブリックパラメータを使用します)
 
-## Decision
+## 決定
 
-### Public keys
+### 公開鍵
 
-For public keys, we will continue to use amino encoding on the canonical
-representation of the pubkey.
-(Canonical as defined by the cryptosystem itself)
-This has two significant drawbacks.
-Amino encoding is less space-efficient, due to requiring support for upgradability.
-Amino encoding support requires forking protobuf and adding this new interface support
-option in the language of choice.
+公開鍵については、仕様に引き続きアミノコードを使用します
+公開鍵の表現。
+(暗号化システム自体によって定義された仕様)
+これには2つの明らかな欠点があります。
+スケーラビリティをサポートする必要があるため、アミノコーディングのスペース効率は低くなります。
+アミノエンコーディングサポートは、protobufをフォークし、この新しいインターフェイスサポートを追加する必要があります
+選択した言語のオプション。
 
-The reason for continuing to use amino however is that people can create code
-more easily in languages that already have an up to date amino library.
-It is possible that this will change in the future, if it is deemed that
-requiring amino for interacting with Tendermint cryptography is unnecessary.
+しかし、アミノを使い続ける理由は、人々がコードを作成できるからです
+すでに最新のアミノライブラリを持っている言語の方が簡単です。
+これは、考慮された場合、将来変更される可能性があります
+Tendermint暗号化と相互作用するためにアミノは必要ありません。
 
-The arguments for space efficiency here are refuted on the basis that there are
-far more egregious wastages of space in the SDK.
-The space requirement of the public keys doesn't cause many problems beyond
-increasing the space attached to each validator / account.
+ここでのスペース効率の議論は、その理由で反論されています
+SDKのスペースの浪費ははるかに深刻です。
+公開鍵のスペース要件は多くの問題を引き起こしません
+各バリデーター/アカウントに接続するスペースを増やします。
 
-The alternative to using amino here would be for us to create an enum type.
-Switching to just an enum type is worthy of investigation post-launch.
-For reference, part of amino encoding interfaces is basically a 4 byte enum
-type definition.
-Enum types would just change that 4 bytes to be a variant, and it would remove
-the protobuf overhead, but it would be hard to integrate into the existing API.
+ここでアミノを使用する代わりに、列挙型を作成することもできます。
+列挙型への切り替えは、公開後に調査する価値があります。
+参考までに、アミノエンコーディングインターフェイスの一部は基本的に4バイトの列挙です
+タイプ定義。
+列挙型は、これらの4バイトのみをバリアントに変更して削除します
+protobufはオーバーヘッドですが、既存のAPIに統合することは困難です。
 
-### Signatures
+### サイン
 
-Signatures should be switched to be `[]byte`.
-Spatial efficiency in the signatures is quite important,
-as it directly affects the gas cost of every transaction,
-and the throughput of the chain.
-Signatures don't need to encode what type they are for (unlike public keys)
-since public keys must already be known.
-Therefore we can validate the signature without needing to encode its type.
+署名は `[] byte`に切り替える必要があります。
+署名のスペース効率は非常に重要ですが、
+各トランザクションのガスコストに直接影響するため、
+そしてチェーンのスループット。
+署名はそのタイプをエンコードする必要はありません(公開鍵とは異なります)
+公開鍵を知っている必要があるからです。
+したがって、タイプをエンコードせずに署名を検証できます。
 
-When placed in state, signatures will still be amino encoded, but it will be the
-primitive type `[]byte` getting encoded.
+状態に置かれた場合、署名は引き続きアミノエンコードされますが、
+プリミティブ型 `[] byte`がエンコードされます。
 
 #### Ed25519
 
-Use the canonical representation for signatures.
+署名の正規表現を使用します。
 
 #### Secp256k1
 
-There isn't a clear canonical representation here.
-Signatures have two elements `r,s`.
-These bytes are encoded as `r || s`, where `r` and `s` are both exactly
-32 bytes long, encoded big-endian.
-This is basically Ethereum's encoding, but without the leading recovery bit.
+ここには明確な仕様はありません。
+署名には2つの要素 `r、s`があります。
+これらのバイトは `r || s`としてエンコードされます。ここで、` r`と `s`は両方とも
+32バイト長のビッグエンディアンエンコーディング。
+これは基本的にイーサリアムのエンコーディングですが、主要なリカバリビットはありません。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- More space efficient signatures
+-より多くの省スペース署名
 
-### Negative
+### ネガティブ
 
-- We have an amino dependency for cryptography.
+-暗号化にアミノ依存性があります。
 
-### Neutral
+### ニュートラル
 
-- No change to public keys
+-公開鍵の変更はありません

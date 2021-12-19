@@ -34,7 +34,7 @@ ConsensusState 的接收例程处理可能导致内部共识状态转换的消�
 理解接收例程管理和更新 RoundState 数据结构就足够了
 然后被 gossip 程序广泛使用来确定应该将哪些信息发送到对等进程。
 
-##圆形状态
+## 圆形状态
 
 RoundState 定义了内部共识状态。它包含高度、圆形、圆形步长、当前验证器集、
 当前轮次的提议和提议区块，锁定轮次和区块(如果某个区块被锁定)，一组
@@ -214,7 +214,7 @@ handleMessage(msg):
 投票数限制在 10000 (`types.MaxVotesCount`) 以保护
 节点抵御 DOS 攻击。
 
-##八卦数据例程
+## 八卦数据例程
 
 它用于向对等方发送以下消息:`BlockPartMessage`、`ProposalMessage` 和
 DataChannel 上的`ProposalPOLMessage`。 gossip 数据例程基于本地 RoundState (`rs`)

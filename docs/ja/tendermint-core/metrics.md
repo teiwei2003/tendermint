@@ -1,3 +1,3 @@
-# Metrics
+# インジケーター
 
-This file has moved to the [node section](../nodes/metrics.md).
+このファイルは[ノードセクション](../nodes/metrics.md)に移動されました。

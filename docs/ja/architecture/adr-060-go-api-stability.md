@@ -1,72 +1,71 @@
-# ADR 060: Go API Stability
+# ADR 060:GoAPIの安定性
 
-## Changelog
+## 変更ログ
 
-- 2020-09-08: Initial version. (@erikgrinaker)
+-2020-09-08:初期バージョン。 (@erikgrinaker)
 
-- 2020-09-09: Tweak accepted changes, add initial public API packages, add consequences. (@erikgrinaker)
+-2020-09-09:受け入れられた変更を調整し、最初のパブリックAPIパッケージを追加して、結果を追加します。 (@erikgrinaker)
 
-- 2020-09-17: Clarify initial public API. (@erikgrinaker)
+-2020年9月17日:最初のパブリックAPIを明確にします。 (@erikgrinaker)
 
-## Context
+## 環境
 
-With the release of Tendermint 1.0 we will adopt [semantic versioning](https://semver.org). One major implication is a guarantee that we will not make backwards-incompatible changes until Tendermint 2.0 (except in pre-release versions). In order to provide this guarantee for our Go API, we must clearly define which of our APIs are public, and what changes are considered backwards-compatible.
+Tendermint 1.0のリリースに伴い、[Semantic Version Control](https://semver.org)を採用します。主な意味の1つは、Tendermint 2.0より前に下位互換性のない変更を行わないようにすることです(プレリリースバージョンを除く)。 Go APIにこの保証を提供するには、どのAPIが公開され、どの変更が下位互換性があると見なされるかを明確に定義する必要があります。
 
-Currently, we list packages that we consider public in our [README](https://github.com/tendermint/tendermint#versioning), but since we are still at version 0.x we do not provide any backwards compatiblity guarantees at all.
+現在、公開されていると思われるパッケージを[README](https://github.com/tendermint/tendermint#versioning)にリストしていますが、まだバージョン0.xであるため、でのサポートは提供していません。すべて。互換性後の保証。
 
-### Glossary
+### 用語集
 
-* **External project:** a different Git/VCS repository or code base.
+* **外部プロジェクト:**さまざまなGit/VCSリポジトリまたはコードベース。
 
-* **External package:** a different Go package, can be a child or sibling package in the same project.
+* **外部パッケージ:**異なるGoパッケージは、同じプロジェクト内のサブパッケージまたは兄弟パッケージにすることができます。
 
-* **Internal code:** code not intended for use in external projects.
+* **内部コード:**外部プロジェクトには適用されないコード。
 
-* **Internal directory:** code under `internal/` which cannot be imported in external projects.
+* **内部ディレクトリ:** `internal /`の下のコードを外部プロジェクトにインポートすることはできません。
 
-* **Exported:** a Go identifier starting with an uppercase letter, which can therefore be accessed by an external package.
+* **エクスポート済み:**大文字で始まる識別子を使用して、外部パッケージからアクセスできるようにします。
 
-* **Private:** a Go identifier starting with a lowercase letter, which therefore cannot be accessed by an external package unless via an exported field, variable, or function/method return value.
+* **プライベート:**小文字で始まるGo識別子。エクスポートされたフィールド、変数、または関数/メソッドを介して値が返されない限り、外部パッケージからアクセスすることはできません。
 
-* **Public API:** any Go identifier that can be imported or accessed by an external project, except test code in `_test.go` files.
+* **パブリックAPI:** `_test.go`ファイルのテストコードを除き、外部プロジェクトからインポートまたはアクセスできるすべてのGo識別子。
 
-* **Private API:** any Go identifier that is not accessible via a public API, including all code in the internal directory.
+* **プライベートAPI:**内部カタログのすべてのコードを含む、パブリックAPIを介してアクセスできないすべてのGo識別子。
 
-## Alternative Approaches
+##代替方法
 
-- Split all public APIs out to separate Go modules in separate Git repositories, and consider all Tendermint code internal and not subject to API backwards compatibility at all. This was rejected, since it has been attempted by the Tendermint project earlier, resulting in too much dependency management overhead.
+-すべてのパブリックAPIを別々のGitリポジトリ内の別々のGoモジュールに分割し、すべてのTendermintコードを考慮に入れて、APIの下位互換性の制限から完全に解放します。 Tendermintプロジェクトが以前に試したことがあるため、これは拒否され、依存関係管理のオーバーヘッドが過剰になりました。
 
-- Simply document which APIs are public and which are private. This is the current approach, but users should not be expected to self-enforce this, the documentation is not always up-to-date, and external projects will often end up depending on internal code anyway.
+-パブリックなAPIとプライベートなAPIを記録するだけです。これは現在の方法ですが、ユーザーが自分でこの方法を実装することを期待するべきではありません。ドキュメントは常に最新であるとは限りません。いずれの場合も、外部プロジェクトは通常、最終的に内部コードに依存します。
 
-## Decision
+## 決定
 
-From Tendermint 1.0, all internal code (except private APIs) will be placed in a root-level [`internal` directory](https://golang.org/cmd/go/#hdr-Internal_Directories), which the Go compiler will block for use by external projects. All exported items outside of the `internal` directory are considered a public API and subject to backwards compatibility guarantees, except files ending in `_test.go`.
+Tendermint 1.0以降、すべての内部コード(プライベートAPIを除く)はルートレベル[`internal`ディレクトリ](https://golang.org/cmd/go/#hdr-Internal_Directories)に配置され、Goコンパイラは外部プロジェクトで使用されるブロックを提供します。 `_test.go`で終わるファイルを除いて、` internal`ディレクトリの外にエクスポートされたすべてのアイテムはパブリックAPIと見なされ、下位互換性が保証されます。
 
-The `crypto` package may be split out to a separate module in a separate repo. This is the main general-purpose package used by external projects, and is the only Tendermint dependency in e.g. IAVL which can cause some problems for projects depending on both IAVL and Tendermint. This will be decided after further discussion.
+`crypto`パッケージは、個別のリポジトリ内の個別のモジュールに分割できます。これは、外部プロジェクトで使用される主要な共通パッケージであり、Tendermintの唯一の依存関係です。たとえば、IAVLとTendermintによっては、IAVLによってプロジェクトで問題が発生する場合があります。これは、さらなる議論の後に決定されます。
 
-The `tm-db` package will remain a separate module in a separate repo. The `crypto` package may possibly be split out, pending further discussion, as this is the main general-purpose package used by other projects.
+`tm-db`パッケージは、別のリポジトリに別のモジュールを維持します。これは他のプロジェクトで使用される主要な共通パッケージであるため、 `crypto`パッケージは分割され、さらなる議論を待つ可能性があります。
 
-## Detailed Design
+## 詳細設計
 
-### Public API
+###パブリックAPI
 
-When preparing our public API for 1.0, we should keep these principles in mind:
+1.0のパブリックAPIを準備するときは、次の原則に留意する必要があります。
 
-- Limit the number of public APIs that we start out with - we can always add new APIs later, but we can't change or remove APIs once they're made public.
+-使用を開始する公開APIの数を制限します-いつでも新しいAPIを追加できますが、APIが公開されると、それらを変更または削除することはできません。
 
-- Before an API is made public, do a thorough review of the API to make sure it covers any future needs, can accomodate expected changes, and follows good API design practices.
+-APIを公開する前に、APIを徹底的にレビューして、将来のニーズを満たし、予想される変更に適応でき、優れたAPI設計慣行に従っていることを確認します。
 
-The following is the minimum set of public APIs that will be included in 1.0, in some form:
+以下は、何らかの形式で1.0に含まれているパブリックAPIの最小セットです。
 
-- `abci`
-- packages used for constructing nodes `config`, `libs/log`, and `version`
-- Client APIs, i.e. `rpc/client`, `light`, and `privval`.
-- `crypto` (possibly as a separate repo)
+-`abci`
+-ノード `config`、` libs/log`、および `version`の構築に使用されるパッケージ
+-クライアントAPI、つまり `rpc/client`、` light`、 `privval`。
+-`crypto`(おそらく別のリポジトリとして)
 
-We may offer additional APIs as well, following further discussions internally and with other stakeholders. However, public APIs for providing custom components (e.g. reactors and mempools) are not planned for 1.0, but may be added in a later 1.x version if this is something we want to offer.
+社内および他の利害関係者とさらに話し合った後、追加のAPIを提供する場合もあります。ただし、カスタムコンポーネント(reactorやメモリプールなど)を提供するために使用されるパブリックAPIは、1.0で使用される予定はありませんが、提供したい場合は、将来の1.xバージョンで追加される可能性があります。
 
-For comparison, the following are the number of Tendermint imports in the Cosmos SDK (excluding tests), which should be mostly satisfied by the planned APIs.
-
+比較のために、以下はCosmos SDK(テストを除く)でのTendermintのインポート数です。これは、計画されたAPIの主な満足度であるはずです。
 ```
       1 github.com/tendermint/tendermint/abci/server
      73 github.com/tendermint/tendermint/abci/types
@@ -110,84 +109,84 @@ For comparison, the following are the number of Tendermint imports in the Cosmos
       1 github.com/tendermint/tendermint/version
 ```
 
-### Backwards-Compatible Changes
+### 下位互換性の変更
 
-In Go, [almost all API changes are backwards-incompatible](https://blog.golang.org/module-compatibility) and thus exported items in public APIs generally cannot be changed until Tendermint 2.0. The only backwards-compatible changes we can make to public APIs are:
+Goでは、[ほとんどすべてのAPIの変更は下位互換性がありません](https://blog.golang.org/module-compatibility)。したがって、パブリックAPIでのエクスポートは、通常、Tendermint2.0より前では変更できません。パブリックAPIに加えることができる下位互換性のある変更は次のとおりです。
 
-- Adding a package.
+-バッグを追加します。
 
-- Adding a new identifier to the package scope (e.g. const, var, func, struct, interface, etc.).
+-新しい識別子(const、var、func、struct、interfaceなど)をパッケージスコープに追加します。
 
-- Adding a new method to a struct.
+-構造に新しいメソッドを追加します。
 
-- Adding a new field to a struct, if the zero-value preserves any old behavior.
+-ゼロ値が古い動作を保持している場合は、構造に新しいフィールドを追加します。
 
-- Changing the order of fields in a struct.
+-構造内のフィールドの順序を変更します。
 
-- Adding a variadic parameter to a named function or struct method, if the function type itself is not assignable in any public APIs (e.g. a callback).
+-関数型自体がパブリックAPI(コールバックなど)で割り当てできない場合は、名前付き関数または構造体メソッドに変数パラメーターを追加します。
 
-- Adding a new method to an interface, or a variadic parameter to an interface method, _if the interface already has a private method_ (which prevents external packages from implementing it).
+-インターフェイスに新しいメソッドを追加するか、インターフェイスメソッドに変数パラメータを追加します(インターフェイスにすでにプライベートメソッドがある場合)(外部パッケージがそれを実装しないようにするため)。
 
-- Widening a numeric type as long as it is a named type (e.g. `type Number int32` can change to `int64`, but not `int8` or `uint32`).
+-名前付きタイプである限り、拡張数値タイプ(たとえば、 `type Numberint32`は` int64`に変更できますが、 `int8`または` uint32`には変更できません)。
 
-Note that public APIs can expose private types (e.g. via an exported variable, field, or function/method return value), in which case the exported fields and methods on these private types are also part of the public API and covered by its backwards compatiblity guarantees. In general, private types should never be accessible via public APIs unless wrapped in an exported interface.
+パブリックAPIはプライベートタイプを公開できることに注意してください(たとえば、エクスポートされた変数、フィールド、または関数/メソッドを介して戻り値)。この場合、これらのプライベートタイプのエクスポートされたフィールドとメソッドもパブリックAPIの一部であり、それらによって制御されます。後方互換性カバレッジ保証。一般に、エクスポートされたインターフェイスでラップされていない限り、プライベートタイプはパブリックAPIを介してアクセスしないでください。
 
-Also note that if we accept, return, export, or embed types from a dependency, we assume the backwards compatibility responsibility for that dependency, and must make sure any dependency upgrades comply with the above constraints.
+また、依存関係から型を受け入れる、返す、エクスポートする、または埋め込む場合、その依存関係の下位互換性について責任を負い、依存関係のアップグレードが上記の制約に準拠していることを確認する必要があることにも注意してください。
 
-We should run CI linters for minor version branches to enforce this, e.g. [apidiff](https://go.googlesource.com/exp/+/refs/heads/master/apidiff/README.md), [breakcheck](https://github.com/gbbr/breakcheck), and [apicombat](https://github.com/bradleyfalzon/apicompat).
+これを強制するには、マイナーバージョンブランチのCIリンターを実行する必要があります。たとえば、[apidiff](https://go.googlesource.com/exp/+/refs/heads/master/apidiff/README.md)、[breakcheck] (https://github.com/gbbr/breakcheck)および[apicombat](https://github.com/bradleyfalzon/apicompat)。
 
-#### Accepted Breakage
+#### 破損を受け入れる
 
-The above changes can still break programs in a few ways - these are _not_ considered backwards-incompatible changes, and users are advised to avoid this usage:
+上記の変更はまだいくつかの方法でプログラムを壊す可能性があります-これらの_not_は後方互換性のない変更と見なされ、ユーザーはこの使用を避けることをお勧めします:
 
-- If a program uses unkeyed struct literals (e.g. `Foo{"bar", "baz"}`) and we add fields or change the field order, the program will no longer compile or may have logic errors.
+-プログラムがキーレス構造化テキスト( `Foo {" bar "、" baz "}`など)を使用していて、フィールドを追加したり、フィールドの順序を変更したりすると、プログラムがコンパイルされなくなったり、論理エラーが発生したりする可能性があります。
 
-- If a program embeds two structs in a struct, and we add a new field or method to an embedded Tendermint struct which also exists in the other embedded struct, the program will no longer compile.
+-プログラムが構造体に2つの構造体を埋め込み、埋め込まれたTendermint構造体に新しいフィールドまたはメソッドを追加した場合、その構造体は別の埋め込み構造体にも存在します。プログラムはコンパイルされなくなります。
 
-- If a program compares two structs (e.g. with `==`), and we add a new field of an incomparable type (slice, map, func, or struct that contains these) to a Tendermint struct which is compared, the program will no longer compile.
+-プログラムが2つの構造(たとえば、 `==`)を比較し、比較できないタイプ(スライス、マップ、関数、またはこれらを含む構造)の新しいフィールドを比較するTendermint構造に追加すると、プログラムはコンパイルされなくなりました。
 
-- If a program assigns a Tendermint function to an identifier, and we add a variadic parameter to the function signature, the program will no longer compile.
+-プログラムがTendermint関数を識別子に割り当て、変数パラメーターを関数シグネチャに追加すると、プログラムはコンパイルされなくなります。
 
-### Strategies for API Evolution
+### API進化戦略
 
-The API guarantees above can be fairly constraining, but are unavoidable given the Go language design. The following tricks can be employed where appropriate to allow us to make changes to the API:
+上記のAPIの保証は非常に厳しい場合がありますが、Go言語の設計を考えると、これは避けられません。 APIに変更を加えることができるように、必要に応じて次の手法を使用できます。
 
-- We can add a new function or method with a different name that takes additional parameters, and have the old function call the new one.
+-別の名前の新しい関数またはメソッド、追加のパラメーターを持つ関数またはメソッドを追加し、古い関数に新しい関数を呼び出させることができます。
 
-- Functions and methods can take an options struct instead of separate parameters, to allow adding new options - this is particularly suitable for functions that take many parameters and are expected to be extended, and especially for interfaces where we cannot add new methods with different parameters at all.
+-関数とメソッドは、個別のパラメーターの代わりにオプション構造を取り、新しいオプションを追加できます-これは、多くのパラメーターを取り、拡張したい関数、特に異なるパラメーターを持つ新しいメソッドを追加できないインターフェイスに特に適しています。
 
-- Interfaces can include a private method, e.g. `interface { private() }`, to make them unimplementable by external packages and thus allow us to add new methods to the interface without breaking other programs. Of course, this can't be used for interfaces that should be implementable externally.
+-インターフェイスには、 `interface {private()}`などのプライベートメソッドを含めることができるため、外部パッケージで実装することはできません。これにより、他のプログラムを壊すことなく、インターフェイスに新しいメソッドを追加できます。もちろん、これは外部に実装する必要のあるインターフェースには使用できません。
 
-- We can use [interface upgrades](https://avtok.com/2014/11/05/interface-upgrades.html) to allow implementers of an existing interface to also implement a new interface, as long as the old interface can still be used - e.g. the new interface `BetterReader` may have a method `ReadBetter()`, and a function that takes a `Reader` interface as an input can check if the implementer also implements `BetterReader` and in that case call `ReadBetter()` instead of `Read()`.
+-[interface upgrade](https://avtok.com/2014/11/05/interface-upgrades.html)を使用して、古いインターフェースが引き続き使用できる限り、既存のインターフェースの実装者が新しいインターフェースも実装できるようにすることができます。たとえば、新しいインターフェイス `BetterReader`にはメソッド` ReadBetter() `が含まれている場合があります。これは、` Reader`インターフェイスを入力として受け取る関数で、実装者が `BetterReader`も実装しているかどうかを確認できます。この場合は` ReadBetter( ) ``読み取り() `。
 
-## Status
+## ステータス
 
-Accepted
+受け入れられました
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Users can safely upgrade with less fear of applications breaking, and know whether an upgrade only includes bug fixes or also functional enhancements
+-ユーザーは、アプリケーションの損傷を心配することなく安全にアップグレードでき、アップグレードにバグ修正または機能拡張のみが含まれるかどうかを知ることができます
 
-- External developers have a predictable and well-defined API to build on that will be supported for some time
+-外部の開発者は、予測可能で明確に定義されたAPIを構築できます。これは、一定期間でサポートされます。
 
-- Less synchronization between teams, since there is a clearer contract and timeline for changes and they happen less frequently
+-変更された契約とスケジュールがより明確になり、発生頻度が低くなるため、チーム間の同期性が低下します
 
-- More documentation will remain accurate, since it's not chasing a moving target
+-移動するターゲットを追跡しないため、より多くのドキュメントが正確なままになります
 
-- Less time will be spent on code churn and more time spent on functional improvements, both for the community and for our teams
+-コミュニティと私たちのチームにとって、コードの変更に費やされる時間が減り、機能の改善に費やされる時間が増えます
 
-### Negative
+### ネガティブ
 
-- Many improvements, changes, and bug fixes will have to be postponed until the next major version, possibly for a year or more
+-多くの改善、変更、バグ修正は次のメジャーバージョンに延期する必要があり、1年以上遅れる可能性があります
 
-- The pace of development will slow down, since we must work within the existing API constraints, and spend more time planning public APIs
+-既存のAPIの制約内で作業し、パブリックAPIの計画により多くの時間を費やす必要があるため、開発速度が低下します
 
-- External developers may lose access to some currently exported APIs and functionality
+-外部の開発者は、現在エクスポートされている一部のAPIおよび関数にアクセスできない場合があります
 
-## References
+## 参照する
 
-- [#4451: Place internal APIs under internal package](https://github.com/tendermint/tendermint/issues/4451)
+-[#4451:内部APIを内部パッケージに配置](https://github.com/tendermint/tendermint/issues/4451)
 
-- [On Pluggability](https://docs.google.com/document/d/1G08LnwSyb6BAuCVSMF3EKn47CGdhZ5wPZYJQr4-bw58/edit?ts=5f609f11)
+-[プラグイン可能性について](https://docs.google.com/document/d/1G08LnwSyb6BAuCVSMF3EKn47CGdhZ5wPZYJQr4-bw58/edit?ts=5f609f11)

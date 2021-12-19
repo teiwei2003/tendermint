@@ -1,30 +1,30 @@
-# ADR 063: Privval gRPC
+# ADR 063:Privval gRPC
 
-## Changelog
+## 変更ログ
 
-- 23/11/2020: Initial Version (@marbar3778)
+-2020年11月23日:初期バージョン(@ marbar3778)
 
-## Context
+## 環境
 
-Validators use remote signers to help secure their keys. This system is Tendermint's recommended way to secure validators, but the path to integration with Tendermint's private validator client is plagued with custom protocols. 
+検証者は、リモート署名者を使用してキーを保護します。このシステムは、バリデーターを保護するためにTendermintが推奨する方法ですが、Tendermintのプライベートバリデータークライアントとの統合パスは、カスタムプロトコルによって問題が発生します。
 
-Tendermint uses its own custom secure connection protocol (`SecretConnection`) and a raw tcp/unix socket connection protocol. The secure connection protocol until recently was exposed to man in the middle attacks and can take longer to integrate if not using Golang. The raw tcp connection protocol is less custom, but has been causing minute issues with users. 
+Tendermintは、独自のカスタムセキュア接続プロトコル( `SecretConnection`)と元のtcp/unixソケット接続プロトコルを使用します。最近まで、安全な接続プロトコルは中間者攻撃の対象となってきました。Golangを使用しない場合、統合に時間がかかる可能性があります。元のTCP接続プロトコルはあまりカスタマイズできませんが、ユーザーにいくつかの小さな問題を引き起こしました。
 
-Migrating Tendermint's private validator client to a widely adopted protocol, gRPC, will ease the current maintenance and integration burden experienced with the current protocol. 
+Tendermintのプライベートバリデータークライアントを広く採用されているプロトコルgRPCに移行すると、現在のプロトコルで発生する現在のメンテナンスと統合の負担が軽減されます。
 
-## Decision
+## 決定
 
-After discussing with multiple stake holders, [gRPC](https://grpc.io/) was decided on to replace the current private validator protocol. gRPC is a widely adopted protocol in the micro-service and cloud infrastructure world. gRPC uses [protocol-buffers](https://developers.google.com/protocol-buffers) to describe its services, providing a language agnostic implementation. Tendermint uses protobuf for on disk and over the wire encoding already making the integration with gRPC simpler. 
+複数の利害関係者と話し合った後、現在のプライベートバリデータープロトコルを[gRPC](https://grpc.io/)に置き換えることが決定されました。 gRPCは、マイクロサービスとクラウドインフラストラクチャの分野で広く採用されているプロトコルです。 gRPCは、[protocol-buffers](https://developers.google.com/protocol-buffers)を使用して、サービスを記述し、言語に依存しない実装を提供します。 Tendermintは、ディスクおよびオンラインエンコーディングにprotobufを使用しているため、gRPCとの統合が容易になっています。
 
-## Alternative Approaches
+## 代替方法
 
-- JSON-RPC: We did not consider JSON-RPC because Tendermint uses protobuf extensively making gRPC a natural choice.
+-JSON-RPC:Tendermintはprotobufを広範囲に使用し、gRPCを自然に選択するため、JSON-RPCは考慮しませんでした。
 
-## Detailed Design
+## 詳細設計
 
-With the recent integration of [Protobuf](https://developers.google.com/protocol-buffers) into Tendermint the needed changes to migrate from the current private validator protocol to gRPC is not large. 
+[Protobuf](https://developers.google.com/protocol-buffers)がTendermintに最近統合されたため、現在のプライベートバリデータープロトコルからgRPCに移行するために必要な変更は重要ではありません。
 
-The [service definition](https://grpc.io/docs/what-is-grpc/core-concepts/#service-definition) for gRPC will be defined as:
+gRPCの[サービス定義](https://grpc.io/docs/what-is-grpc/core-concepts/#service-definition)は次のように定義されます。
 
 ```proto
   service PrivValidatorAPI {
@@ -65,45 +65,45 @@ The [service definition](https://grpc.io/docs/what-is-grpc/core-concepts/#servic
 }
 ```
 
-> Note: Remote Singer errors are removed in favor of [grpc status error codes](https://grpc.io/docs/guides/error/).
+>注:[grpcステータスエラーコード](https://grpc.io/docs/guides/error/)をサポートするために、リモートシンガーエラーが削除されました。
 
-In previous versions of the remote signer, Tendermint acted as the server and the remote signer as the client. In this process the client established a long lived connection providing a way for the server to make requests to the client. In the new version it has been simplified. Tendermint is the client and the remote signer is the server. This follows client and server architecture and simplifies the previous protocol.
+以前のバージョンのリモート署名者では、Tendermintがサーバーであり、リモート署名者がクライアントでした。このプロセスでは、クライアントは長期接続を確立します。これにより、サーバーがクライアントに要求を送信する方法が提供されます。新しいバージョンでは、簡略化されています。 Tendermintはクライアントであり、リモート署名者はサーバーです。これはクライアントとサーバーのアーキテクチャに従い、以前のプロトコルを簡素化します。
 
-#### Keep Alive
+#### 生きている
 
-If you have worked on the private validator system you will see that we are removing the `PingRequest` and `PingResponse` messages. These messages were used to create functionality which kept the connection alive. With gRPC there is a [keep alive feature](https://github.com/grpc/grpc/blob/master/doc/keepalive.md) that will be added along side the integration to provide the same functionality. 
+プライベートバリデーターシステムを使用した場合は、「PingRequest」メッセージと「PingResponse」メッセージが削除されていることがわかります。これらのメッセージは、接続を維持するための関数を作成するために使用されます。 gRPCを使用した[キープアライブ機能](https://github.com/grpc/grpc/blob/master/doc/keepalive.md)があります。これは、同じ機能を提供するために統合とともに追加されます。
 
-#### Metrics
+#### インジケーター
 
-Remote signers are crucial to operating secure and consistently up Validators. In the past there were no metrics to tell the operator if something is wrong other than the node not signing. Integrating metrics into the client and provided server will be done with [prometheus](https://github.com/grpc-ecosystem/go-grpc-prometheus). This will be integrated into node's prometheus export for node operators. 
+リモート署名者は、安全で継続的に実行されるバリデーターを操作するために不可欠です。以前は、ノードが署名されていないことを除いて、問題があったかどうかをオペレーターに伝えることができるインジケーターはありませんでした。クライアントと提供されたサーバーへのインジケーターの統合は、[prometheus](https://github.com/grpc-ecosystem/go-grpc-prometheus)を使用して行われます。これは、ノードオペレーターのノードPrometheusエクスポートに統合されます。
 
-#### Security
+#### 安全性
 
-[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security) is widely adopted with the use of gRPC. There are various forms of TLS (one-way & two-way). One way is the client identifying who the server is, while two way is both parties identifying the other. For Tendermint's use case having both parties identifying each other provides adds an extra layer of security. This requires users to generate both client and server certificates for a TLS connection. 
+[TLS](https://en.wikipedia.org/wiki/Transport_Layer_Security)gRPCは広く採用されています。 TLSには多くの形式があります(一方向および双方向)。 1つの方法は、クライアントがサーバーを識別する方法であり、2つの方法は、両方の当事者が他方を識別する方法です。 Tendermintのユースケースでは、両方の当事者がお互いを識別できるようにすることで、セキュリティの追加レイヤーが提供されます。これには、ユーザーがTLS接続用のクライアント証明書とサーバー証明書を生成する必要があります。
 
-An insecure option will be provided for users who do not wish to secure the connection.
+接続を保護したくないユーザーには、安全でないオプションが提供されます。
 
-#### Upgrade Path
+#### アップグレードパス
 
-This is a largely breaking change for validator operators. The optimal upgrade path would be to release gRPC in a minor release, allow key management systems to migrate to the new protocol. In the next major release the current system (raw tcp/unix) is removed. This allows users to migrate to the new system and not have to coordinate upgrading the key management system alongside a network upgrade. 
+バリデーターオペレーターにとって、これは大きな画期的な変更です。最適なアップグレードパスは、マイナーバージョンでgRPCをリリースし、キー管理システムを新しいプロトコルに移行できるようにすることです。次のメジャーバージョンでは、現在のシステム(元のtcp/unix)が削除されます。これにより、ユーザーは、ネットワークのアップグレードと同時にキー管理システムのアップグレードを調整しなくても、新しいシステムに移行できます。
 
-The upgrade of [tmkms](https://github.com/iqlusioninc/tmkms) will be coordinated with Iqlusion. They will be able to make the necessary upgrades to allow users to migrate to gRPC from the current protocol. 
+[tmkms](https://github.com/iqlusioninc/tmkms)アップグレードはIqlusionと調整されます。ユーザーが現在のプロトコルからgRPCに移行できるように、必要なアップグレードを行うことができます。
 
-## Status
+## ステータス
 
 
-Implemented
+実装
 
-### Positive
+### ポジティブ
 
-- Use an adopted standard for secure communication. (TLS)
-- Use an adopted communication protocol. (gRPC)
-- Requests are multiplexed onto the tcp connection. (http/2)
-- Language agnostic service definition.
+-採用された安全通信規格を使用します。 (TLS)
+-採用された通信プロトコルを使用します。 (gRPC)
+-要求はtcp接続に多重化されます。 (http/2)
+-言語に依存しないサービス定義。
 
-### Negative
+### ネガティブ
 
-- Users will need to generate certificates to use TLS. (Added step)
-- Users will need to find a supported gRPC supported key management system
+-ユーザーはTLSを使用するために証明書を生成する必要があります。 (ステップを追加)
+-ユーザーは、gRPCでサポートされているサポートされているキー管理システムを見つける必要があります
 
-### Neutral
+### ニュートラル

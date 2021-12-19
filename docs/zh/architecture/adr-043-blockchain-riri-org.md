@@ -97,7 +97,7 @@ func scheduleRoutine(input chan Message, output chan Message) {
 }
 ```
 
-##生命周期管理
+## 生命周期管理
 
 一组用于各个流程的例程允许流程与清晰的生命周期管理并行运行。 当前存在于反应器中的 `Start`、`Stop` 和 `AddPeer` 钩子将委托给子例程，允许它们独立管理内部状态，而无需进一步耦合到反应器。
 

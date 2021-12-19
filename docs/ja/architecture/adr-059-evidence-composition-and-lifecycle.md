@@ -1,21 +1,20 @@
-# ADR 059: Evidence Composition and Lifecycle
+# ADR 059:証拠の構成とライフサイクル
 
-## Changelog
+## 変更ログ
 
-- 04/09/2020: Initial Draft (Unabridged)
-- 07/09/2020: First Version
-- 13/03/2021: Ammendment to accomodate forward lunatic attack
-- 29/06/2021: Add information about ABCI specific fields
+2020年4月9日:最初のドラフト(要約なし)
+-2020年7月9日:最初のバージョン
+-13/03/2021:フォワードクレイジーアタックに対応するように変更
+-29/06/2021:ABCI固有のフィールドに関する情報を追加
 
-## Scope
+## スコープ
 
-This document is designed to collate together and surface some predicaments involving evidence in Tendermint: both its composition and lifecycle. It then aims to find a solution to these. The scope does not extend to the verification nor detection of certain types of evidence but concerns itself mainly with the general form of evidence and how it moves from inception to application.
+このドキュメントは、テンダーミントの証拠に関連するジレンマのいくつかを整理して明らかにすることを目的としています。その構成とライフサイクルです。次に、これらの問題の解決策を見つけることを目的としています。範囲は、特定の種類の証拠の検証またはテストには及びませんが、主に証拠の一般的な形式と、それが最初から適用にどのように適用されるかを含みます。
 
-## Background
+## バックグラウンド
 
-For a long time `DuplicateVoteEvidence`, formed in the consensus reactor, was the only evidence Tendermint had. It was produced whenever two votes from the same validator in the same round
-was observed and thus it was designed that each evidence was for a single validator. It was predicted that there may come more forms of evidence and thus `DuplicateVoteEvidence` was used as the model for the `Evidence` interface and also for the form of the evidence data sent to the application. It is important to note that Tendermint concerns itself just with the detection and reporting of evidence and it is the responsibility of the application to exercise punishment.
-
+長い間、コンセンサスリアクターで形成された「DuplicateVoteEvidence」は、テンダーミントが持っている唯一の証拠です。同じラウンドで同じバリデーターが2票投票されたときに生成されます
+観察されたため、各証拠は単一の検証者向けに設計されています。より多くの形式の証拠が存在する可能性があると予測されるため、「DuplicateVoteEvidence」が「証拠」インターフェースのモデルおよびアプリケーションに送信される証拠データの形式として使用されます。 Tendermintは証拠の検出と報告にのみ焦点を当てており、アプリケーションには罰する責任があることに注意してください。
 ```go
 type Evidence interface { //existing
   Height() int64                                     // height of the offense
@@ -40,7 +39,7 @@ type DuplicateVoteEvidence struct {
 }
 ```
 
-Tendermint has now introduced a new type of evidence to protect light clients from being attacked. This `LightClientAttackEvidence` (see [here](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence-handling.md) for more information) is vastly different to `DuplicateVoteEvidence` in that it is physically a much different size containing a complete signed header and validator set. It is formed within the light client, not the consensus reactor and requires a lot more information from state to verify (`VerifyLightClientAttack(commonHeader, trustedHeader *SignedHeader, commonVals *ValidatorSet)`  vs `VerifyDuplicateVote(chainID string, pubKey PubKey)`). Finally it batches validators together (a single piece of evidence that implicates multiple malicious validators at a height) as opposed to having individual evidence (each piece of evidence is per validator per height). This evidence stretches the existing mould that was used to accommodate new types of evidence and has thus caused us to reconsider how evidence should be formatted and processed.
+Tendermintは、ライトクライアントを攻撃から保護するための新しいタイプの証拠を導入しました。この `LightClientAttackEvidence`([ここ](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidenceを参照)は、情報処理が異なると大きく異なります。`DuplicateVoteEvidence`物理的に大きく異なるため、完全な署名ヘッダーとベリファイアセットが含まれています。コンセンサスリアクタではなく、ライトクライアントで形成され、検証するために状態情報からさらに多くの情報が必要です( `VerifyLightClientAttack(commonHeader、trustedHeader * SignedHeader、 commonVals * ValidatorSet) `と` VerifyDuplicateVote(chainID string、pubKey PubKey) `)最後に、個別の証拠(各部分のエビデンスは、各高さの各検証ツールです)。このエビデンスは、新しいタイプのエビデンスに対応するための既存のモデルを拡張し、エビデンスのフォーマットと処理の方法を再検討するよう促します。
 
 ```go
 type LightClientAttackEvidence struct { // proposed struct in spec
@@ -51,17 +50,17 @@ type LightClientAttackEvidence struct { // proposed struct in spec
   timestamp time.Time // taken from the block time at the common height
 }
 ```
-*Note: These three attack types have been proven by the research team to be exhaustive*
+*注:これらの3つの攻撃タイプは、調査チームによって網羅的であることが証明されています*
 
-## Possible Approaches for Evidence Composition
+## 証拠の組み合わせの可能な方法
 
-### Individual framework
+### パーソナルフレーム
 
-Evidence remains on a per validator basis. This causes the least disruption to the current processes but requires that we break `LightClientAttackEvidence` into several pieces of evidence for each malicious validator. This not only has performance consequences in that there are n times as many database operations and that the gossiping of evidence will require more bandwidth then necessary (by requiring a header for each piece) but it potentially impacts our ability to validate it. In batch form, the full node can run the same process the light client did to see that 1/3 validating power was present in both the common block and the conflicting block whereas this becomes more difficult to verify individually without opening the possibility that malicious validators forge evidence against innocent . Not only that, but `LightClientAttackEvidence` also deals with amnesia attacks which unfortunately have the characteristic where we know the set of validators involved but not the subset that were actually malicious (more to be said about this later). And finally splitting the evidence into individual pieces makes it difficult to understand the severity of the attack (i.e. the total voting power involved in the attack)
+証拠は、各検証者に基づいて残ります。これにより、現在のプロセスへの干渉は最小限に抑えられますが、「LightClientAttackEvidence」を悪意のあるバリデーターごとにいくつかの証拠に分解する必要があります。データベース操作の数がn倍であるため、これはパフォーマンスに影響を与えるだけでなく、証拠ゴシップは(各部分にヘッダーを必要とすることにより)より多くの帯域幅を必要とし、それを検証する能力に影響を与える可能性があります。バッチ処理の形式では、ノード全体がライトクライアントと同じプロセスを実行して、共通ブロックと競合ブロックの両方に検証能力の3分の1があり、悪意のあるバリデーターを開く可能性がないことを確認できます。 、この変更無実の人々に有害な証拠の偽造を独自に検証することはさらに困難です。それだけでなく、「LightClientAttackEvidence」は記憶喪失攻撃も処理します。残念ながら、この攻撃の特徴は、関係するバリデーターのセットを知っていることですが、それが実際に悪意のあるサブセットであるかどうかはわかりません(この後の手順で詳しく説明します)。最後に、証拠を別々の部分に分割すると、攻撃の重大度(つまり、攻撃に関与する総投票権)を理解することが困難になります
 
-#### An example of a possible implementation path
+#### 可能な実装パスの例
 
-We would ignore amnesia evidence (as individually it's hard to make) and revert to the initial split we had before where `DuplicateVoteEvidence` is also used for light client equivocation attacks and thus we only need `LunaticEvidence`. We would also most likely need to remove `Verify` from the interface as this isn't really something that can be used.
+記憶喪失の証拠を無視し(個別に作成することが難しいため)、以前の最初の分割に戻ります。ここでは、「DuplicateVoteEvidence」が軽いクライアントのあいまいさの攻撃にも使用されるため、「LunaticEvidence」のみが必要です。また、これは実際には使用できないため、インターフェイスから「検証」を削除する必要がある可能性があります。
 
 ``` go
 type LunaticEvidence struct { // individual lunatic attack
@@ -73,26 +72,26 @@ type LunaticEvidence struct { // individual lunatic attack
 }
 ```
 
-### Batch Framework
+### バッチ処理フレームワーク
 
-The last approach of this category would be to consider batch only evidence. This works fine with `LightClientAttackEvidence` but would require alterations to `DuplicateVoteEvidence` which would most likely mean that the consensus would send conflicting votes to a buffer in the evidence module which would then wrap all the votes together per height before gossiping them to other nodes and trying to commit it on chain. At a glance this may improve IO and verification speed and perhaps more importantly grouping validators gives the application and Tendermint a better overview of the severity of the attack.
+このカテゴリの最後の方法は、バッチ証拠のみを考慮することです。これは「LightClientAttackEvidence」に適用されますが、「DuplicateVoteEvidence」を変更する必要があります。これは、コンセンサスが矛盾する投票を証拠モジュールのバッファーに送信し、すべての投票を高さでまとめてから、ゴシップすることを意味します。他のノードを使用して、チェーンに送信してみてください。一見すると、これによりIOと検証の速度が向上する可能性があり、さらに重要なことに、バリデーターをグループ化することで、アプリケーションとTendermintが攻撃の重大度をよりよく理解できるようになります。
 
-However individual evidence has the advantage that it is easy to check if a node already has that evidence meaning we just need to check hashes to know that we've already verified this evidence before. Batching evidence would imply that each node may have a different combination of duplicate votes which may complicate things.
+ただし、単一の証明の利点は、ノードにすでに証明があるかどうかを簡単に確認できることです。つまり、ハッシュ値を確認するだけで、以前に証明を検証したことがわかります。バッチ証拠は、各ノードが繰り返し投票の異なる組み合わせを持っている可能性があることを意味し、問題を複雑にする可能性があります。
 
-#### An example of a possible implementation path
+#### 可能な実装パスの例
 
-`LightClientAttackEvidence` won't change but the evidence interface will need to look like the proposed one above and `DuplicateVoteEvidence` will need to change to encompass multiple double votes. A problem with batch evidence is that it needs to be unique to avoid people from submitting different permutations.
+`LightClientAttackEvidence`は変更されませんが、証拠インターフェースは上記で提案されたもののように見える必要があり、` DuplicateVoteEvidence`は複数の二重投票を含むように変更する必要があります。バッチ証拠に関する1つの問題は、人々が異なる順列を提出することを避けるために、それが一意である必要があるということです。
 
-## Decision
+## 決定
 
-The decision is to adopt a hybrid design.
+決定は、ハイブリッド設計を採用することでした。
 
-We allow individual and batch evidence to coexist together, meaning that verification is done depending on the evidence type and that  the bulk of the work is done in the evidence pool itself (including forming the evidence to be sent to the application).
+単一のエビデンスとエビデンスのバッチを共存させることができます。つまり、検証はエビデンスのタイプに従って実行され、ほとんどの作業はエビデンスプール自体で行われます(アプリケーションに送信されるエビデンスの形成を含む)。
 
 
-## Detailed Design
+## 詳細設計
 
-Evidence has the following simple interface:
+証拠には、次の単純なインターフェイスがあります。
 
 ```go
 type Evidence interface {  //proposed
@@ -104,9 +103,9 @@ type Evidence interface {  //proposed
 }
 ```
 
-The changing of the interface is backwards compatible as these methods are all present in the previous version of the interface. However, networks will need to upgrade to be able to process the new evidence as verification has changed.
+これらのメソッドはすべて以前のバージョンのインターフェイスに存在するため、インターフェイスの変更には下位互換性があります。 ただし、検証が変更されると、新しい証拠を処理するためにネットワークをアップグレードする必要があります。
 
-We have two concrete types of evidence that fulfil this interface
+このインターフェースを満たすために、2つの特定のタイプの証拠があります
 
 ```go
 type LightClientAttackEvidence struct {
@@ -119,9 +118,9 @@ type LightClientAttackEvidence struct {
 	Timestamp           time.Time    // timestamp of the block at the common height
 }
 ```
-where the `Hash()` is the hash of the header and commonHeight.
+その中で、 `Hash()`はヘッダーとcommonHeightのハッシュ値です。
 
-Note: It was also discussed whether to include the commit hash which captures the validators that signed the header. However this would open the opportunity for someone to propose multiple permutations of the same evidence (through different commit signatures) hence it was omitted. Consequentially, when it comes to verifying evidence in a block, for `LightClientAttackEvidence` we can't just check the hashes because someone could have the same hash as us but a different commit where less than 1/3 validators voted which would be an invalid version of the evidence. (see `fastCheck` for more details)
+注:ヘッダーに署名するバリデーターをキャプチャするためにコミットハッシュを含めるかどうかについても説明します。 ただし、これにより、同じ証拠の複数の順列を(異なる提出署名を介して)提示する機会が誰かに提供されるため、省略されます。 したがって、ブロック内の証拠を検証する場合、「LightClientAttackEvidence」の場合、誰かが私たちと同じハッシュ値を持っている可能性があるため、ハッシュ値を確認するだけでなく、1未満の別の送信を送信することはできません。/3検証者は、これが無効な証拠のバージョンになると投票しました。 (詳細は「fastCheck」を参照してください)
 
 ```go
 type DuplicateVoteEvidence {
@@ -134,96 +133,96 @@ type DuplicateVoteEvidence {
 	Timestamp        time.Time
 }
 ```
-where the `Hash()` is the hash of the two votes
+ここで、 `Hash()`は2票のハッシュ値です。
 
-For both of these types of evidence, `Bytes()` represents the proto-encoded byte array format of the evidence and `ValidateBasic` is
-an initial consistency check to make sure the evidence has a valid structure.
+これら2種類の証拠の場合、 `Bytes()`は証拠の元のエンコーディングバイト配列形式を表し、 `ValidateBasic`は
+証拠が有効な構造を持っていることを確認するための最初の整合性チェック。
 
-### The Evidence Pool
+###証拠プール
 
-`LightClientAttackEvidence` is generated in the light client and `DuplicateVoteEvidence` in consensus. Both are sent to the evidence pool through `AddEvidence(ev Evidence) error`. The evidence pool's primary purpose is to verify evidence. It also gossips evidence to other peers' evidence pool and serves it to consensus so it can be committed on chain and the relevant information can be sent to the application in order to exercise punishment. When evidence is added, the pool first runs `Has(ev Evidence)` to check if it has already received it (by comparing hashes) and then  `Verify(ev Evidence) error`.  Once verified the evidence pool stores it it's pending database. There are two databases: one for pending evidence that is not yet committed and another of the committed evidence (to avoid committing evidence twice)
+`LightClientAttackEvidence`はライトクライアントで生成され、` DuplicateVoteEvidence`はコンセンサスで生成されます。両方とも「AddEvidence(evEvidence)エラー」を介してエビデンスプールに送信されます。エビデンスプールの主な目的は、エビデンスを検証することです。また、証拠ゴシップを他のノードの証拠プールに送信し、それをコンセンサスに提供してチェーンに提出し、関連情報を罰の申請に送信することもできます。エビデンスを追加する場合、プールは最初に「Has(ev Evidence)」を実行して(ハッシュ値を比較することにより)受信されたかどうかを確認し、次に「Verify(ev Evidence)error」を実行します。検証後、証拠プールはそれを保留中のデータベースとして保存します。 2つのデータベースがあります。1つはまだ提出されていない保留中の証拠に使用され、もう1つは提出された証拠に使用されます(証拠を2回提出することは避けてください)
 
-#### Verification
+#### 確認
 
-`Verify()` does the following:
+`Verify()`は次のことを行います。
 
-- Use the hash to see if we already have this evidence in our committed database.
+-ハッシュを使用して、この証拠が提出したデータベースにすでに存在するかどうかを確認します。
 
-- Use the height to check if the evidence hasn't expired.
+-高度を使用して、証拠の有効期限が切れていないかどうかを確認します。
 
-- If it has expired then use the height to find the block header and check if the time has also expired in which case we drop the evidence
+-有効期限が切れている場合は、高さを使用してブロックヘッダーを検索し、期限も切れているかどうかを確認します。この場合、証拠を破棄します
 
-- Then proceed with switch statement for each of the two evidence:
+-次に、2つの証拠のそれぞれについてswitchステートメントを作成します。
 
-For `DuplicateVote`:
+`DuplicateVote`の場合:
 
-- Check that height, round, type and validator address are the same
+-高さ、円、タイプ、バリデーターアドレスが同じかどうかを確認します
 
-- Check that the Block ID is different
+-ブロックIDが異なるかどうかを確認します
 
-- Check the look up table for addresses to make sure there already isn't evidence against this validator
+-アドレスルックアップテーブルをチェックして、このバリデーターの証拠がないことを確認します
 
-- Fetch the validator set and confirm that the address is in the set at the height of the attack
+-バリデーターのセットを取得し、アドレスが攻撃の高さのセットに含まれていることを確認します
 
-- Check that the chain ID and signature is valid.
+-チェーンIDと署名が有効かどうかを確認します。
 
-For `LightClientAttack`
+`LightClientAttack`の場合
 
-- Fetch the common signed header and val set from the common height and use skipping verification to verify the conflicting header
+-パブリックハイトからパブリック署名ヘッダーとvalセットを取得し、スキップ検証を使用して競合するヘッダーを検証します
 
-- Fetch the trusted signed header at the same height as the conflicting header and compare with the conflicting header to work out which type of attack it is and in doing so return the malicious validators. NOTE: If the node doesn't have the signed header at the height of the conflicting header, it instead fetches the latest header it has and checks to see if it can prove the evidence based on a violation of header time. This is known as forward lunatic attack.
+-競合ヘッダーと同じ高さの信頼できる署名ヘッダーを取得し、それを競合ヘッダーと比較して、攻撃の種類を判別します。その場合、悪意のあるベリファイアを返します。注:ノードに競合するヘッダーの高さに署名ヘッダーがない場合、ノードは最新のヘッダーを取得し、違反ヘッダーの時間に基づいて証拠を証明できるかどうかを確認します。これはフォワードクレイジーアタックと呼ばれます。
 
-  - If equivocation, return the validators that signed for the commits of both the trusted and signed header
+  -あいまいな場合は、信頼され署名されたヘッダーの署名を送信したバリデーターに戻ります
 
-  - If lunatic, return the validators from the common val set that signed in the conflicting block
+  -気が狂っている場合は、競合ブロックで署名された公開検証セットから検証者に戻ります
 
-  - If amnesia, return no validators (since we can't know which validators are malicious). This also means that we don't currently send amnesia evidence to the application, although we will introduce more robust amnesia evidence handling in future Tendermint Core releases
+  -メモリが記憶喪失の場合、バリデーターは返されません(どのバリデーターが悪意があるかわからないため)。これはまた、Tendermint Coreの将来のバージョンで記憶喪失のより強力な証拠を導入するものの、現在、アプリケーションに記憶喪失の証拠を送信しないことを意味します
 
-- Check that the hashes of the conflicting header and the trusted header are different
+-競合するヘッダーと信頼できるヘッダーのハッシュ値が異なるかどうかを確認します
 
-- In the case of a forward lunatic attack, where the trusted header height is less than the conflicting header height, the node checks that the time of the trusted header is later than the time of conflicting header. This proves that the conflicting header breaks monotonically increasing time. If the node doesn't have a trusted header with a later time then it is unable to validate the evidence for now. 
+-フォワードマッドマン攻撃の場合、信頼できるヘッドの高さは競合するヘッドの高さよりも低く、ノードは競合するヘッドよりも遅く信頼できるヘッドをチェックします。これは、競合するヘッダーが単調に増加する時間を中断することを証明しています。将来、ノードに信頼できるヘッダーがない場合、現在は証拠を検証できません。
 
-- Lastly, for each validator, check the look up table to make sure there already isn't evidence against this validator
+-最後に、バリデーターごとに、ルックアップテーブルをチェックして、そのバリデーターの証拠がないことを確認します。
 
-After verification we persist the evidence with the key `height/hash` to the pending evidence database in the evidence pool.
+検証後、キーワード「height/hash」を含むエビデンスをエビデンスプールの保留中のエビデンスデータベースに保存します。
 
-#### ABCI Evidence
+#### ABCIの証拠
 
-Both evidence structures contain data (such as timestamp) that are necessary to be passed to the application but do not strictly constitute evidence of misbehaviour. As such, these fields are verified last. If any of these fields are invalid to a node i.e. they don't correspond with their state, nodes will reconstruct a new evidence struct from the existing fields and repopulate the abci specific fields with their own state data.
+どちらのタイプの証拠構造にも、アプリケーションに渡すために必要なデータ(タイムスタンプなど)が含まれていますが、厳密に言えば、これらは不適切な動作の証拠を構成するものではありません。したがって、最後にこれらのフィールドを確認してください。これらのフィールドのいずれかがノードに対して無効である場合、つまり、それらがそれらの状態に対応していない場合、ノードは既存のフィールドから新しい証拠構造を再構築し、abci固有のフィールドに独自の状態データを再入力します。
 
-#### Broadcasting and receiving evidence
+####ブロードキャストして証拠を受け取る
 
-The evidence pool also runs a reactor that broadcasts the newly validated
-evidence to all connected peers.
+証拠プールもリアクターを実行し、新しく検証されたものをブロードキャストします
+接続されているすべてのピアに証拠を提供します。
 
-Receiving evidence from other evidence reactors works in the same manner as receiving evidence from the consensus reactor or a light client.
-
-
-#### Proposing evidence on the block
-
-When it comes to prevoting and precomitting a proposal that contains evidence, the full node will once again
-call upon the evidence pool to verify the evidence using `CheckEvidence(ev []Evidence)`:
-
-This performs the following actions:
-
-1. Loops through all the evidence to check that nothing has been duplicated
-
-2. For each evidence, run `fastCheck(ev evidence)` which works similar to `Has` but instead for `LightClientAttackEvidence` if it has the
-same hash it then goes on to check that the validators it has are all signers in the commit of the conflicting header. If it doesn't pass fast check (because it hasn't seen the evidence before) then it will have to verify the evidence.
-
-3. runs `Verify(ev Evidence)` - Note: this also saves the evidence to the db as mentioned before.
+他のエビデンスリアクターからエビデンスを受け取る方法は、コンセンサスリアクターまたはライトクライアントからエビデンスを受け取る方法と同じです。
 
 
-#### Updating application and pool
+####ブロックに証拠を提案する
 
-The final part of the lifecycle is when the block is committed and the `BlockExecutor` then updates state. As part of this process, the `BlockExecutor` gets the evidence pool to create a simplified format for the evidence to be sent to the application. This happens in `ApplyBlock` where the executor calls `Update(Block, State) []abci.Evidence`.
+証拠を含む提案の事前投票と事前提出に関しては、ノード全体が再び
+エビデンスプールを呼び出し、 `CheckEvidence(ev [] Evidence)`を使用してエビデンスを検証します。
+
+これにより、次のことが行われます。
+
+1.すべての証拠を調べて、重複がないことを確認します
+
+2.エビデンスごとに、「fastCheck(evevidence)」を実行します。「Has」のように機能しますが、「LightClientAttackEvidence」がある場合は
+次に、同じハッシュが、所有するバリデーターが競合するヘッダー送信のすべての署名者であるかどうかを引き続きチェックします。クイックチェックに失敗した場合(以前に証拠を見たことがないため)、証拠を検証する必要があります。
+
+3. `Verify(ev Evidence)`を実行します-注:これにより、前述のように、証拠もデータベースに保存されます。
+
+
+#### アプリケーションとプールを更新する
+
+ライフサイクルの最後の部分はブロックを送信することであり、次に「BlockExecutor」が状態を更新します。このプロセスの一環として、「BlockExecutor」は証拠のプールを取得して、アプリケーションに送信される証拠の簡略化された形式を作成します。これは「ApplyBlock」で発生し、実行プログラムは「Update(Block、State)[] abci.Evidence」を呼び出します。
 
 ```go
 abciResponses.BeginBlock.ByzantineValidators = evpool.Update(block, state)
 ```
 
-Here is the format of the evidence that the application will receive. As seen above, this is stored as an array within `BeginBlock`.
-The changes to the application are minimal (it is still formed one for each malicious validator) with the exception of using an enum instead of a string for the evidence type.
+以下は、アプリケーションが受け取る証拠の形式です。 上に示したように、これは「BeginBlock」に配列として格納されます。
+証明タイプとして文字列の代わりに列挙型を使用することを除けば、アプリケーションへの変更は最小限です(悪意のあるバリデーターごとに1つを形成します)。
 
 ```go
 type Evidence struct {
@@ -242,15 +241,14 @@ type Evidence struct {
 }
 ```
 
+`Update()`関数は次のことを行います。
 
-This `Update()` function does the following:
+-有効期限による現在の時間と高度を測定するために使用される増分ステータスを追跡します
 
-- Increments state which keeps track of both the current time and height used for measuring expiry
+-証​​拠を提出済みとしてマークし、データベースに保存します。 これにより、検証者が提出された証拠を将来提示することを防ぎます
+    注:dbは、高さとハッシュ値のみを保存します。 提出されたすべての証拠を保存する必要はありません
 
-- Marks evidence as committed and saves to db. This prevents validators from proposing committed evidence in the future
-  Note: the db just saves the height and the hash. There is no need to save the entire committed evidence
-
-- Forms ABCI evidence as such:  (note for `DuplicateVoteEvidence` the validators array size is 1)
+-そのようなABCIエビデンスを作成します:(「DuplicateVoteEvidence」に注意してください。バリデーター配列のサイズは1です)
   ```go
   for _, val := range evInfo.Validators {
     abciEv = append(abciEv, &abci.Evidence{
@@ -263,44 +261,44 @@ This `Update()` function does the following:
   }
   ```
 
-- Removes expired evidence from both pending and committed databases
+-保留中およびコミット済みのデータベースから期限切れの証拠を削除します
 
-The ABCI evidence is then sent via the `BlockExecutor` to the application.
+次に、「BlockExecutor」を介してABCI証拠をアプリケーションに送信します。
 
-#### Summary
+#### 概要
 
-To summarize, we can see the lifecycle of evidence as such:
+全体として、証拠のライフサイクルは次のとおりであることがわかります。
 
-![evidence_lifecycle](../imgs/evidence_lifecycle.png)
+！[evidence_lifecycle](../ imgs/evidence_lifecycle.png)
 
-Evidence is first detected and created in the light client and consensus reactor. It is verified and stored as `EvidenceInfo` and gossiped to the evidence pools in other nodes. The consensus reactor later communicates with the evidence pool to either retrieve evidence to be put into a block, or verify the evidence the consensus reactor has retrieved in a block. Lastly when a block is added to the chain, the block executor sends the committed evidence back to the evidence pool so a pointer to the evidence can be stored in the evidence pool and it can update it's height and time. Finally, it turns the committed evidence into ABCI evidence and through the block executor passes the evidence to the application so the application can handle it.
+まず、ライトクライアントとコンセンサスリアクターで証拠を検出して作成します。検証されて「EvidenceInfo」として保存され、他のノードの証拠プールに渡されます。コンセンサスリアクターは、後で証拠プールと通信して、ブロックに配置される証拠を取得するか、ブロック内のコンセンサスリアクターによって取得された証拠を検証します。最後に、ブロックがチェーンに追加されると、ブロックエグゼキュータは送信されたエビデンスをエビデンスプールに送り返します。これにより、エビデンスへのポインタをエビデンスプールに格納し、その高さと時間を更新できます。最後に、提出された証拠をABCI証拠に変換し、アプリケーションが処理できるように、ブロックエグゼキュータを介して証拠をアプリケーションに渡します。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-<!-- > This section describes the consequences, after applying the decision. All consequences should be summarized here, not just the "positive" ones. -->
+<！->このセクションでは、決定を適用した場合の結果について説明します。 「ポジティブ」な結果だけでなく、すべての結果をここに要約する必要があります。 ->
 
-### Positive
+### ポジティブ
 
-- Evidence is better contained to the evidence pool / module
-- LightClientAttack is kept together (easier for verification and bandwidth)
-- Variations on commit sigs in LightClientAttack doesn't lead to multiple permutations and multiple evidence
-- Address to evidence map prevents DOS attacks, where a single validator could DOS the network by flooding it with evidence submissions
+-エビデンスはエビデンスプール/モジュールによりよく含まれています
+-LightClientAttackは一緒にとどまります(検証と帯域幅がより簡単です)
+-LightClientAttackで送信されたシグナルを変更しても、複数の順列や複数の証拠は発生しません
+-証​​拠マッピングアドレスは、DOS攻撃を防ぐことができます。この攻撃では、単一の検証者が多数の証拠を送信することにより、ネットワーク上でDOS攻撃を実行できます。
 
-### Negative
+### ネガティブ
 
-- Changes the `Evidence` interface and thus is a block breaking change
-- Changes the ABCI `Evidence` and is thus a ABCI breaking change
-- Unable to query evidence for address / time without evidence pool
+-`Evidence`のインターフェースを変更したので、ブロックを壊す変更です
+-ABCI `Evidence`が変更されたため、ABCIにとって大きな変更です。
+-証​​拠プールが住所/時刻を照会できないという証拠はありません
 
-### Neutral
+### ニュートラル
 
 
-## References
+## 参照する
 
-<!-- > Are there any relevant PR comments, issues that led up to this, or articles referenced for why we made the given design choice? If so link them here! -->
+<！->関連するPRコメント、この問題の原因となった問題、または特定の設計を選択した理由に関する参考記事はありますか？もしそうなら、ここにそれらをリンクしてください！ ->
 
-- [LightClientAttackEvidence](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence-handling.md)
+-[LightClientAttackEvidence](https://github.com/informalsystems/tendermint-rs/blob/31ca3e64ce90786c1734caf186e30595832297a4/docs/spec/lightclient/attacks/evidence-handling.md)

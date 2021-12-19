@@ -1,41 +1,41 @@
-# ADR 012: PeerTransport
+# ADR 012:PeerTransport
 
-## Context
+## 環境
 
-One of the more apparent problems with the current architecture in the p2p
-package is that there is no clear separation of concerns between different
-components. Most notably the `Switch` is currently doing physical connection
-handling. An artifact is the dependency of the Switch on
-`[config.P2PConfig`](https://github.com/tendermint/tendermint/blob/05a76fb517f50da27b4bfcdc7b4cf185fc61eff6/config/config.go#L272-L339).
+p2pの現在のアーキテクチャに関するより明白な問題の1つ
+異なるパッケージ間で関心の分離は明確ではありません
+コンポーネント。最も注目すべきは、「スイッチ」が現在物理的に接続されていることです
+対処する。 1つのアーティファクトは、スイッチオンの依存関係です
+`[config.P2PConfig`](https://github.com/tendermint/tendermint/blob/05a76fb517f50da27b4bfcdc7b4cf185fc61eff6/config/config.go#L272-L339)。
 
-Addresses:
+住所:
 
-- [#2046](https://github.com/tendermint/tendermint/issues/2046)
-- [#2047](https://github.com/tendermint/tendermint/issues/2047)
+-[#2046](https://github.com/tendermint/tendermint/issues/2046)
+-[#2047](https://github.com/tendermint/tendermint/issues/2047)
 
-First iteraton in [#2067](https://github.com/tendermint/tendermint/issues/2067)
+[#2067](https://github.com/tendermint/tendermint/issues/2067)の最初のイテレーション
 
-## Decision
+## 決定
 
-Transport concerns will be handled by a new component (`PeerTransport`) which
-will provide Peers at its boundary to the caller. In turn `Switch` will use
-this new component accept new `Peer`s and dial them based on `NetAddress`.
+送信の問題は、新しいコンポーネント( `PeerTransport`)によって処理されます。
+ピアは、その境界で発信者に提供されます。次に、 `Switch`は
+この新しいコンポーネントは、新しい「ピア」を受け入れ、「NetAddress」に従ってダイヤルします。
 
 ### PeerTransport
 
-Responsible for emitting and connecting to Peers. The implementation of `Peer`
-is left to the transport, which implies that the chosen transport dictates the
-characteristics of the implementation handed back to the `Switch`. Each
-transport implementation is responsible to filter establishing peers specific
-to its domain, for the default multiplexed implementation the following will
-apply:
+ピアの起動と接続を担当します。 `Peer`の実装
+トランスミッションに任されています。これは、選択されたトランスミッションが決定することを意味します
+実装された機能は「スイッチ」に返されます。各
+トランスポートの実装は、ピア固有を確立するためのフィルタリングを担当します
+そのドメインに対して、デフォルトの多重化実装の場合、次のようになります
+申し込み:
 
-- connections from our own node
-- handshake fails
-- upgrade to secret connection fails
-- prevent duplicate ip
-- prevent duplicate id
-- nodeinfo incompatibility
+-私たち自身のノードからの接続
+-ハンドシェイクに失敗しました
+-シークレット接続へのアップグレードに失敗しました
+-重複するIPを防止します
+-IDの重複を防ぐ
+-nodeinfoは互換性がありません
 
 ```go
 // PeerTransport proxies incoming and outgoing peer connections.
@@ -78,36 +78,36 @@ func NewMTransport(
 ) *multiplexTransport
 ```
 
-### Switch
+### 変化する
 
-From now the Switch will depend on a fully setup `PeerTransport` to
-retrieve/reach out to its peers. As the more low-level concerns are pushed to
-the transport, we can omit passing the `config.P2PConfig` to the Switch.
+今後、Switchは完全に設定された「PeerTransport」に依存します
+相手を検索/連絡します。 より低レベルの注意が向けられるにつれて
+送信プロセス中に、スイッチへの `config.P2PConfig`の受け渡しを省略できます。
 
 ```go
 func NewSwitch(transport PeerTransport, opts ...SwitchOption) *Switch
 ```
 
-## Status
+## ステータス
 
-In Review.
+審査中です。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- free Switch from transport concerns - simpler implementation
-- pluggable transport implementation - simpler test setup
-- remove Switch dependency on P2PConfig - easier to test
+-伝送の問題からの自由な切り替え-より簡単な実装
+-プラガブルトランスミッションの実装-よりシンプルなテストセットアップ
+-スイッチのP2PConfigへの依存を削除します-テストが簡単
 
-### Negative
+### ネガティブ
 
-- more setup for tests which depend on Switches
+-Switchに依存するテストのその他の設定
 
-### Neutral
+### ニュートラル
 
-- multiplexed will be the default implementation
+-多重化がデフォルトの実装になります
 
-[0] These guards could be potentially extended to be pluggable much like
-middlewares to express different concerns required by differentally configured
-environments.
+[0]これらのガードは、次のようにプラグ可能に拡張できる可能性があります。
+さまざまな構成に対するさまざまな懸念を表現するミドルウェア
+周囲。

@@ -1,31 +1,31 @@
-# Reactor
+# リアクター
 
-The Blocksync Reactor's high level responsibility is to enable peers who are
-far behind the current state of the consensus to quickly catch up by downloading
-many blocks in parallel, verifying their commits, and executing them against the
-ABCI application.
+Blocksync Reactorの高レベルの責任は、それらを許可することです
+現在のコンセンサス状態よりはるかに遅れて、ダウンロードしてすぐに追いつく
+多くのブロックを並行して実行し、コミットを検証して実行します
+ABCIアプリケーション。
 
-Tendermint full nodes run the Blocksync Reactor as a service to provide blocks
-to new nodes. New nodes run the Blocksync Reactor in "fast_sync" mode,
-where they actively make requests for more blocks until they sync up.
-Once caught up, "fast_sync" mode is disabled and the node switches to
-using (and turns on) the Consensus Reactor.
+Tendermintフルノードは、BlocksyncReactorをブロック提供サービスとして実行します
+新しいノードへ。 新しいノードは、BlocksyncReactorを「fast_sync」モードで実行します。
+同期されるまで、より多くのブロックをアクティブに要求します。
+追いつくと、「fast_sync」モードが無効になり、ノードは次のように切り替わります。
+コンセンサスリアクターを使用(およびオープン)します。
 
-## Architecture and algorithm
+## アーキテクチャとアルゴリズム
 
-The Blocksync reactor is organised as a set of concurrent tasks:
+Blocksyncリアクターは、一連の同時タスクとして編成されています。
 
-- Receive routine of Blocksync Reactor
-- Task for creating Requesters
-- Set of Requesters tasks and - Controller task.
+-BlocksyncReactor受信ルーチン
+-リクエスターのタスクを作成します
+-一連のリクエスタータスクと-コントローラータスク。
 
-![Blocksync Reactor Architecture Diagram](img/bc-reactor.png)
+！[Blocksync Reactorアーキテクチャ図](img/bc-reactor.png)
 
-### Data structures
+### データ構造
 
-These are the core data structures necessarily to provide the Blocksync Reactor logic.
+これらは、BlocksyncReactorロジックを提供するために必要なコアデータ構造です。
 
-Requester data structure is used to track assignment of request for `block` at position `height` to a peer with id equals to `peerID`.
+リクエスターのデータ構造は、IDが「peerID」と等しいピアへの「高さ」の位置にある「ブロック」のリクエストの割り当てを追跡するために使用されます。
 
 ```go
 type Requester {
@@ -33,11 +33,11 @@ type Requester {
   block        Block
   height       int64
   peerID       p2p.ID
-  redoChannel  chan p2p.ID //redo may send multi-time; peerId is used to identify repeat
+  redoChannel  chan p2p.ID//redo may send multi-time; peerId is used to identify repeat
 }
 ```
 
-Pool is a core data structure that stores last executed block (`height`), assignment of requests to peers (`requesters`), current height for each peer and number of pending requests for each peer (`peers`), maximum peer height, etc.
+プールは、最後に実行されたブロック( `height`)、ピアへのリクエストの割り当て(` requesters`)、各ピアの現在の高さ、および各ピアの保留中のリクエストの数( `peers`)を格納するコアデータ構造です。 、最大ピア高さなど。
 
 ```go
 type Pool {
@@ -53,7 +53,7 @@ type Pool {
 }
 ```
 
-Peer data structure stores for each peer current `height` and number of pending requests sent to the peer (`numPending`), etc.
+ピアデータ構造には、各ピアの現在の「高さ」と、ピアに送信された保留中のリクエストの数(「numPending」)などが格納されます。
 
 ```go
 type Peer struct {
@@ -65,7 +65,7 @@ type Peer struct {
 }
 ```
 
-BlockRequest is internal data structure used to denote current mapping of request for a block at some `height` to a peer (`PeerID`).
+BlockRequestは、特定の「高さ」ブロックに対する現在の要求のピア( "PeerID")へのマッピングを表すために使用される内部データ構造です。
 
 ```go
 type BlockRequest {
@@ -76,7 +76,7 @@ type BlockRequest {
 
 ### Receive routine of Blocksync Reactor
 
-It is executed upon message reception on the BlocksyncChannel inside p2p receive routine. There is a separate p2p receive routine (and therefore receive routine of the Blocksync Reactor) executed for each peer. Note that try to send will not block (returns immediately) if outgoing buffer is full.
+これは、p2p受信ルーチンのBlocksyncChannelでメッセージが受信されたときに実行されます。 ピアごとに個別のp2p受信ルーチン(したがって、Blocksync Reactorの受信ルーチン)があります。 送信バッファがいっぱいの場合、送信の試行はブロックされないことに注意してください(すぐに戻ります)。
 
 ```go
 handleMsg(pool, m):
@@ -96,13 +96,13 @@ handleMsg(pool, m):
 
       if requester.block == nil and requester.peerID == p then
         requester.block = m
-        pool.numPending -= 1  // atomic decrement
+        pool.numPending -= 1 //atomic decrement
         peer = pool.peers[p]
         if peer != nil then
           peer.numPending--
           if peer.numPending == 0 then
             peer.timeout.Stop()
-            // NOTE: we don't send Quit signal to the corresponding requester task!
+           //NOTE: we don't send Quit signal to the corresponding requester task!
         else
           trigger peer timeout to expire after peerTimeout
       pool.mtx.Unlock()
@@ -130,9 +130,9 @@ onTimeout(p):
   peer.didTimeout = true
 ```
 
-### Requester tasks
+### リクエスタータスク
 
-Requester task is responsible for fetching a single block at position `height`.
+リクエスタータスクは、「高さ」の位置で単一のブロックを取得する責任があります。
 
 ```go
 fetchBlock(height, pool):
@@ -175,11 +175,11 @@ pickAvailablePeer(height):
   return selectedPeer
 ```
 
-sleep for requestIntervalMS
+requestIntervalMSのスリープ
 
-### Task for creating Requesters
+### リクエスターのタスクを作成する
 
-This task is responsible for continuously creating and starting Requester tasks.
+このタスクは、リクエスタータスクを常に作成して開始する責任があります。
 
 ```go
 createRequesters(pool):
@@ -190,7 +190,7 @@ createRequesters(pool):
       nextHeight = pool.height + size(pool.requesters)
       requester = create new requester for height nextHeight
       pool.requesters[nextHeight] = requester
-      pool.numPending += 1 // atomic increment
+      pool.numPending += 1//atomic increment
       start requester task
       pool.mtx.Unlock()
     else
@@ -208,7 +208,7 @@ createRequesters(pool):
       pool.mtx.Unlock()
 ```
 
-### Main blocksync reactor controller task
+### マスターブロック同期リアクターコントローラータスク
 
 ```go
 main(pool):
@@ -225,7 +225,7 @@ main(pool):
      stop peer for error
 
    upon receiving message on statusUpdateTickerChannel:
-     broadcast bcStatusRequestMessage(bcR.store.Height) // message sent in a separate routine
+     broadcast bcStatusRequestMessage(bcR.store.Height)//message sent in a separate routine
 
    upon receiving message on switchToConsensusTickerChannel:
      pool.mtx.Lock()
@@ -264,12 +264,12 @@ redoRequestsForPeer(pool, peerId):
      enqueue msg on redoChannel for requester
 ```
 
-## Channels
+## チャンネル
 
-Defines `maxMsgSize` for the maximum size of incoming messages,
-`SendQueueCapacity` and `RecvBufferCapacity` for maximum sending and
-receiving buffers respectively. These are supposed to prevent amplification
-attacks by setting up the upper limit on how much data we can receive & send to
-a peer.
+着信メッセージの最大サイズとして `maxMsgSize`を定義します。
+`SendQueueCapacity`と` RecvBufferCapacity`は、最大の送信と
+バッファを個別に受信します。 これらは拡大を防ぐためのものでなければなりません
+送受信できるデータ量に上限を設定して攻撃する
+なし。
 
-Sending incorrectly encoded data will result in stopping the peer.
+誤ってコード化されたデータを送信すると、ピアが停止します。

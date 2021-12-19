@@ -1,66 +1,66 @@
-# Mempool
+# メモリプール
 
-The mempool is a in memory pool of potentially valid transactions,
-both to broadcast to other nodes, as well as to provide to the
-consensus reactor when it is selected as the block proposer.
+メモリプールは、潜在的に有効なトランザクションのメモリプールです。
+他のノードにブロードキャストするだけでなく、他のノードにも提供します
+ブロック提案者として選択された場合、コンセンサスリアクター。
 
-There are two sides to the mempool state:
+メモリプールのステータスには、次の2つの側面があります。
 
-- External: get, check, and broadcast new transactions
-- Internal: return valid transaction, update list after block commit
+-外部:新しいトランザクションを取得、確認、ブロードキャストします
+-内部:有効なトランザクションを返し、ブロックが送信された後にリストを更新します
 
-## External functionality
+## 外部機能
 
-External functionality is exposed via network interfaces
-to potentially untrusted actors.
+外部機能はネットワークインターフェースを介して公開されます
+信頼できない参加者へ。
 
-- CheckTx - triggered via RPC or P2P
-- Broadcast - gossip messages after a successful check
+-CheckTx-RPCまたはP2Pを介してトリガーします
+-ブロードキャスト-チェックが成功した後のゴシップメッセージ
 
-## Internal functionality
+## 内部機能
 
-Internal functionality is exposed via method calls to other
-code compiled into the tendermint binary.
+内部関数は、メソッド呼び出しを通じて他の関数に公開されます
+コードはtendermintバイナリファイルにコンパイルされます。
 
-- ReapMaxBytesMaxGas - get txs to propose in the next block. Guarantees that the
-    size of the txs is less than MaxBytes, and gas is less than MaxGas
-- Update - remove tx that were included in last block
-- ABCI.CheckTx - call ABCI app to validate the tx
+-ReapMaxBytesMaxGas-次のブロックで提案するtxsを取得します。確認
+    txsのサイズはMaxBytes未満であり、ガスはMaxGas未満です。
+-更新-最後のブロックに含まれるtxを削除します
+-ABCI.CheckTx-ABCIアプリケーションを呼び出してtxを確認します
 
-What does it provide the consensus reactor?
-What guarantees does it need from the ABCI app?
-(talk about interleaving processes in concurrency)
+コンセンサスリアクターには何が提供されますか？
+ABCIアプリケーションからどのような保証が必要ですか？
+(並行性におけるインターリーブされたプロセスについて話します)
 
-## Optimizations
+## 最適化
 
-The implementation within this library also implements a tx cache.
-This is so that signatures don't have to be reverified if the tx has
-already been seen before.
-However, we only store valid txs in the cache, not invalid ones.
-This is because invalid txs could become good later.
-Txs that are included in a block aren't removed from the cache,
-as they still may be getting received over the p2p network.
-These txs are stored in the cache by their hash, to mitigate memory concerns.
+このライブラリの実装は、txキャッシングも実装します。
+このように、txが持っている場合、署名を再検証する必要はありません
+私は前にそれを見たことがあります。
+ただし、有効なtxのみをキャッシュに保存し、無効なtxは保存しません。
+これは、無効なtxが将来改善される可能性があるためです。
+ブロックに含まれるTxは、キャッシュから削除されません。
+それらはまだp2pネットワークを介して受信される可能性があるためです。
+これらのトランザクションは、メモリの問題を軽減するためにハッシュを介してキャッシュに保存されます。
 
-Applications should implement replay protection, read [Replay
-Protection](https://github.com/tendermint/tendermint/blob/8cdaa7f515a9d366bbc9f0aff2a263a1a6392ead/docs/app-dev/app-development.md#replay-protection) for more information.
+アプリケーションはリプレイ保護を実装する必要があります。[リプレイ
+詳細については、保護](https://github.com/tendermint/tendermint/blob/8cdaa7f515a9d366bbc9f0aff2a263a1a6392ead/docs/app-dev/app-development.md#replay-protection)を参照してください。
 
-## Configuration
+## 構成
 
-The mempool has various configurable paramet
+メモリプールには、さまざまな設定可能なパラメータがあります
 
-Sending incorrectly encoded data or data exceeding `maxMsgSize` will result
-in stopping the peer.
+誤ってコーディングされたデータまたは `maxMsgSize`を超えるデータを送信すると、
+ピアを停止します。
 
-`maxMsgSize` equals `MaxBatchBytes` (10MB) + 4 (proto overhead).
-`MaxBatchBytes` is a mempool config parameter -> defined locally. The reactor
-sends transactions to the connected peers in batches. The maximum size of one
-batch is `MaxBatchBytes`.
+`maxMsgSize`は、` MaxBatchBytes`(10MB)+ 4(プロトタイプのオーバーヘッド)に等しくなります。
+`MaxBatchBytes`は、ローカルで定義されたメモリプール構成パラメータです。原子炉
+接続されたピアにトランザクションをバッチで送信します。最大サイズ1
+バッチ処理は `MaxBatchBytes`です。
 
-The mempool will not send a tx back to any peer which it received it from.
+メモリプールは、それを受信するピアにtxを送り返しません。
 
-The reactor assigns an `uint16` number for each peer and maintains a map from
-p2p.ID to `uint16`. Each mempool transaction carries a list of all the senders
-(`[]uint16`). The list is updated every time mempool receives a transaction it
-is already seen. `uint16` assumes that a node will never have over 65535 active
-peers (0 is reserved for unknown source - e.g. RPC).
+リアクタは、各ピアに「uint16」番号を割り当て、からの番号を維持します。
+p2p.IDから `uint16`へ。各メモリプールトランザクションには、すべての送信者のリストが含まれています
+( `[] uint16`)。リストは、メモリプールがトランザクションを受信するたびに更新されます
+見たことあります。 `uint16`ノードに65535を超えるアクティブノードが存在しないと仮定します
+ピア(0は、RPCなどの不明なソース用に予約されています)。

@@ -50,7 +50,7 @@ type BlockGossip struct {
 
 ### ABCI
 
-####初始化链
+#### 初始化链
 
 InitChain 当前采用初始验证器集。它应该扩展到也包含 ConsensusParams 的一部分。
 有一些情况可以让它占据整个创世记，除非可能在创世中有一些东西，

@@ -1,106 +1,106 @@
-# ADR 007: Trust Metric Usage Guide
+# ADR 007:信頼指標を使用するためのガイドライン
 
-## Context
+## 環境
 
-Tendermint is required to monitor peer quality in order to inform its peer dialing and peer exchange strategies.
+Tendermintは、ピアツーピアダイヤリングおよびピアツーピアスイッチングポリシーを通知するために、ピアツーピアの品質を監視する必要があります。
 
-When a node first connects to the network, it is important that it can quickly find good peers.
-Thus, while a node has fewer connections, it should prioritize connecting to higher quality peers.
-As the node becomes well connected to the rest of the network, it can dial lesser known or lesser
-quality peers and help assess their quality. Similarly, when queried for peers, a node should make
-sure they dont return low quality peers.
+ノードが初めてネットワークに接続するときは、適切なピアをすばやく見つけることができることが重要です。
+したがって、ノードの接続数は少なくなりますが、より高品質のピアに優先的に接続する必要があります。
+ノードがネットワークの他の部分と適切に接続されている場合、ノードはあまり知られていない、または少ないと呼ぶことができます
+質の高い仲間とその質の評価を支援します。同様に、ピアにクエリを実行する場合、ノードは次を使用する必要があります
+質の低い仲間に戻らないように注意してください。
 
-Peer quality can be tracked using a trust metric that flags certain behaviours as good or bad. When enough
-bad behaviour accumulates, we can mark the peer as bad and disconnect.
-For example, when the PEXReactor makes a request for peers network addresses from an already known peer, and the returned network addresses are unreachable, this undesirable behavior should be tracked. Returning a few bad network addresses probably shouldn’t cause a peer to be dropped, while excessive amounts of this behavior does qualify the peer for removal. The originally proposed approach and design document for the trust metric can be found in the [ADR 006](adr-006-trust-metric.md) document.
+特定の動作を良好または不良としてマークするトラストメトリックを使用して、ピアの品質を追跡できます。十分な場合
+悪い振る舞いが蓄積し、ピアを悪いものとしてマークして切断することができます。
+たとえば、PEXReactorが既知のピアからピアのネットワークアドレスを要求し、返されたネットワークアドレスにアクセスできない場合、この不正な動作を追跡する必要があります。間違ったネットワークアドレスを返してもピアが削除されない場合があります。この動作が多すぎると、ピアが削除の対象になります。オリジナルの信頼測定方法と設計ドキュメントは、[ADR 006](adr-006-trust-metric.md)にあります。
 
-The trust metric implementation allows a developer to obtain a peer's trust metric from a trust metric store, and track good and bad events relevant to a peer's behavior, and at any time, the peer's metric can be queried for a current trust value. The current trust value is calculated with a formula that utilizes current behavior, previous behavior, and change between the two. Current behavior is calculated as the percentage of good behavior within a time interval. The time interval is short; probably set between 30 seconds and 5 minutes. On the other hand, the historic data can estimate a peer's behavior over days worth of tracking. At the end of a time interval, the current behavior becomes part of the historic data, and a new time interval begins with the good and bad counters reset to zero.
+信頼測定の実装により、開発者は信頼測定ストアからピアの信頼測定を取得し、ピアの動作に関連する良いイベントと悪いイベントを追跡し、いつでもピア測定を照会して現在の信頼値を取得できます。 。現在の信頼値は、現在の動作、以前の動作、および2つの間の変更を使用する式を使用して計算されます。現在の動作は、時間間隔内の良好な動作のパーセンテージとして計算されます。時間間隔は短く、30秒から5分の間で設定できます。一方、履歴データは、数日間の追跡中のピアの動作を推定できます。時間間隔が終了すると、現在の動作が履歴データの一部になり、新しい時間間隔が開始され、良好なカウンターと不良なカウンターがゼロにリセットされます。
 
-These are some important things to keep in mind regarding how the trust metrics handle time intervals and scoring:
+信頼インジケーターが時間間隔とスコアリングをどのように処理するかに関して、次の重要な点に留意する必要があります。
 
-- Each new time interval begins with a perfect score
-- Bad events quickly bring the score down and good events cause the score to slowly rise
-- When the time interval is over, the percentage of good events becomes historic data.
+-すべての新しい時間間隔は満点で始まります
+-悪いイベントはすぐにスコアを下げ、良いイベントはスコアをゆっくりと上げます
+-時間間隔が終了すると、良好なイベントの割合が履歴データになります。
 
-Some useful information about the inner workings of the trust metric:
+トラストメトリックの内部動作に関するいくつかの有用な情報:
 
-- When a trust metric is first instantiated, a timer (ticker) periodically fires in order to handle transitions between trust metric time intervals
-- If a peer is disconnected from a node, the timer should be paused, since the node is no longer connected to that peer
-- The ability to pause the metric is supported with the store **PeerDisconnected** method and the metric **Pause** method
-- After a pause, if a good or bad event method is called on a metric, it automatically becomes unpaused and begins a new time interval.
+-信頼メトリックが初めてインスタンス化されると、タイマー(自動ティッカー)が定期的にトリガーされ、信頼メトリックの時間間隔間の遷移を処理します。
+-ピアがノードから切断されている場合、ノードがピアに接続されていないため、タイマーを一時停止する必要があります
+-ストア** PeerDisconnected **メソッドとメトリック** Pause **メソッドは、インジケーターを一時停止する機能をサポートします
+-一時停止後、インジケーターで良いまたは悪いイベントメソッドが呼び出されると、一時停止が自動的にキャンセルされ、新しい時間間隔が開始されます。
 
-## Decision
+## 決定
 
-The trust metric capability is now available, yet, it still leaves the question of how should it be applied throughout Tendermint in order to properly track the quality of peers?
+信頼度測定機能が利用できるようになりましたが、それでも疑問が残ります。つまり、ピアの品質を正しく追跡するために、Tendermint全体にどのように適用する必要があるのでしょうか。
 
-### Proposed Process
+### 提案されたプロセス
 
-Peers are managed using an address book and a trust metric:
+アドレスブックとトラストメトリックを使用して、ピアリングポイントを管理します。
 
-- The address book keeps a record of peers and provides selection methods
-- The trust metric tracks the quality of the peers
+-名簿は仲間を記録し、選択方法を提供します
+-トラストメトリックはピアの品質を追跡します
 
-#### Presence in Address Book
+#### 名簿に存在する
 
-Outbound peers are added to the address book before they are dialed,
-and inbound peers are added once the peer connection is set up.
-Peers are also added to the address book when they are received in response to
-a pexRequestMessage.
+アウトバウンドピアは、ダイヤルする前にアドレスブックに追加されます。
+ピアリング接続が確立されると、インバウンドピアが追加されます。
+ピアからの応答を受信すると、それもアドレス帳に追加されます
+pexRequestMessage。
 
-While a node has less than `needAddressThreshold`, it will periodically request more,
-via pexRequestMessage, from randomly selected peers and from newly dialed outbound peers.
+ノードが `needAddressThreshold`未満の場合、定期的にそれ以上を要求します。
+pexRequestMessageを介して、ランダムに選択されたピアおよび新しくダイヤルされたアウトバウンドピアから。
 
-When a new address is added to an address book that has more than `0.5*needAddressThreshold` addresses,
-then with some low probability, a randomly chosen low quality peer is removed.
+名簿に新しい住所が追加され、その住所が `0.5 * needAddressThreshold`を超えた場合、
+次に、ランダムに選択された低品質のピアを低い確率で削除します。
 
-#### Outbound Peers
+#### アウトバウンドピア
 
-Peers attempt to maintain a minimum number of outbound connections by
-repeatedly querying the address book for peers to connect to.
-While a node has few to no outbound connections, the address book is biased to return
-higher quality peers. As the node increases the number of outbound connections,
-the address book is biased to return less-vetted or lower-quality peers.
+ピアは、次の方法で最小数のアウトバウンド接続を維持しようとします。
+接続するピアのアドレス帳を繰り返し照会します。
+ノードにはアウトバウンド接続がほとんどありませんが、アドレス帳は返される傾向があります
+高品質の対応物。ノードがアウトバウンド接続の数を増やすと、
+名簿は、検閲が少ないか質が低い仲間に戻る傾向があります。
 
-#### Inbound Peers
+#### インバウンドピア
 
-Peers also maintain a maximum number of total connections, MaxNumPeers.
-If a peer has MaxNumPeers, new incoming connections will be accepted with low probability.
-When such a new connection is accepted, the peer disconnects from a probabilistically chosen low ranking peer
-so it does not exceed MaxNumPeers.
+ピアは、MaxNumPeersの接続の最大総数も維持します。
+ピアにMaxNumPeersがある場合、ピアは低い確率で新しい着信接続を受け入れます。
+このような新しい接続を受け入れると、ピアは確率的に選択された下位のピアから切断されます
+したがって、MaxNumPeersを超えることはありません。
 
-#### Peer Exchange
+#### ピア交換
 
-When a peer receives a pexRequestMessage, it returns a random sample of high quality peers from the address book. Peers with no score or low score should not be inclided in a response to pexRequestMessage.
+ピアがpexRequestMessageを受信すると、アドレスブックから高品質のピアのサンプルをランダムに返します。 pexRequestMessageへの応答には、スコアがないか低いピアを含めるべきではありません。
 
-#### Peer Quality
+#### ピア品質
 
-Peer quality is tracked in the connection and across the reactors by storing the TrustMetric in the peer's
-thread safe Data store.
+TrustMetricをピアに保存する
+スレッドセーフなデータストレージ。
 
-Peer behaviour is then defined as one of the following:
+ピアツーピアの動作は、次のいずれかとして定義されます。
 
-- Fatal - something outright malicious that causes us to disconnect the peer and ban it from the address book for some amount of time
-- Bad - Any kind of timeout, messages that don't unmarshal, fail other validity checks, or messages we didn't ask for or aren't expecting (usually worth one bad event)
-- Neutral - Unknown channels/message types/version upgrades (no good or bad events recorded)
-- Correct - Normal correct behavior (worth one good event)
-- Good - some random majority of peers per reactor sending us useful messages (worth more than one good event).
+-致命的-完全に悪意のあるものが原因で、ピアが切断され、一定期間アドレス帳から禁止されます
+-悪い-あらゆる種類のタイムアウト、マーシャリングされていないメッセージ、他の有効性チェックに合格しなかったメッセージ、または要求または予期しなかったメッセージ(通常は悪いイベントの価値があります)
+-ニュートラル-不明なチャネル/メッセージタイプ/バージョンのアップグレード(良いイベントまたは悪いイベントは記録されていません)
+-正しい-通常の正しい動作(良いイベントに値する)
+-良い-各リアクターのピアのランダムな過半数が有用なメッセージを送信します(複数の良いイベントの価値があります)。
 
-Note that Fatal behaviour causes us to remove the peer, and neutral behaviour does not affect the score.
+致命的な行動はピアを削除しますが、中立的な行動はスコアに影響を与えないことに注意してください。
 
-## Status
+## ステータス
 
-Proposed.
+提案しました。
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Bringing the address book and trust metric store together will cause the network to be built in a way that encourages greater security and reliability.
+-名簿とトラストメトリックストレージを組み合わせることで、セキュリティと信頼性を高める方法でネットワークを構築できます。
 
-### Negative
+### ネガティブ
 
-- TBD
+-決断される
 
-### Neutral
+### ニュートラル
 
-- Keep in mind that, good events need to be recorded just as bad events do using this implementation.
+-この実装を使用するには、悪いイベントと同じように、良いイベントを記録する必要があることに注意してください。

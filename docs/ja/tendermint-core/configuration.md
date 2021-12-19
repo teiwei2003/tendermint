@@ -1,3 +1,3 @@
-# Configuration
+# 構成
 
-This file has moved to the [nodes section](../nodes/configuration.md).
+このファイルは[ノードセクション](../nodes/configuration.md)に移動されました。

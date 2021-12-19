@@ -1,63 +1,63 @@
-# ADR 014: Secp256k1 Signature Malleability
+# ADR 014:Secp256k1署名の可鍛性
 
-## Context
+## 環境
 
-Secp256k1 has two layers of malleability.
-The signer has a random nonce, and thus can produce many different valid signatures.
-This ADR is not concerned with that.
-The second layer of malleability basically allows one who is given a signature
-to produce exactly one more valid signature for the same message from the same public key.
-(They don't even have to know the message!)
-The math behind this will be explained in the subsequent section.
+Secp256k1には2層の延性があります。
+署名者には乱数があるため、さまざまな有効な署名を生成できます。
+このADRはこれとは何の関係もありません。
+可鍛性の第2層は、基本的に署名を与えられた人を許可します
+同じ公開鍵から同じメッセージに対してより効果的な署名を生成します。
+(彼らはニュースを知る必要さえありません！)
+この背後にある数学については、次のセクションで説明します。
 
-Note that in many downstream applications, signatures will appear in a transaction, and therefore in the tx hash.
-This means that if someone broadcasts a transaction with secp256k1 signature, the signature can be altered into the other form by anyone in the p2p network.
-Thus the tx hash will change, and this altered tx hash may be committed instead.
-This breaks the assumption that you can broadcast a valid transaction and just wait for its hash to be included on chain.
-One example is if you are broadcasting a tx in cosmos,
-and you wait for it to appear on chain before incrementing your sequence number.
-You may never increment your sequence number if a different tx hash got committed.
-Removing this second layer of signature malleability concerns could ease downstream development.
+多くのダウンストリームアプリケーションでは、署名はトランザクションに表示されるため、txハッシュに表示されることに注意してください。
+これは、誰かがsecp256k1署名を使用してトランザクションをブロードキャストした場合、p2pネットワーク内の誰でも署名を別の形式に変更できることを意味します。
+したがって、txハッシュ値が変更され、この変更されたtxハッシュ値が送信される場合があります。
+これにより、有効なトランザクションをブロードキャストして、そのハッシュがチェーンに含まれるのを待つことができるという仮定が破られます。
+例として、宇宙でテキサス州を放送する場合、
+そして、シリアル番号を増やす前に、チェーンに表示されるのを待ちます。
+別のtxハッシュを送信すると、シリアル番号を増やすことはできません。
+シグニチャの第2層のスケーラビリティの問題を排除すると、ダウンストリーム開発を簡素化できます。
 
-### ECDSA context
+### ECDSAコンテキスト
 
-Secp256k1 is ECDSA over a particular curve.
-The signature is of the form `(r, s)`, where `s` is a field element.
-(The particular field is the `Z_n`, where the elliptic curve has order `n`)
-However `(r, -s)` is also another valid solution.
-Note that anyone can negate a group element, and therefore can get this second signature.
+Secp256k1は、特定の曲線上のECDSAです。
+署名の形式は `(r、s)`です。ここで、 `s`はフィールド要素です。
+(特定のフィールドは `Z_n`で、楕円曲線の次数は` n`です)
+ただし、 `(r、-s)`も別の効果的な解決策です。
+誰でもグループ要素を否定できるため、2番目の署名を取得できることに注意してください。
 
-## Decision
+## 決定
 
-We can just distinguish a canonical form for the ECDSA signatures.
-Then we require that all ECDSA signatures be in the form which we defined as canonical.
-We reject signatures in non-canonical form.
+ECDSA署名の標準形を区別できます。
+次に、すべてのECDSA署名に、仕様として定義した形式を採用するように要求します。
+非標準形式の署名は拒否します。
 
-A canonical form is rather easy to define and check.
-It would just be the smaller of the two values for `s`, defined lexicographically.
-This is a simple check, instead of checking if `s < n`, instead check `s <= (n - 1)/2`.
-An example of another cryptosystem using this
-is the parity definition here https://github.com/zkcrypto/pairing/pull/30#issuecomment-372910663.
+標準形は、定義と確認が非常に簡単です。
+これは、辞書式順序で定義された `s`の2つの値のうち小さい方のみです。
+これは、 `s <n`かどうかをチェックするのではなく、` s <=(n-1)/ 2`をチェックする単純なチェックです。
+このパスワードシステムを使用する別の例
+これは、https://github.com/zkcrypto/pairing/pull/30#issuecomment-372910663のパリティ定義です。
 
-This is the same solution Ethereum has chosen for solving secp malleability.
+これは、イーサリアムがsecpのスケーラビリティを解決するために選択したのと同じソリューションです。
 
-## Proposed Implementation
+## 推奨される実装
 
-Fork https://github.com/btcsuite/btcd, and just update the [parse sig method](https://github.com/btcsuite/btcd/blob/11fcd83963ab0ecd1b84b429b1efc1d2cdc6d5c5/btcec/signature.go#L195) and serialize functions to enforce our canonical form.
+フォークhttps://github.com/btcsuite/btcd、[parse sig method](https://github.com/btcsuite/btcd/blob/11fcd83963ab0ecd1b84b429b1efc1d2cdc6d5c5/btcec/signature.go#L19)を更新し、5関数をシリアル化する必要があります私たちの規範的な形を出します。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Lets us maintain the ability to expect a tx hash to appear in the blockchain.
+-txハッシュがブロックチェーンに表示されることを期待する機能を維持しましょう。
 
-### Negative
+### ネガティブ
 
-- More work in all future implementations (Though this is a very simple check)
-- Requires us to maintain another fork
+-将来のすべての実装でより多くの作業を行います(これは非常に単純なチェックですが)
+-別のフォークを維持する必要があります
 
-### Neutral
+### ニュートラル

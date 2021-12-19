@@ -1,135 +1,135 @@
-# ADR 009: ABCI UX Improvements
+# ADR 009:ABCIユーザーエクスペリエンスの向上
 
-## Changelog
+##変更ログ
 
-23-06-2018: Some minor fixes from review
-07-06-2018: Some updates based on discussion with Jae
-07-06-2018: Initial draft to match what was released in ABCI v0.11
+23-06-2018:レビューのいくつかのマイナーな修正
+2018年7月6日:ジェとの話し合いに基づくいくつかの更新
+2018年7月6日:ABCIv0.11で公開されたコンテンツと一致する最初のドラフト
 
-## Context
+## 環境
 
-The ABCI was first introduced in late 2015. It's purpose is to be:
+ABCIは2015年の終わりに最初に立ち上げられました。目的は次のとおりです。
 
-- a generic interface between state machines and their replication engines
-- agnostic to the language the state machine is written in
-- agnostic to the replication engine that drives it
+-ステートマシンとそのレプリケーションエンジン間の共通インターフェイス
+-ステートマシンが書かれている言語とは何の関係もありません
+-それを駆動するレプリケーションエンジンとは何の関係もありません
 
-This means ABCI should provide an interface for both pluggable applications and
-pluggable consensus engines.
+これは、ABCIがプラグ可能なアプリケーションであり、
+プラグ可能なコンセンサスエンジン。
 
-To achieve this, it uses Protocol Buffers (proto3) for message types. The dominant
-implementation is in Go.
+これを実現するために、メッセージタイプとしてプロトコルバッファ(proto3)を使用します。リーディングで
+実装はGoにあります。
 
-After some recent discussions with the community on github, the following were
-identified as pain points:
+githubでコミュニティと最近話し合った後、次のようになります。
+課題として決定:
 
-- Amino encoded types
-- Managing validator sets
-- Imports in the protobuf file
+-アミノコーディングタイプ
+-バリデーターセットを管理する
+-protobufファイルにインポートします
 
-See the [references](#references) for more.
+詳細については、[参照](#references)を参照してください。
 
-### Imports
+### 輸入
 
-The native proto library in Go generates inflexible and verbose code.
-Many in the Go community have adopted a fork called
-[gogoproto](https://github.com/gogo/protobuf) that provides a
-variety of features aimed to improve the developer experience.
-While `gogoproto` is nice, it creates an additional dependency, and compiling
-the protobuf types for other languages has been reported to fail when `gogoproto` is used.
+Goのネイティブprotoライブラリは、柔軟性がなく冗長なコードを生成します。
+Goコミュニティの多くの人々はと呼ばれるシステムを採用しています
+[gogoproto](https://github.com/gogo/protobuf)は
+開発者エクスペリエンスを向上させるために設計されたさまざまな機能。
+`gogoproto`は優れていますが、追加の依存関係を作成してコンパイルします
+他の言語のProtobufタイプは、gogoprotoを使用すると失敗することが報告されています。
 
-### Amino
+###アミノ
 
-Amino is an encoding protocol designed to improve over insufficiencies of protobuf.
-It's goal is to be proto4.
+Aminoは、protobufの欠点を改善するために設計されたエンコーディングプロトコルです。
+その目標はproto4になることです。
 
-Many people are frustrated by incompatibility with protobuf,
-and with the requirement for Amino to be used at all within ABCI.
+多くの人がprotobufの非互換性に不満を持っています。
+また、ABCIではアミノ基を完全に使用する必要があります。
 
-We intend to make Amino successful enough that we can eventually use it for ABCI
-message types directly. By then it should be called proto4. In the meantime,
-we want it to be easy to use.
+最終的にABCIに使用できるように、Aminoを十分に成功させるつもりです。
+メッセージタイプは直接です。それまでに、proto4と呼ばれるはずです。同時に、
+使いやすいものにしたいと思っています。
 
-### PubKey
+### 公開鍵
 
-PubKeys are encoded using Amino (and before that, go-wire).
-Ideally, PubKeys are an interface type where we don't know all the
-implementation types, so its unfitting to use `oneof` or `enum`.
+PubKeysはAminoエンコーディング(以前はgo-wire)を使用します。
+理想的には、公開鍵はインターフェースタイプであり、すべてを知っているわけではありません
+実装型であるため、 `oneof`または` enum`の使用には適していません。
 
-### Addresses
+### 住所
 
-The address for ED25519 pubkey is the RIPEMD160 of the Amino
-encoded pubkey. This introduces an Amino dependency in the address generation,
-a functionality that is widely required and should be easy to compute as
-possible.
+ED25519の公開鍵アドレスはAminoのRIPEMD160です。
+エンコードされた公開鍵。これにより、アドレス生成にアミノ依存性が導入されます。
+広く必要とされ、計算しやすい関数
+可能。
 
-### Validators
+###バリデーター
 
-To change the validator set, applications can return a list of validator updates
-with ResponseEndBlock. In these updates, the public key _must_ be included,
-because Tendermint requires the public key to verify validator signatures. This
-means ABCI developers have to work with PubKeys. That said, it would also be
-convenient to work with address information, and for it to be simple to do so.
+バリデーターセットを変更するために、アプリケーションはバリデーター更新リストに戻ることができます
+そしてResponseEndBlock。これらの更新には、公開鍵を含める必要があります。
+Tendermintは、検証者の署名を検証するために公開鍵を必要とするためです。この
+これは、ABCI開発者がPubKeysを使用する必要があることを意味します。言い換えれば、これも
+住所情報の処理は非常に便利で、操作も非常に簡単です。
 
-### AbsentValidators
+### バリデーターがありません
 
-Tendermint also provides a list of validators in BeginBlock who did not sign the
-last block. This allows applications to reflect availability behaviour in the
-application, for instance by punishing validators for not having votes included
-in commits.
+Tendermintは、BeginBlockの符号なしベリファイアのリストも提供します
+最後のピース。これにより、アプリケーションは可用性の動作を反映できます
+投票を含まないバリデーターにペナルティを課すなどのアプリケーション
+提出中。
 
-### InitChain
+### 初期化チェーン
 
-Tendermint passes in a list of validators here, and nothing else. It would
-benefit the application to be able to control the initial validator set. For
-instance the genesis file could include application-based information about the
-initial validator set that the application could process to determine the
-initial validator set. Additionally, InitChain would benefit from getting all
-the genesis information.
+Tendermintは、ここでバリデーターのリストを渡しますが、それ以上のものはありません。そうなる
+アプリケーションがバリデーターの初期セットを制御できるようにします。にとって
+たとえば、ジェネシスファイルにはアプリケーションベースの情報を含めることができます
+アプリケーションが決定するために処理できるバリデーターの初期セット
+初期バリデーターセット。さらに、InitChainはすべてを取得することで恩恵を受けます
+作成情報。
 
-### Header
+### タイトル
 
-ABCI provides the Header in RequestBeginBlock so the application can have
-important information about the latest state of the blockchain.
+ABCIはRequestBeginBlockでヘッダーを提供するため、アプリケーションは
+ブロックチェーンの最新の状態に関する重要な情報。
 
-## Decision
+## 決定
 
-### Imports
+### 輸入
 
-Move away from gogoproto. In the short term, we will just maintain a second
-protobuf file without the gogoproto annotations. In the medium term, we will
-make copies of all the structs in Golang and shuttle back and forth. In the long
-term, we will use Amino.
+gogoprotoに近づかないでください。短期的には、1秒しか維持しません
+protobufファイル、gogoprotoコメントはありません。中期的には
+Golangのすべての構造をコピーし、前後にシャトルします。長い間
+用語では、アミノを使用します。
 
-### Amino
+###アミノ
 
-To simplify ABCI application development in the short term,
-Amino will be completely removed from the ABCI:
+短期的にABCIアプリケーション開発を簡素化するために、
+AminoはABCIから完全に削除されます。
 
-- It will not be required for PubKey encoding
-- It will not be required for computing PubKey addresses
+-公開鍵エンコーディングはそれを必要としません
+-公開鍵アドレスを計算する必要はありません
 
-That said, we are working to make Amino a huge success, and to become proto4.
-To facilitate adoption and cross-language compatibility in the near-term, Amino
-v1 will:
+言い換えれば、私たちはアミノを大成功させ、proto4になるために一生懸命取り組んでいます。
+短期的に採用と言語間の互換性を促進するために、Amino
+v1は:
 
-- be fully compatible with the subset of proto3 that excludes `oneof`
-- use the Amino prefix system to provide interface types, as opposed to `oneof`
-  style union types.
+-`oneof`を含まないproto3サブセットと完全に互換性があります
+-`oneof`の代わりにAminoプレフィックスシステムを使用してインターフェイスタイプを提供します
+  スタイル共用体タイプ。
 
-That said, an Amino v2 will be worked on to improve the performance of the
-format and its useability in cryptographic applications.
+言い換えれば、アミノv2のパフォーマンスを向上させるために働きます
+暗号化されたアプリケーションでのフォーマットとその使いやすさ。
 
-### PubKey
 
-Encoding schemes infect software. As a generic middleware, ABCI aims to have
-some cross scheme compatibility. For this it has no choice but to include opaque
-bytes from time to time. While we will not enforce Amino encoding for these
-bytes yet, we need to provide a type system. The simplest way to do this is to
-use a type string.
+### 公開鍵
 
-PubKey will now look like:
+コーディングスキームはソフトウェアに感染する可能性があります。一般的なミドルウェアとして、ABCIの目標は
+プログラム間の互換性。このため、不透明度を含める以外に選択肢はありません。
+時々バイト。これらのアミノコードは強制しませんが
+バイト数については、型システムを提供する必要があります。最も簡単な方法は
+タイプ文字列を使用します。
 
+公開鍵は次のようになります。
 ```
 message PubKey {
     string type
@@ -137,24 +137,24 @@ message PubKey {
 }
 ```
 
-where `type` can be:
+`type`は次のようになります。
 
-- "ed225519", with `data = <raw 32-byte pubkey>`
-- "secp256k1", with `data = <33-byte OpenSSL compressed pubkey>`
+-"Ed225519" with `data = <raw 32byte pubkey>`
+-"Secp256k1" with `data = <33バイトのOpenSSL圧縮公開鍵>`
 
-As we want to retain flexibility here, and since ideally, PubKey would be an
-interface type, we do not use `enum` or `oneof`.
+ここで柔軟性を維持したいので、理想的には、PubKeyは
+インターフェイスタイプ。`enum`または `oneof`は使用しません。
 
-### Addresses
+### 住所
 
-To simplify and improve computing addresses, we change it to the first 20-bytes of the SHA256
-of the raw 32-byte public key.
+アドレスの計算を簡素化および改善するために、アドレスをSHA256の最初の20バイトに変更します。
+元の32バイトの公開鍵。
 
-We continue to use the Bitcoin address scheme for secp256k1 keys.
+secp256k1キーには引き続きビットコインアドレススキームを使用します。
 
-### Validators
+### バリデーター
 
-Add a `bytes address` field:
+「バイトアドレス」フィールドを追加します。
 
 ```
 message Validator {
@@ -164,11 +164,11 @@ message Validator {
 }
 ```
 
-### RequestBeginBlock and AbsentValidators
+### RequestBeginBlockとAbsentValidators
 
-To simplify this, RequestBeginBlock will include the complete validator set,
-including the address, and voting power of each validator, along
-with a boolean for whether or not they voted:
+これを単純化するために、RequestBeginBlockにはバリデーターの完全なセットが含まれます。
+各バリデーターの住所と議決権を含め、
+ブール値を使用して、投票したかどうかを示します。
 
 ```
 message RequestBeginBlock {
@@ -189,23 +189,23 @@ message SigningValidator {
 }
 ```
 
-Note that in Validators in RequestBeginBlock, we DO NOT include public keys. Public keys are
-larger than addresses and in the future, with quantum computers, will be much
-larger. The overhead of passing them, especially during fast-sync, is
-significant.
+RequestBeginBlockのオーセンティケーターには公開鍵が含まれていないことに注意してください。 公開鍵は
+将来的には、量子コンピューターでアドレスよりも大きく、
+より大きい。 特に高速同期中にそれらを渡すオーバーヘッドは、
+重要。
 
-Additional, addresses are changing to be simpler to compute, further removing
-the need to include pubkeys here.
+さらに、アドレスの計算が容易になり、さらに削除されます
+公開鍵をここに含める必要があります。
 
-In short, ABCI developers must be aware of both addresses and public keys.
+つまり、ABCI開発者は、アドレスと公開鍵を知っている必要があります。
 
 ### ResponseEndBlock
 
-Since ResponseEndBlock includes Validator, it must now include their address.
+ResponseEndBlockにはバリデーターが含まれているため、それらのアドレスが含まれている必要があります。
 
-### InitChain
+###初期化チェーン
 
-Change RequestInitChain to give the app all the information from the genesis file:
+RequestInitChainを変更して、ジェネシスファイル内のすべての情報をアプリケーションに提供します。
 
 ```
 message RequestInitChain {
@@ -217,8 +217,8 @@ message RequestInitChain {
 }
 ```
 
-Change ResponseInitChain to allow the app to specify the initial validator set
-and consensus parameters.
+ResponseInitChainを変更して、アプリケーションがバリデーターの初期セットを指定できるようにします
+そしてコンセンサスパラメータ。
 
 ```
 message ResponseInitChain {
@@ -227,45 +227,45 @@ message ResponseInitChain {
 }
 ```
 
-### Header
+### タイトル
 
-Now that Tendermint Amino will be compatible with proto3, the Header in ABCI
-should exactly match the Tendermint header - they will then be encoded
-identically in ABCI and in Tendermint Core.
+これで、TendermintAminoはABCIのヘッダーであるproto3と互換性があります。
+Tendermintヘッダーと正確に一致する必要があります-その後、エンコードされます
+ABCIとテンダーミントコアでも同じです。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Easier for developers to build on the ABCI
-- ABCI and Tendermint headers are identically serialized
+-開発者はABCIに基づいて構築する方が簡単です
+-ABCIヘッダーとTendermintヘッダーは同じシリアル化です
 
-### Negative
+### ネガティブ
 
-- Maintenance overhead of alternative type encoding scheme
-- Performance overhead of passing all validator info every block (at least its
-  only addresses, and not also pubkeys)
-- Maintenance overhead of duplicate types
+-代替コーディングスキームのメンテナンスオーバーヘッド
+-各ブロックのすべてのバリデーター情報を渡すことによるパフォーマンスのオーバーヘッド(少なくとも
+  公開鍵ではなく、アドレスのみ)
+-繰り返されるタイプのメンテナンスオーバーヘッド
 
-### Neutral
+### ニュートラル
 
-- ABCI developers must know about validator addresses
+-ABCI開発者はバリデーターアドレスを知っている必要があります
 
-## References
+## 参照する
 
-- [ABCI v0.10.3 Specification (before this
-  proposal)](https://github.com/tendermint/abci/blob/v0.10.3/specification.rst)
-- [ABCI v0.11.0 Specification (implementing first draft of this
-  proposal)](https://github.com/tendermint/abci/blob/v0.11.0/specification.md)
-- [Ed25519 addresses](https://github.com/tendermint/go-crypto/issues/103)
-- [InitChain contains the
-  Genesis](https://github.com/tendermint/abci/issues/216)
-- [PubKeys](https://github.com/tendermint/tendermint/issues/1524)
-- [Notes on
-  Header](https://github.com/tendermint/tendermint/issues/1605)
-- [Gogoproto issues](https://github.com/tendermint/abci/issues/256)
-- [Absent Validators](https://github.com/tendermint/abci/issues/231)
+-[ABCI v0.10.3仕様(以前
+  提案)](https://github.com/tendermint/abci/blob/v0.10.3/specification.rst)
+-[ABCI v0.11.0仕様(この仕様の最初のドラフトの実装)
+  提案)](https://github.com/tendermint/abci/blob/v0.11.0/specification.md)
+-[Ed25519アドレス](https://github.com/tendermint/go-crypto/issues/103)
+-[InitChainには
+  ジェネシス](https://github.com/tendermint/abci/issues/216)
+-[公開鍵](https://github.com/tendermint/tendermint/issues/1524)
+- [予防
+  タイトル](https://github.com/tendermint/tendermint/issues/1605)
+-[Gogoproto Issue](https://github.com/tendermint/abci/issues/256)
+-[バリデーターがありません](https://github.com/tendermint/abci/issues/231)

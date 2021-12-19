@@ -22,7 +22,7 @@ echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
 ```
 
-获取源代码：
+获取源代码:
 
 ```sh
 git clone https://github.com/tendermint/tendermint.git
@@ -35,7 +35,7 @@ cd tendermint
 make install
 ```
 
-将二进制文件放入 `$GOPATH/bin` 或使用：
+将二进制文件放入 `$GOPATH/bin` 或使用:
 
 ```sh
 make build
@@ -102,14 +102,14 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
   rm -f v1.20.tar.gz
 ```
 
-将数据库后端设置为 `cleveldb`：
+将数据库后端设置为 `cleveldb`:
 
 ```toml
 # config/config.toml
 db_backend = "cleveldb"
 ```
 
-要安装 Tendermint，请运行：
+要安装 Tendermint，请运行:
 
 ```sh
 CGO_LDFLAGS="-lsnappy" make install TENDERMINT_BUILD_OPTIONS=cleveldb

@@ -1,3 +1,3 @@
-# Validators
+# バリデーター
 
-This file has moved to the [node section](../nodes/validators.md).
+このファイルは[ノードセクション](../nodes/validators.md)に移動されました。

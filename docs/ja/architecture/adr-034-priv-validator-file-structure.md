@@ -1,23 +1,23 @@
-# ADR 034: PrivValidator file structure
+# ADR 034:PrivValidatorファイル構造
 
-## Changelog
+## 変更ログ
 
-03-11-2018: Initial Draft
+2018年3月11日:最初のドラフト
 
-## Context
+## 環境
 
-For now, the PrivValidator file `priv_validator.json` contains mutable and immutable parts. 
-Even in an insecure mode which does not encrypt private key on disk, it is reasonable to separate 
-the mutable part and immutable part.
+現在、PrivValidatorファイル「priv_validator.json」には可変部分と不変部分が含まれています。
+ディスク上の秘密鍵が暗号化されていない安全でないモードでも、分離は合理的です
+可変部分と不変部分。
 
-References:
+参照する:
 [#1181](https://github.com/tendermint/tendermint/issues/1181)
 [#2657](https://github.com/tendermint/tendermint/issues/2657)
 [#2313](https://github.com/tendermint/tendermint/issues/2313)
 
-## Proposed Solution
+## 推奨される解決策
 
-We can split mutable and immutable parts with two structs:
+可変部分と不変部分を2つの構造で分割できます。
 ```go
 // FilePVKey stores the immutable part of PrivValidator
 type FilePVKey struct {
@@ -41,7 +41,7 @@ type FilePVLastSignState struct {
 }
 ```
 
-Then we can combine `FilePVKey` with `FilePVLastSignState` and will get the original `FilePV`.
+次に、 `FilePVKey`と` FilePVLastSignState`を組み合わせて、元の `FilePV`を取得できます。
 
 ```go
 type FilePV struct {
@@ -50,23 +50,23 @@ type FilePV struct {
 }
 ```
 
-As discussed, `FilePV` should be located in `config`, and `FilePVLastSignState` should be stored in `data`. The 
-store path of each file should be specified in `config.yml`.
+前述のように、 `FilePV`は` config`に配置し、 `FilePVLastSignState`は` data`に保存する必要があります。 この
+各ファイルのストレージパスは `config.yml`で指定する必要があります。
 
-What we need to do next is changing the methods of `FilePV`.
+次に行う必要があるのは、 `FilePV`のメソッドを変更することです。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- separate the mutable and immutable of PrivValidator
+-可変と不変のPrivValidatorを分離します
 
-### Negative
+### ネガティブ
 
-- need to add more config for file path
+-ファイルパスに構成を追加する必要があります
 
-### Neutral
+### ニュートラル

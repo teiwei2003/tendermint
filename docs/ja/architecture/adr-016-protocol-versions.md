@@ -1,108 +1,108 @@
-# ADR 016: Protocol Versions
+# ADR 016:プロトコルバージョン
 
-## TODO
+## やること
 
-- How to / should we version the authenticated encryption handshake itself (ie.
-  upfront protocol negotiation for the P2PVersion)
-- How to / should we version ABCI itself? Should it just be absorbed by the
-  BlockVersion?
+-認証された暗号ハンドシェイク自体をどのように/バージョン管理する必要がありますか(つまり、
+  (P2PVersionの事前合意交渉)
+-ABCI自体をどのように/バージョン管理する必要がありますか？それが吸収されるべきか
+  ブロックバージョン？
 
-## Changelog
+## 変更ログ
 
-- 18-09-2018: Updates after working a bit on implementation
-    - ABCI Handshake needs to happen independently of starting the app
-      conns so we can see the result
-    - Add question about ABCI protocol version
-- 16-08-2018: Updates after discussion with SDK team
-    - Remove signalling for next version from Header/ABCI
-- 03-08-2018: Updates from discussion with Jae:
-  - ProtocolVersion contains Block/AppVersion, not Current/Next
-  - signal upgrades to Tendermint using EndBlock fields
-  - dont restrict peer compatibilty by version to simplify syncing old nodes
-- 28-07-2018: Updates from review
-  - split into two ADRs - one for protocol, one for chains
-  - include signalling for upgrades in header
-- 16-07-2018: Initial draft - was originally joint ADR for protocol and chain
-  versions
+-2018年9月18日:実装に関する作業を行った後の更新
+    -ABCIハンドシェイクは、アプリケーションの起動とは関係なく発生する必要があります
+      結果を確認できるようにconns
+    -ABCIプロトコルバージョンに関する質問を追加しました
+-16-08-2018:SDKチームとの話し合いの後に更新
+    -ヘッダー/ ABCIから信号の次のバージョンを削除します
+-03-08-2018:Jaeと話し合った更新:
+  -ProtocolVersionには、Current/NextではなくBlock/AppVersionが含まれています
+  -EndBlockフィールドを使用して、信号をTendermintにアップグレードします
+  -古いノードの同期を簡素化するために、バージョンごとにピアの互換性を制限しないでください
+-28-07-2018:レビューの更新
+  -2つのADRに分割-1つはプロトコル用、もう1つはチェーン用
+  -タイトルにアップグレードシグナルを含める
+-16-07-2018:初期ドラフト-最初はプロトコルとチェーンの共同ADR
+  バージョン
 
-## Context
+## 環境
 
-Here we focus on software-agnostic protocol versions.
+ここでは、ソフトウェアとは関係のないプロトコルバージョンに焦点を当てます。
 
-The Software Version is covered by SemVer and described elsewhere.
-It is not relevant to the protocol description, suffice to say that if any protocol version
-changes, the software version changes, but not necessarily vice versa.
+ソフトウェアバージョンはSemVerでカバーされており、他の場所で説明されています。
+プロトコルの説明とは何の関係もありません。プロトコルのバージョンがあるかどうかだけを言ってください。
+変更すると、ソフトウェアバージョンが変更されますが、必ずしもその逆ではありません。
 
-Software version should be included in NodeInfo for convenience/diagnostics.
+利便性/診断のために、ソフトウェアバージョンをNodeInfoに含める必要があります。
 
-We are also interested in versioning across different blockchains in a
-meaningful way, for instance to differentiate branches of a contentious
-hard-fork. We leave that for a later ADR.
+また、さまざまなブロックチェーン間のバージョン管理にも関心があります
+係争中の支店を区別するなどの意味のある方法
+ハードフォーク。後でADRに任せます。
 
-## Requirements
+## 必須
 
-We need to version components of the blockchain that may be independently upgraded.
-We need to do it in a way that is scalable and maintainable - we can't just litter
-the code with conditionals.
+個別にアップグレードできるブロックチェーンコンポーネントのバージョン管理を実行する必要があります。
+私たちはスケーラブルで保守可能な方法でそれを行う必要があります-私たちはただゴミを捨てることはできません
+条件付きコード。
 
-We can consider the complete version of the protocol to contain the following sub-versions:
-BlockVersion, P2PVersion, AppVersion. These versions reflect the major sub-components
-of the software that are likely to evolve together, at different rates, and in different ways,
-as described below.
+契約のフルバージョンには、次のサブバージョンが含まれていると見なすことができます。
+BlockVersion、P2PVersion、AppVersion。これらのバージョンは、主要なサブコンポーネントを反映しています
+さまざまな速度でさまざまな方法で一緒に開発される可能性のあるソフトウェア、
+以下に説明するように。
 
-The BlockVersion defines the core of the blockchain data structures and
-should change infrequently.
+BlockVersionはコアと
+頻繁に変更しないでください。
 
-The P2PVersion defines how peers connect and communicate with eachother - it's
-not part of the blockchain data structures, but defines the protocols used to build the
-blockchain. It may change gradually.
+P2PVersionは、ピアが相互に接続および通信する方法を定義します。
+これはブロックチェーンデータ構造の一部ではありませんが、ブロックチェーンの構築に使用されるプロトコルを定義します
+ブロックチェーン。徐々に変化する場合があります。
 
-The AppVersion determines how we compute app specific information, like the
-AppHash and the Results.
+AppVersionは、次のようなアプリケーション固有の情報を計算する方法を決定します。
+AppHashと結果。
 
-All of these versions may change over the life of a blockchain, and we need to
-be able to help new nodes sync up across version changes. This means we must be willing
-to connect to peers with older version.
+これらのバージョンはすべて、ブロックチェーンのライフサイクル全体で変更される可能性があります。
+新しいノードがバージョン間で変更を同期するのに役立ちます。これは、私たちが進んでしなければならないことを意味します
+古いバージョンのピアに接続します。
 
-### BlockVersion
+### ブロックバージョン
 
-- All tendermint hashed data-structures (headers, votes, txs, responses, etc.).
-  - Note the semantic meaning of a transaction may change according to the AppVersion, but the way txs are merklized into the header is part of the BlockVersion
-- It should be the least frequent/likely to change.
-  - Tendermint should be stabilizing - it's just Atomic Broadcast.
-  - We can start considering for Tendermint v2.0 in a year
-- It's easy to determine the version of a block from its serialized form
+-すべてのテンダーミントハッシュデータ構造(タイトル、投票、トランザクション、応答など)。
+  -トランザクションのセマンティクスはAppVersionに応じて変わる可能性がありますが、txsがヘッダーにメルク化される方法はBlockVersionの一部であることに注意してください
+-変更の頻度が最も少ない/変更される可能性が最も低い必要があります。
+  -テンダーミントは安定している必要があります-これは単なるアトミックブロードキャストです。
+  -1年以内にTendermintv2.0の使用を検討し始めることができます
+-シリアル化された形式からブロックのバージョンを簡単に判別できます
 
-### P2PVersion
+### P2Pバージョン
 
-- All p2p and reactor messaging (messages, detectable behaviour)
-- Will change gradually as reactors evolve to improve performance and support new features - eg proposed new message types BatchTx in the mempool and HasBlockPart in the consensus
-- It's easy to determine the version of a peer from its first serialized message/s
-- New versions must be compatible with at least one old version to allow gradual upgrades
+-すべてのp2pおよびreactorメッセージング(メッセージ、検出可能な動作)
+-パフォーマンスを改善し、新しい機能をサポートするために、reactorの開発に伴って徐々に変更されます-メモリプールで提案された新しいメッセージタイプBatchTxやコンセンサスのHasBlockPartなど
+-最初のシリアル化されたメッセージからピアのバージョンを簡単に判別できます
+-徐々にアップグレードするには、新しいバージョンが少なくとも1つの古いバージョンと互換性がある必要があります
 
-### AppVersion
+### アプリケーションバージョン
 
-- The ABCI state machine (txs, begin/endblock behaviour, commit hashing)
-- Behaviour and message types will change abruptly in the course of the life of a chain
-- Need to minimize complexity of the code for supporting different AppVersions at different heights
-- Ideally, each version of the software supports only a _single_ AppVersion at one time
-  - this means we checkout different versions of the software at different heights instead of littering the code
-    with conditionals
-  - minimize the number of data migrations required across AppVersion (ie. most AppVersion should be able to read the same state from disk as previous AppVersion).
+-ABCIステートマシン(トランザクション、ブロックの開始/終了の動作、ハッシュのコミット)
+-動作とメッセージの種類は、チェーンのライフサイクル中に突然変化します
+-さまざまな高さのさまざまなAppVersionをサポートするために、コードの複雑さを最小限に抑える必要があります
+-理想的には、ソフトウェアの各バージョンは、一度に1つの_single_AppVersionのみをサポートします
+  -これは、コードを散らかす代わりに、さまざまなバージョンのソフトウェアをさまざまな高さでチェックすることを意味します
+    条件付き
+  -AppVersion間で必要なデータ移行の数を最小限に抑えます(つまり、ほとんどのAppVersionは、ディスクから以前のAppVersionと同じ状態を読み取ることができるはずです)。
 
-## Ideal
+## 理想
 
-Each component of the software is independently versioned in a modular way and its easy to mix and match and upgrade.
+ソフトウェアの各コンポーネントは、モジュール方式で個別にバージョン管理されており、簡単に組み合わせてアップグレードできます。
 
-## Proposal
+## 提案
 
-Each of BlockVersion, AppVersion, P2PVersion, is a monotonically increasing uint64.
+BlockVersion、AppVersion、P2PVersion、それぞれが単調に増加するuint64。
 
-To use these versions, we need to update the block Header, the p2p NodeInfo, and the ABCI.
+これらのバージョンを使用するには、ブロックヘッダー、p2p NodeInfo、およびABCIを更新する必要があります。
 
-### Header
+### タイトル
 
-Block Header should include a `Version` struct as its first field like:
+ブロックヘッダーには、最初のフィールドとして `Version`構造が含まれている必要があります。次に例を示します。
 
 ```
 type Version struct {
@@ -111,22 +111,22 @@ type Version struct {
 }
 ```
 
-Here, `Version.Block` defines the rules for the current block, while
-`Version.App` defines the app version that processed the last block and computed
-the `AppHash` in the current block. Together they provide a complete description
-of the consensus-critical protocol.
+ここで、 `Version.Block`は現在のブロックのルールを定義し、
+`Version.App`は、最後のブロックを処理して計算するアプリケーションのバージョンを定義します
+現在のブロックの「AppHash」。 一緒にそれらは完全な説明を提供します
+コンセンサスキー合意。
 
-Since we have settled on a proto3 header, the ability to read the BlockVersion out of the serialized header is unanimous.
+proto3ヘッダーを決定したので、シリアル化されたヘッダーからBlockVersionを読み取る機能は一貫しています。
 
-Using a Version struct gives us more flexibility to add fields without breaking
-the header.
+バージョン構造を使用すると、フィールドを壊すことなく、より柔軟に追加できます。
+タイトル。
 
-The ProtocolVersion struct includes both the Block and App versions - it should
-serve as a complete description of the consensus-critical protocol.
+ProtocolVersion構造には、ブロックバージョンとアプリバージョンが含まれています。
+コンセンサスキー合意の完全な説明として。
 
-### NodeInfo
+### ノード情報
 
-NodeInfo should include a Version struct as its first field like:
+NodeInfoには、最初のフィールドとしてバージョン構造が含まれている必要があります。次に例を示します。
 
 ```
 type Version struct {
@@ -138,33 +138,33 @@ type Version struct {
 }
 ```
 
-Note this effectively makes `Version.P2P` the first field in the NodeInfo, so it
-should be easy to read this out of the serialized header if need be to facilitate an upgrade.
+これにより、実質的に `Version.P2P`がNodeInfoの最初のフィールドになるため、
+簡単にアップグレードする必要がある場合は、シリアル化されたヘッダーから簡単に読み取ることができます。
 
-The `Version.Other` here should include additional information like the name of the software client and
-it's SemVer version - this is for convenience only. Eg.
-`tendermint-core/v0.22.8`. It's a `[]string` so it can include information about
-the version of Tendermint, of the app, of Tendermint libraries, etc.
+ここでの「Version.Other」には、ソフトウェアクライアントの名前や
+これはSemVerバージョンです-これは便宜上のものです。例えば。
+`tendermint-core/v0.22.8`。これは `[] string`なので、関連するものを含めることができます
+Tendermintバージョン、アプリケーションバージョン、Tendermintライブラリバージョンなど。
 
 ### ABCI
 
-Since the ABCI is responsible for keeping Tendermint and the App in sync, we
-need to communicate version information through it.
+ABCIはTendermintとアプリケーションの同期を維持する責任があるため、
+バージョン情報を伝えるために使用する必要があります。
 
-On startup, we use Info to perform a basic handshake. It should include all the
-version information.
+起動時に、Infoを使用して基本的なハンドシェイクを実行します。すべてを含める必要があります
+バージョン情報。
 
-We also need to be able to update versions in the life of a blockchain. The
-natural place to do this is EndBlock.
+また、ブロックチェーンのライフサイクル中にバージョンを更新できる必要があります。この
+これを行う自然な場所はEndBlockです。
 
-Note that currently the result of the Handshake isn't exposed anywhere, as the
-handshaking happens inside the `proxy.AppConns` abstraction. We will need to
-remove the handshaking from the `proxy` package so we can call it independently
-and get the result, which should contain the application version.
+現在のハンドシェイクの結果はどこにも開示されていないことに注意してください。
+ハンドシェイクは、 `proxy.AppConns`抽象化内で行われます。必要になります
+独立して呼び出すことができるように、 `proxy`パッケージからハンドシェイクを削除します
+そして、アプリケーションのバージョンを含む結果を取得します。
 
-#### Info
+#### 情報
 
-RequestInfo should add support for protocol versions like:
+RequestInfoは、プロトコルバージョンのサポートを追加する必要があります。次に例を示します。
 
 ```
 message RequestInfo {
@@ -174,7 +174,7 @@ message RequestInfo {
 }
 ```
 
-Similarly, ResponseInfo should return the versions:
+同様に、ResponseInfoはバージョンを返す必要があります。
 
 ```
 message ResponseInfo {
@@ -188,19 +188,19 @@ message ResponseInfo {
 }
 ```
 
-The existing `version` fields should be called `software_version` but we leave
-them for now to reduce the number of breaking changes.
+既存の `version`フィールドは` software_version`と呼ばれるべきですが、そのままにしておきます
+破壊的な変更の数を減らすことができるようになりました。
 
-#### EndBlock
+####エンドブロック
 
-Updating the version could be done either with new fields or by using the
-existing `tags`. Since we're trying to communicate information that will be
-included in Tendermint block Headers, it should be native to the ABCI, and not
-something embedded through some scheme in the tags. Thus, version updates should
-be communicated through EndBlock.
+新しいフィールドを使用するか、
+既存の「ラベル」。 情報を伝えようとしているので
+Tendermintブロックヘッダーに含まれているため、ABCIにネイティブである必要があります。
+ラベルの特定のスキームを介して埋め込まれたもの。 したがって、バージョンの更新は
+EndBlockを介して通信します。
 
-EndBlock already contains `ConsensusParams`. We can add version information to
-the ConsensusParams as well:
+EndBlockにはすでに `ConsensusParams`が含まれています。 バージョン情報をに追加できます
+ConsensusParamsも次のとおりです。
 
 ```
 message ConsensusParams {
@@ -216,93 +216,93 @@ message VersionParams {
 }
 ```
 
-For now, the `block_version` will be ignored, as we do not allow block version
-to be updated live. If the `app_version` is set, it signals that the app's
-protocol version has changed, and the new `app_version` will be included in the
-`Block.Header.Version.App` for the next block.
+これで、ブロックバージョンが許可されないため、 `block_version`は無視されます
+アップグレード待ち。 `app_version`が設定されている場合、それは
+プロトコルのバージョンが変更され、新しい `app_version`が含まれるようになります
+次のブロックの `Block.Header.Version.App`。
 
-### BlockVersion
+###ブロックバージョン
 
-BlockVersion is included in both the Header and the NodeInfo.
+BlockVersionはHeaderとNodeInfoに含まれています。
 
-Changing BlockVersion should happen quite infrequently and ideally only for
-critical upgrades. For now, it is not encoded in ABCI, though it's always
-possible to use tags to signal an external process to co-ordinate an upgrade.
+BlockVersionの変更はめったに行われるべきではなく、理想的には
+重要なアップグレード。現在、ABCIでコーディングされていませんが、常にコーディングされています。
+タグを使用して、アップグレードを調整するために外部プロセスに信号を送ることができます。
 
-Note Ethereum has not had to make an upgrade like this (everything has been at state machine level, AFAIK).
+イーサリアムはそのようなアップグレードを実行する必要がないことに注意してください(すべてがステートマシンレベル、AFAIKにあります)。
 
-### P2PVersion
+### P2Pバージョン
 
-P2PVersion is not included in the block Header, just the NodeInfo.
+P2PVersionはブロックヘッダーに含まれず、NodeInfoにのみ含まれます。
 
-P2PVersion is the first field in the NodeInfo. NodeInfo is also proto3 so this is easy to read out.
+P2PVersionは、NodeInfoの最初のフィールドです。 NodeInfoもproto3であるため、これは読みやすいです。
 
-Note we need the peer/reactor protocols to take the versions of peers into account when sending messages:
+メッセージを送信するとき、ピアのバージョンを考慮するためにピア/リアクタープロトコルが必要であることに注意してください。
 
-- don't send messages they don't understand
-- don't send messages they don't expect
+-理解できないメッセージを送信しないでください
+-予期しないメッセージを送信しないでください
 
-Doing this will be specific to the upgrades being made.
+そうすることは、進行中のアップグレードに固有のものになります。
 
-Note we also include the list of reactor channels in the NodeInfo and already don't send messages for channels the peer doesn't understand.
-If upgrades always use new channels, this simplifies the development cost of backwards compatibility.
+NodeInfoにはreactorチャネルリストも含まれているため、ピアが理解できないチャネルのメッセージは送信されないことに注意してください。
+アップグレードで常に新しいチャネルが使用される場合、これにより下位互換性の開発コストが簡素化されます。
 
-Note NodeInfo is only exchanged after the authenticated encryption handshake to ensure that it's private.
-Doing any version exchange before encrypting could be considered information leakage, though I'm not sure
-how much that matters compared to being able to upgrade the protocol.
+NodeInfoは、プライベートであることを確認するために、認証された暗号化ハンドシェイクの後にのみ交換されることに注意してください。
+暗号化前のバージョン交換は、情報漏えいと見なされる可能性がありますが、よくわかりません。
+プロトコルをアップグレードできることと比較して、これはどれほど重要ですか。
 
-XXX: if needed, can we change the meaning of the first byte of the first message to encode a handshake version?
-this is the first byte of a 32-byte ed25519 pubkey.
+XXX:必要に応じて、最初のメッセージの最初のバイトの意味を変更して、ハンドシェイクバージョンをエンコードできますか？
+これは、32バイトのed25519公開鍵の最初のバイトです。
 
-### AppVersion
+###アプリケーションバージョン
 
-AppVersion is also included in the block Header and the NodeInfo.
+AppVersionは、ブロックヘッダーとNodeInfoにも含まれています。
 
-AppVersion essentially defines how the AppHash and LastResults are computed.
+AppVersionは、基本的にAppHashとLastResultsの計算方法を定義します。
 
-### Peer Compatibility
+### ピアの互換性
 
-Restricting peer compatibility based on version is complicated by the need to
-help old peers, possibly on older versions, sync the blockchain.
+バージョンに基づいてピアツーピアの互換性を制限することは、必要性のために複雑です
+古いバージョンを使用している可能性のある古いピアがブロックチェーンを同期するのを支援します。
 
-We might be tempted to say that we only connect to peers with the same
-AppVersion and BlockVersion (since these define the consensus critical
-computations), and a select list of P2PVersions (ie. those compatible with
-ours), but then we'd need to make accomodations for connecting to peers with the
-right Block/AppVersion for the height they're on.
+私たちは同じものを持つためにのみ接続すると言いたいかもしれません
+AppVersionとBlockVersion(これらは重要なコンセンサスを定義するため)
+計算)、およびP2PVersionsの選択リスト(つまり、
+私たち)、しかし私たちはピアに接続する必要があります
+正しいBlock/AppVersionは、それらが配置されている高さに対応します。
 
-For now, we will connect to peers with any version and restrict compatibility
-solely based on the ChainID. We leave more restrictive rules on peer
-compatibiltiy to a future proposal.
+現在、任意のバージョンのピアに接続し、互換性を制限します
+ChainIDのみに基づいています。ピアに対してより制限的なルールを残しました
+将来の提案との互換性。
 
-### Future Changes
+###将来の変更
 
-It may be valuable to support an `/unsafe_stop?height=_` endpoint to tell Tendermint to shutdown at a given height.
-This could be use by an external manager process that oversees upgrades by
-checking out and installing new software versions and restarting the process. It
-would subscribe to the relevant upgrade event (needs to be implemented) and call `/unsafe_stop` at
-the correct height (of course only after getting approval from its user!)
+`/ unsafe_stop？height = _`エンドポイントをサポートすると、Tendermintに特定の高さでシャットダウンするように指示されます。
+これは、アップグレードを監督する外部マネージャープロセスで使用できます。
+新しいソフトウェアバージョンを確認してインストールし、プロセスを再開します。それ
+関連するアップグレードイベントをサブスクライブし(実装が必要)、で `/ unsafe_stop`を呼び出します
+正しい高さ(もちろん、ユーザーの承認後のみ！)
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Make tendermint and application versions native to the ABCI to more clearly
-  communicate about them
-- Distinguish clearly between protocol versions and software version to
-  facilitate implementations in other languages
-- Versions included in key data structures in easy to discern way
-- Allows proposers to signal for upgrades and apps to decide when to actually change the
-  version (and start signalling for a new version)
+-ABCIのネイティブTendermintとアプリのバージョンをより明確にする
+  彼らとコミュニケーションをとる
+-プロトコルバージョンとソフトウェアバージョンを明確に区別する
+  他の言語の実装を促進する
+-簡単に識別できる方法で主要なデータ構造に含まれるバージョン
+-提案者がアップグレードを通知し、アプリが実際にいつ変更するかを決定できるようにします
+  バージョン(および新しいバージョンの通知を開始)
 
-### Neutral
+### ニュートラル
 
-- Unclear how to version the initial P2P handshake itself
-- Versions aren't being used (yet) to restrict peer compatibility
-- Signalling for a new version happens through the proposer and must be
-  tallied/tracked in the app.
+-最初のP2Pハンドシェイク自体をバージョン管理する方法が明確ではありません
+-ピアの互換性を制限するためにバージョンが使用されていません
+-シグナルの新しいバージョンは提案者を通じて発生し、
+  アプリケーションで記録/追跡します。
 
-### Negative
+### ネガティブ
 
-- Adds more fields to the ABCI
-- Implies that a single codebase must be able to handle multiple versions
+-ABCIにフィールドを追加します
+-単一のコードベースが複数のバージョンを処理できる必要があることを意味します

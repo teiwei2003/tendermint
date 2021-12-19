@@ -1,63 +1,63 @@
-# ADR 022: ABCI Errors
+# ADR 022:ABCIエラー
 
-## Changelog
+## 変更ログ
 
-- *2018-09-01* Initial version
+-* 2018-09-01 *初期バージョン
 
-## Context
+## 環境
 
-ABCI errors should provide an abstraction between application details
-and the client interface responsible for formatting & displaying errors to the user.
+ABCIエラーは、アプリケーションの詳細間の抽象化を提供する必要があります
+また、ユーザーへのエラーのフォーマットと表示を担当するクライアントインターフェイス。
 
-Currently, this abstraction consists of a single integer (the `code`), where any
-`code > 0` is considered an error (ie. invalid transaction) and all type
-information about the error is contained in the code. This integer is
-expected to be decoded by the client into a known error string, where any
-more specific data is contained in the `data`.
+現在、この抽象化は整数( `code`)で構成されており、そのいずれかが
+`code> 0`はエラー(つまり、無効なトランザクション)と見なされ、すべてのタイプ
+エラーに関する情報はコードに含まれています。この整数は
+クライアントによって既知のエラー文字列にデコードされることが期待されます。
+より具体的なデータは「データ」に含まれています。
 
-In a [previous conversation](https://github.com/tendermint/abci/issues/165#issuecomment-353704015),
-it was suggested that not all non-zero codes need to be errors, hence why it's called `code` and not `error code`.
-It is unclear exactly how the semantics of the `code` field will evolve, though
-better lite-client proofs (like discussed for tags
-[here](https://github.com/tendermint/tendermint/issues/1007#issuecomment-413917763))
-may play a role.
+[前の会話](https://github.com/tendermint/abci/issues/165#issuecomment-353704015)で、
+ゼロ以外のすべてのコードがエラーである必要はないことが示唆されているため、「エラーコード」ではなく「コード」と呼ばれます。
+`code`フィールドのセマンティクスがどのように進化するかは明らかではありませんが
+より合理化されたクライアント側の証明(説明されているタグなど)
+[こちら](https://github.com/tendermint/tendermint/issues/1007#issuecomment-413917763))
+役割を果たす可能性があります。
 
-Note that having all type information in a single integer
-precludes an easy coordination method between "module implementers" and "client
-implementers", especially for apps with many "modules". With an unbounded error domain (such as a string), module
-implementers can pick a globally unique prefix & error code set, so client
-implementers could easily implement support for "module A" regardless of which
-particular blockchain network it was running in and which other modules were running with it. With
-only error codes, globally unique codes are difficult/impossible, as the space
-is finite and collisions are likely without an easy way to coordinate.
+すべての型情報が単一の整数に含まれていることに注意してください
+「モジュール実装者」と「クライアント」間の単純な調整方法を排除します
+実装者」、特に多くの「モジュール」を備えたアプリケーション用。無制限のエラーフィールド(文字列など)、モジュール
+実装者はグローバルに一意のプレフィックスとエラーコードセットを選択できるため、クライアントは
+実装者は、「モジュールA」のサポートを、どちらに関係なく簡単に実装できます。
+それが実行されている特定のブロックチェーンネットワークとそれが実行されている他のモジュール。と
+エラーコードのみ、グローバルに一意のコードはスペースのために困難/不可能
+制限があります。簡単な調整方法がないと衝突が発生しやすくなります。
 
-For instance, while trying to build an ecosystem of modules that can be composed into a single
-ABCI application, the Cosmos-SDK had to hack a higher level "codespace" into the
-single integer so that each module could have its own space to express its
-errors.
+たとえば、単一のモジュールに組み合わせることができるエコシステムを構築しようとする場合
+ABCIアプリケーションでは、Cosmos-SDKは上位レベルの「コードスペース」を次のように解読する必要があります。
+各モジュールが独自のスペースを持つことができるようにする単一の整数
+間違い。
 
-## Decision
+## 決定
 
-Include a `string code_space` in all ABCI messages that have a `code`.
-This allows applications to namespace the codes so they can experiment with
-their own code schemes.
+`code`を含むすべてのABCIメッセージに` stringcode_space`を含めます。
+これにより、アプリケーションはコードに名前を付けて実験できるようになります
+独自のコードスキーム。
 
-It is the responsibility of applications to limit the size of the `code_space`
-string.
+アプリケーションは、 `code_space`のサイズを制限する責任があります
+弦。
 
-How the codespace is hashed into block headers (ie. so it can be queried
-efficiently by lite clients) is left for a separate ADR.
+コードスペースがブロックヘッダーにハッシュされる方法(つまり、クエリを実行できます)
+liteクライアントは有効です)は別のADRに任されています。
 
-## Consequences
+## 結果
 
-## Positive
+## ポジティブ
 
-- No need for complex codespacing on a single integer
-- More expressive type system for errors
+-単一の整数に対して複雑なコード間隔は必要ありません
+-より表現力豊かなエラー型システム
 
-## Negative
+## ネガティブ
 
-- Another field in the response needs to be accounted for
-- Some redundancy with `code` field
-- May encourage more error/code type info to move to the `codespace` string, which
-  could impact lite clients.
+-応答で別のフィールドを考慮する必要があります
+-`code`フィールドの冗長性
+-より多くのエラー/コードタイプ情報を `codespace`文字列に移動するように促す場合があります。
+  クライアントの合理化されたバージョンに影響を与える可能性があります。

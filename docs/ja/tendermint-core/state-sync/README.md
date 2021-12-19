@@ -1,36 +1,36 @@
-# State Sync
+# 状態の同期
 
 
-State sync allows new nodes to rapidly bootstrap and join the network by discovering, fetching,
-and restoring state machine snapshots. For more information, see the [state sync ABCI section](https://docs.tendermint.com/master/spec/abci/abci.html#state-sync)).
+状態の同期により、新しいノードは検出、取得、
+そして、ステートマシンのスナップショットを復元します。詳細については、[状態同期ABCIセクション](https://docs.tendermint.com/master/spec/abci/abci.html#state-sync)を参照してください。
 
-The state sync reactor has two main responsibilities:
+状態同期リアクトルには、2つの主な責任があります。
 
-* Serving state machine snapshots taken by the local ABCI application to new nodes joining the
-  network.
+*ローカルABCIアプリケーションによって取得されたステートマシンスナップショットを、新しく追加されたノードに提供します
+  インターネット。
 
-* Discovering existing snapshots and fetching snapshot chunks for an empty local application
-  being bootstrapped.
+*既存のスナップショットを見つけて、空のローカルアプリケーションのスナップショットブロックを取得します
+  案内されます。
 
-The state sync process for bootstrapping a new node is described in detail in the section linked
-above. While technically part of the reactor (see `statesync/syncer.go` and related components),
-this document will only cover the P2P reactor component.
+新しいノードをガイドするために使用される状態同期プロセスについては、リンクされたセクションで詳しく説明されています。
+より多い。技術的にはreactorの一部ですが( `statesync/syncer.go`および関連コンポーネントを参照)、
+このドキュメントでは、P2Pリアクターコンポーネントのみを取り上げます。
 
-For details on the ABCI methods and data types, see the [ABCI documentation](https://docs.tendermint.com/master/spec/abci/).
+ABCIメソッドとデータ型の詳細については、[ABCIドキュメント](https://docs.tendermint.com/master/spec/abci/)を参照してください。
 
-Information on how to configure state sync is located in the [nodes section](../../nodes/state-sync.md)
+状態同期の構成方法に関する情報は、[ノードセクション](../../nodes/state-sync.md)にあります。
 
-## State Sync P2P Protocol
+## 状態同期P2Pプロトコル
 
-When a new node begin state syncing, it will ask all peers it encounters if it has any
-available snapshots:
+新しいノードが状態の同期を開始すると、遭遇したすべてのピアが
+利用可能なスナップショット:
 
 ```go
 type snapshotsRequestMessage struct{}
 ```
 
-The receiver will query the local ABCI application via `ListSnapshots`, and send a message
-containing snapshot metadata (limited to 4 MB) for each of the 10 most recent snapshots:
+受信者は、ListSnapshotsを介してローカルABCIアプリケーションにクエリを実行し、メッセージを送信します
+最後の10個のスナップショット(4 MBに制限)のそれぞれのスナップショットメタデータが含まれます。
 
 ```go
 type snapshotsResponseMessage struct {
@@ -42,9 +42,9 @@ type snapshotsResponseMessage struct {
 }
 ```
 
-The node running state sync will offer these snapshots to the local ABCI application via
-`OfferSnapshot` ABCI calls, and keep track of which peers contain which snapshots. Once a snapshot
-is accepted, the state syncer will request snapshot chunks from appropriate peers:
+ステータス同期を実行しているノードは、次の方法でこれらのスナップショットをローカルABCIアプリケーションに提供します
+`OfferSnapshot` ABCIは、どのピアにどのスナップショットが含まれているかを呼び出して追跡します。 スナップショット
+受け入れられると、状態シンクロナイザーは適切なピアからスナップショットブロックを要求します。
 
 ```go
 type chunkRequestMessage struct {
@@ -54,8 +54,8 @@ type chunkRequestMessage struct {
 }
 ```
 
-The receiver will load the requested chunk from its local application via `LoadSnapshotChunk`,
-and respond with it (limited to 16 MB):
+受信者は、「LoadSnapshotChunk」を介してローカルアプリケーションから要求されたチャンクをロードします。
+そしてそれに応答します(16MBに制限されています):
 
 ```go
 type chunkResponseMessage struct {
@@ -67,14 +67,14 @@ type chunkResponseMessage struct {
 }
 ```
 
-Here, `Missing` is used to signify that the chunk was not found on the peer, since an empty
-chunk is a valid (although unlikely) response.
+ここで、「Missing」は、空であるためにブロックがピアで見つからないことを示すために使用されます
+チャンクは有効な(可能性は低いですが)応答です。
 
-The returned chunk is given to the ABCI application via `ApplySnapshotChunk` until the snapshot
-is restored. If a chunk response is not returned within some time, it will be re-requested,
-possibly from a different peer.
+返されたブロックは、スナップショットまで「ApplySnapshotChunk」を介してABCIアプリケーションに提供されます
+復元されました。 ブロック応答が一定期間内に返されない場合、それは再要求されます、
+異なるピアから来る可能性があります。
 
-The ABCI application is able to request peer bans and chunk refetching as part of the ABCI protocol.
+ABCIプロトコルの一部として、ABCIアプリケーションはピアの禁止を要求し、再取得をブロックできます。
 
-If no state sync is in progress (i.e. during normal operation), any unsolicited response messages
-are discarded.
+状態の同期が進行中でない場合(つまり、通常の操作中)、一方的な応答メッセージ
+捨てる。

@@ -1,33 +1,33 @@
-# ADR 024: SignBytes and validator types in privval
+# ADR 024:privvalのSignBytesとバリデータータイプ
 
-## Context
+## 環境
 
-Currently, the messages exchanged between tendermint and a (potentially remote) signer/validator, 
-namely votes, proposals, and heartbeats, are encoded as a JSON string 
-(e.g., via `Vote.SignBytes(...)`) and then 
-signed . JSON encoding is sub-optimal for both, hardware wallets 
-and for usage in ethereum smart contracts. Both is laid down in detail in [issue#1622].  
+現在、テンダーミントと(おそらくリモートの)署名者/検証者の間で交換されるメッセージは、
+つまり、投票、提案、ハートビートはJSON文字列としてエンコードされます
+(たとえば、 `Vote.SignBytes(...)`を介して)次に
+サイン。 JSONエンコーディングはハードウェアウォレットには最適ではありません
+イーサリアムのスマートコントラクトで使用されます。どちらも[issue#1622]で指定されています。
 
-Also, there are currently no differences between sign-request and -replies. Also, there is no possibility 
-for a remote signer to include an error code or message in case something went wrong.
-The messages exchanged between tendermint and a remote signer currently live in 
-[privval/socket.go] and encapsulate the corresponding types in [types].
+さらに、現在、署名されたリクエストと返信の間に違いはありません。また、それは不可能です
+問題が発生した場合に備えて、リモート署名者にエラーコードまたはメッセージを含めるように依頼します。
+現在、テンダーミントとリモート署名者の間で交換されるメッセージは、
+[privval /socket.go]そして対応するタイプを[types]にカプセル化します。
 
 
-[privval/socket.go]: https://github.com/tendermint/tendermint/blob/d419fffe18531317c28c29a292ad7d253f6cafdf/privval/socket.go#L496-L502
-[issue#1622]: https://github.com/tendermint/tendermint/issues/1622
-[types]: https://github.com/tendermint/tendermint/tree/master/types
- 
+[privval/socket.go]:https://github.com/tendermint/tendermint/blob/d419fffe18531317c28c29a292ad7d253f6cafdf/privval/socket.go#L496-L502
+[問題#1622]:https://github.com/tendermint/tendermint/issues/1622
+[タイプ]:https://github.com/tendermint/tendermint/tree/master/types
 
-## Decision
 
-- restructure vote, proposal, and heartbeat such that their encoding is easily parseable by 
-hardware devices and smart contracts using a  binary encoding format ([amino] in this case)
-- split up the messages exchanged between tendermint and remote signers into requests and 
-responses (see details below)
-- include an error type in responses
+## 決定
 
-### Overview
+-投票、提案、ハートビートを再編成して、コードを簡単に解析できるようにしました
+バイナリエンコーディング形式(この例では[amino])を使用したハードウェアデバイスとスマートコントラクト
+-テンダーミントとリモート署名者の間で交換されるメッセージを要求に分割し、
+返信(詳細は以下を参照)
+-応答にエラータイプを含めます
+
+### 概要
 ```
 +--------------+                      +----------------+
 |              |     SignXRequest     |                |
@@ -44,17 +44,18 @@ SignXRequest {
 SignedXReply {
     x: X
   sig: Signature // []byte
-  err: Error{ 
+  err: Error{
     code: int
     desc: string
   }
 }
 ```
 
-TODO: Alternatively, the type `X` might directly include the signature. A lot of places expect a vote with a 
-signature and do not necessarily deal with "Replies".
-Still exploring what would work best here. 
-This would look like (exemplified using X = Vote):
+TODO:または、タイプ「X」に署名が直接含まれている場合もあります。 多くの場所が投票を楽しみにしています
+署名します。必ずしも「返信」を処理する必要はありません。
+ここで何が最も効果的かをまだ探っています。
+これは次のようになります(例としてX =投票を取り上げます):
+
 ```
 Vote {
     // all fields besides signature
@@ -75,32 +76,32 @@ SignedVoteReply {
 }
 ```
 
-**Note:** There was a related discussion around including a fingerprint of, or, the whole public-key 
-into each sign-request to tell the signer which corresponding private-key to 
-use to sign the message. This is particularly relevant in the context of the KMS
-but is currently not considered in this ADR. 
+**注:**公開鍵全体または公開鍵全体のフィンガープリントを含む、関連する議論があります
+各署名要求を入力し、署名者に対応する秘密鍵を伝えます
+メッセージに署名するために使用されます。 これは、KMSのコンテキストでは特に重要です
+ただし、現在、このADRでは考慮されていません。
 
 
-[amino]: https://github.com/tendermint/go-amino/
+[アミノ]:https://github.com/tendermint/go-amino/
 
-### Vote
+### 投票
 
-As explained in [issue#1622] `Vote` will be changed to contain the following fields 
-(notation in protobuf-like syntax for easy readability):
+[issue#1622]で述べたように、 `Vote`は次のフィールドを含むように変更されます
+(読みやすくするために、protobufのような構文表記を使用してください):
 
 ```proto
-// vanilla protobuf / amino encoded
+// vanilla protobuf/amino encoded
 message Vote {
-    Version       fixed32                      
-    Height        sfixed64       
+    Version       fixed32
+    Height        sfixed64
     Round         sfixed32
     VoteType      fixed32
     Timestamp     Timestamp         // << using protobuf definition
-    BlockID       BlockID           // << as already defined 
+    BlockID       BlockID           // << as already defined
     ChainID       string            // at the end because length could vary a lot
 }
 
-// this is an amino registered type; like currently privval.SignVoteMsg: 
+// this is an amino registered type; like currently privval.SignVoteMsg:
 // registered with "tendermint/socketpv/SignVoteRequest"
 message SignVoteRequest {
    Vote vote
@@ -108,9 +109,9 @@ message SignVoteRequest {
 
 //  amino registered type
 // registered with "tendermint/socketpv/SignedVoteReply"
-message SignedVoteReply { 
+message SignedVoteReply {
    Vote      Vote
-   Signature Signature 
+   Signature Signature
    Err       Error
 }
 
@@ -122,49 +123,49 @@ message Error {
 
 ```
 
-The `ChainID` gets moved into the vote message directly. Previously, it was injected 
-using the [Signable] interface method `SignBytes(chainID string) []byte`. Also, the 
-signature won't be included directly, only in the corresponding `SignedVoteReply` message.
+`ChainID`は投票メッセージに直接移動されます。 以前は注射されていました
+[Signable]インターフェースメソッド `SignBytes(chainID string)[] byte`を使用します。 加えて
+署名は直接含まれず、対応する「SignedVoteReply」メッセージにのみ含まれます。
 
-[Signable]: https://github.com/tendermint/tendermint/blob/d419fffe18531317c28c29a292ad7d253f6cafdf/types/signable.go#L9-L11
- 
-### Proposal
+[署名可能]:https://github.com/tendermint/tendermint/blob/d419fffe18531317c28c29a292ad7d253f6cafdf/types/signable.go#L9-L11
+
+### 提案
 
 ```proto
-// vanilla protobuf / amino encoded
-message Proposal {                      
-    Height            sfixed64       
+// vanilla protobuf/amino encoded
+message Proposal {
+    Height            sfixed64
     Round             sfixed32
     Timestamp         Timestamp         // << using protobuf definition
     BlockPartsHeader  PartSetHeader     // as already defined
     POLRound          sfixed32
-    POLBlockID        BlockID           // << as already defined    
+    POLBlockID        BlockID           // << as already defined
 }
- 
+
 // amino registered with "tendermint/socketpv/SignProposalRequest"
 message SignProposalRequest {
    Proposal proposal
 }
 
 // amino registered with "tendermint/socketpv/SignProposalReply"
-message SignProposalReply { 
+message SignProposalReply {
    Prop   Proposal
-   Sig    Signature 
+   Sig    Signature
    Err    Error     // as defined above
 }
 ```
 
-### Heartbeat
+### ハートビート
 
-**TODO**: clarify if heartbeat also needs a fixed offset and update the fields accordingly: 
+** TODO **:ハートビートにも固定オフセットが必要かどうかを明確にし、それに応じてフィールドを更新します。
 
 ```proto
 message Heartbeat {
-	ValidatorAddress Address 
-	ValidatorIndex   int     
-	Height           int64   
-	Round            int     
-	Sequence         int     
+	ValidatorAddress Address
+	ValidatorIndex   int
+	Height           int64
+	Round            int
+	Sequence         int
 }
 // amino registered with "tendermint/socketpv/SignHeartbeatRequest"
 message SignHeartbeatRequest {
@@ -172,21 +173,21 @@ message SignHeartbeatRequest {
 }
 
 // amino registered with "tendermint/socketpv/SignHeartbeatReply"
-message SignHeartbeatReply { 
+message SignHeartbeatReply {
    Hb     Heartbeat
-   Sig    Signature 
+   Sig    Signature
    Err    Error     // as defined above
 }
 
 ```
 
-## PubKey
+## 公開鍵
 
-TBA -  this needs further thoughts: e.g. what todo like in the case of the KMS which holds
-several keys? How does it know with which key to reply?
+TBA-これはこれ必要必要なかます:か、KMSをするするか
+キーはいかつます？ 回信に用するキーを付けます
 
-## SignBytes
-`SignBytes` will not require a `ChainID` parameter:
+## シンボル
+`SignBytes`は` ChainID`パラメータを必要なパラメータ:
 
 ```golang
 type Signable interface {
@@ -206,29 +207,29 @@ func (tp *T) SignBytes() []byte {
 }
 ```
 
-## Status
+## ステータス
 
-Partially Accepted
+部分的に受け入れられた
 
-## Consequences
-
-
-
-### Positive
-
-The most relevant positive effect is that the signing bytes can easily be parsed by a 
-hardware module and a smart contract. Besides that:
- 
-- clearer separation between requests and responses
-- added error messages enable better error handling 
+## 結果
 
 
-### Negative
 
-- relatively huge change / refactoring touching quite some code
-- lot's of places assume a `Vote` with a signature included -> they will need to 
-- need to modify some interfaces 
+### ポジティブ
 
-### Neutral
+最も関連性のあるプラスの効果は、署名バイトを簡単に解析できることです。
+ハードウェアモジュールとスマートコントラクト。 そのほか:
 
-not even the swiss are neutral
+-要求と応答の明確な分離
+-エラーをより適切に処理するためのエラーメッセージを追加しました
+
+
+### ネガティブ
+
+-比較的大きな変更/リファクタリングには、非常に多くのコードが含まれます
+-多くの場所は署名付きの「投票」を想定しています->必要な
+-一部のインターフェースを変更する必要があります
+
+### ニュートラル
+
+スイス人でさえ中立ではありません

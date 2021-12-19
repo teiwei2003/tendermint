@@ -1,42 +1,42 @@
-# Requests for Comments
+# 意見を求める
 
-A Request for Comments (RFC) is a record of discussion on an open-ended topic
-related to the design and implementation of Tendermint Core, for which no
-immediate decision is required.
+コメントの要求(RFC)は、未解決のトピックに関するディスカッションの記録です。
+Tendermint Coreの設計と実装に関連して、
+すぐに決定を下す必要があります。
 
-The purpose of an RFC is to serve as a historical record of a high-level
-discussion that might otherwise only be recorded in an ad hoc way (for example,
-via gists or Google docs) that are difficult to discover for someone after the
-fact. An RFC _may_ give rise to more specific architectural _decisions_ for
-Tendermint, but those decisions must be recorded separately in [Architecture
-Decision Records (ADR)](./../architecture).
+RFCの目的は、高レベルの履歴レコードとして機能することです。
+それ以外の場合、ディスカッションは一時的にしか記録できません(例:
+要旨またはGoogleドキュメントを介して)、後で誰かに発見されることは困難です
+実際。 RFCは、より具体的なアーキテクチャを_may_produce_decision_
+テンダーミントですが、これらの決定は[アーキテクチャ]に個別に記録する必要があります
+決定記録(ADR)](./../アーキテクチャ)。
 
-As a rule of thumb, if you can articulate a specific question that needs to be
-answered, write an ADR. If you need to explore the topic and get input from
-others to know what questions need to be answered, an RFC may be appropriate.
+経験に基づいて、解決する必要のある特定の問題を明確にできれば
+答えて、ADRを書いてください。トピックを調べてからダウンロードする必要がある場合
+他の人がどの質問に答える必要があるかを知るためには、RFCが適切かもしれません。
 
-## RFC Content
+## RFCコンテンツ
 
-An RFC should provide:
+RFCは以下を提供する必要があります。
 
-- A **changelog**, documenting when and how the RFC has changed.
-- An **abstract**, briefly summarizing the topic so the reader can quickly tell
-  whether it is relevant to their interest.
-- Any **background** a reader will need to understand and participate in the
-  substance of the discussion (links to other documents are fine here).
-- The **discussion**, the primary content of the document.
+-**変更ログ**。RFC変更の時間と方法を記録します。
+-**概要**、トピックの簡単な概要。読者がすぐに理解できるようにします。
+  それが彼らの利益に関連しているかどうか。
+-読者が理解して参加する必要のある**背景**
+  議論の内容(他の文書へのリンクはここで提供できます)。
+-**ディスカッション**、ドキュメントのメインコンテンツ。
 
-The [rfc-template.md](./rfc-template.md) file includes placeholders for these
-sections.
+[rfc-template.md](./rfc-template.md)ファイルには、これらのプレースホルダーが含まれています
+部。
 
-## Table of Contents
+## コンテンツ
 
-- [RFC-000: P2P Roadmap](./rfc-000-p2p-roadmap.rst)
-- [RFC-001: Storage Engines](./rfc-001-storage-engine.rst)
-- [RFC-002: Interprocess Communication](./rfc-002-ipc-ecosystem.md)
-- [RFC-003: Performance Taxonomy](./rfc-003-performance-questions.md)
-- [RFC-004: E2E Test Framework Enhancements](./rfc-004-e2e-framework.md)
-- [RFC-005: Event System](./rfc-005-event-system.rst)
-- [RFC-006: Event Subscription](./rfc-006-event-subscription.md)
+-[RFC-000:P2Pロードマップ](./rfc-000-p2p-roadmap.rst)
+-[RFC-001:ストレージエンジン](./rfc-001-storage-engine.rst)
+-[RFC-002:プロセス間通信](./rfc-002-ipc-ecosystem.md)
+-[RFC-003:パフォーマンス分類](./rfc-003-performance-questions.md)
+-[RFC-004:E2Eテストフレームワークの機能強化](./rfc-004-e2e-framework.md)
+-[RFC-005:イベントシステム](./rfc-005-event-system.rst)
+-[RFC-006:イベントサブスクリプション](./rfc-006-event-subscription.md)
 
-<!-- - [RFC-NNN: Title](./rfc-NNN-title.md) -->
+<！--- [RFC-NNN:タイトル](./rfc-NNN-title.md)->

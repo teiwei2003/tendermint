@@ -1,24 +1,24 @@
-# Getting Started
+# 入門
 
-## First Tendermint App
+## 最初のTendermintアプリケーション
 
-As a general purpose blockchain engine, Tendermint is agnostic to the
-application you want to run. So, to run a complete blockchain that does
-something useful, you must start two programs: one is Tendermint Core,
-the other is your application, which can be written in any programming
-language. Recall from [the intro to
-ABCI](../introduction/what-is-tendermint.md#abci-overview) that Tendermint Core handles all the p2p and consensus stuff, and just forwards transactions to the
-application when they need to be validated, or when they're ready to be
-committed to a block.
+一般的なブロックチェーンエンジンとして、Tendermintは不明です
+実行するアプリケーション。 したがって、完全なブロックチェーンを実行するには、
+何か便利なものを得るには、2つのプログラムを開始する必要があります。1つはTendermint Coreで、もう1つはTendermintCoreです。
+もう1つはアプリケーションで、どのプログラムでも作成できます。
+言語。 リコール[に導入
+ABCI](../ Introduction / what-is-tendermint.md#abci-overview)Tendermint Coreは、すべてのp2pとコンセンサスを処理し、トランザクションをに転送するだけです。
+アプリケーションを検証する必要がある場合、またはアプリケーションの準備ができている場合
+ブロックに送信します。
 
-In this guide, we show you some examples of how to run an application
-using Tendermint.
+このガイドでは、アプリケーションの実行方法の例をいくつか示します。
+テンダーミントを使用してください。
 
-### Install
+### インストール
 
-The first apps we will work with are written in Go. To install them, you
-need to [install Go](https://golang.org/doc/install), put
-`$GOPATH/bin` in your `$PATH` and enable go modules with these instructions:
+最初に使用するアプリケーションはGoで記述されています。 それらをインストールするには、
+[Goをインストール](https://golang.org/doc/install)する必要があります
+`$ GOPATH / bin`を` $ PATH`に追加し、次の手順を使用してgoモジュールを有効にします。
 
 ```bash
 echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
@@ -33,62 +33,63 @@ cd $GOPATH/src/github.com/tendermint/tendermint
 make install_abci
 ```
 
-Now you should have the `abci-cli` installed; you'll notice the `kvstore`
-command, an example application written
-in Go. See below for an application written in JavaScript.
+これで、 `abci-cli`がインストールされているはずです。`kvstore`に気付くでしょう。
+コマンド、記述されたサンプルアプリケーション
+進行中。 JavaScriptで記述されたアプリケーションについては、以下を参照してください。
 
-Now, let's run some apps!
+それでは、いくつかのアプリケーションを実行しましょう！
 
-## KVStore - A First Example
+## KVStore-最初の例
 
-The kvstore app is a [Merkle
-tree](https://en.wikipedia.org/wiki/Merkle_tree) that just stores all
-transactions. If the transaction contains an `=`, e.g. `key=value`, then
-the `value` is stored under the `key` in the Merkle tree. Otherwise, the
-full transaction bytes are stored as the key and the value.
 
-Let's start a kvstore application.
+kvstoreアプリケーションは[Merkle
+ツリー](https://en.wikipedia.org/wiki/Merkle_tree)はすべてを保存するだけです
+トレード。 トランザクションに `key = value`などの` = `が含まれている場合、
+`value`はMerkleツリーの` key`の下に保存されます。 それ以外は、
+完全なトランザクションバイトは、キーと値として保存されます。
+
+kvstoreアプリケーションを起動してみましょう。
 
 ```sh
 abci-cli kvstore
 ```
 
-In another terminal, we can start Tendermint. You should already have the
-Tendermint binary installed. If not, follow the steps from
-[here](../introduction/install.md). If you have never run Tendermint
-before, use:
+別のターミナルで、Tendermintを起動できます。 あなたはすでに持っている必要があります
+Tendermintバイナリがインストールされます。 そうでない場合は、以下の手順に従ってください
+[ここ](../ Introduction / install.md)。 Tendermintを実行したことがない場合
+使用前:
 
 ```sh
 tendermint init validator
 tendermint start
 ```
 
-If you have used Tendermint, you may want to reset the data for a new
-blockchain by running `tendermint unsafe_reset_all`. Then you can run
-`tendermint start` to start Tendermint, and connect to the app. For more
-details, see [the guide on using Tendermint](../tendermint-core/using-tendermint.md).
+Tendermintを使用したことがある場合は、新しいデータのデータをリセットする必要がある場合があります
+「tendermintunsafe_reset_all」を実行して、ブロックチェーンを実現します。 その後、実行することができます
+`tendermint start`はTendermintを起動し、アプリケーションに接続します。 もっと
+詳細については、[Tendermintの使用ガイド](../ tendermint-core / using-tendermint.md)を参照してください。
 
-You should see Tendermint making blocks! We can get the status of our
-Tendermint node as follows:
+テンダーミントがブロックを作っているのが見えるはずです！ ステータスを取得できます
+Tendermintノードは次のとおりです。
 
 ```sh
 curl -s localhost:26657/status
 ```
 
-The `-s` just silences `curl`. For nicer output, pipe the result into a
-tool like [jq](https://stedolan.github.io/jq/) or `json_pp`.
+`-s`は` curl`を沈黙させます。 より良い出力のために、結果をにパイプします
+[jq](https://stedolan.github.io/jq/)や `json_pp`などのツール。
 
-Now let's send some transactions to the kvstore.
+それでは、いくつかのトランザクションをkvstoreに送信しましょ
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
 ```
 
-Note the single quote (`'`) around the url, which ensures that the
-double quotes (`"`) are not escaped by bash. This command sent a
-transaction with bytes `abcd`, so `abcd` will be stored as both the key
-and the value in the Merkle tree. The response should look something
-like:
+URLを一重引用符( `'`)で囲んでいることに注意してください。
+二重引用符( `" `)はbashでエスケープされません。このコマンドは
+バイト `abcd`とのトランザクション、つまり` abcd`は2つのキーとして保存されます
+そして、マークルツリーの値。 応答は何かに見えるはずです
+お気に入り:
 
 ```json
 {
@@ -114,8 +115,8 @@ like:
 }
 ```
 
-We can confirm that our transaction worked and the value got stored by
-querying the app:
+トランザクションが有効であり、値が保存されていることを確認できます
+クエリアプリケーション:
 
 ```sh
 curl -s 'localhost:26657/abci_query?data="abcd"'
@@ -138,38 +139,38 @@ The result should look like:
 }
 ```
 
-Note the `value` in the result (`YWJjZA==`); this is the base64-encoding
-of the ASCII of `abcd`. You can verify this in a python 2 shell by
-running `"YWJjZA==".decode('base64')` or in python 3 shell by running
-`import codecs; codecs.decode(b"YWJjZA==", 'base64').decode('ascii')`.
-Stay tuned for a future release that [makes this output more
-human-readable](https://github.com/tendermint/tendermint/issues/1794).
+結果の `value`(` YWJjZA == `)に注意してください。これはbase64エンコーディングです。
+`abcd`のASCIIコード。 これは、Python2シェルで次の方法で確認できます。
+`" YWJjZA == "。decode( 'base64')`を実行するか、Python3シェルで実行します
+`コーデックをインポートします; codecs.decode(b" YWJjZA == "、 'base64')。decode( 'ascii')`。
+しばらくお待ちください[この出力をもっと作成してください
+人間が読める形式](https://github.com/tendermint/tendermint/issues/1794)。
 
-Now let's try setting a different key and value:
+次に、さまざまなキーと値を設定してみましょう。
 
 ```sh
 curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
 ```
 
-Now if we query for `name`, we should get `satoshi`, or `c2F0b3NoaQ==`
-in base64:
+ここで、 `name`を照会すると、` satoshi`または `c2F0b3NoaQ ==`を取得する必要があります。
+base64の場合:
 
 ```sh
 curl -s 'localhost:26657/abci_query?data="name"'
 ```
 
-Try some other transactions and queries to make sure everything is
-working!
+他のいくつかのトランザクションとクエリを試して、すべてが正常であることを確認してください
+サービング！
 
 
-## CounterJS - Example in Another Language
+## CounterJS-別の言語での例
 
-We also want to run applications in another language - in this case,
-we'll run a Javascript version of the `counter`. To run it, you'll need
-to [install node](https://nodejs.org/en/download/).
+また、アプリケーションを別の言語で実行する必要があります。この場合は、
+Javascriptバージョンの `counter`を実行します。 それを実行するには、
+[ノードのインストール](https://nodejs.org/en/download/)。
 
-You'll also need to fetch the relevant repository, from
-[here](https://github.com/tendermint/js-abci), then install it:
+あなたも
+[ここ](https://github.com/tendermint/js-abci)、次にインストールします:
 
 ```sh
 git clone https://github.com/tendermint/js-abci.git
@@ -177,22 +178,22 @@ cd js-abci
 npm install abci
 ```
 
-Kill the previous `counter` and `tendermint` processes. Now run the app:
+以前の `counter`および` tendermint`プロセスを強制終了します。 次に、アプリケーションを実行します。
 
 ```sh
 node example/counter.js
 ```
 
-In another window, reset and start `tendermint`:
+別のウィンドウで、「tendermint」をリセットして開始します。
 
 ```sh
 tendermint unsafe_reset_all
 tendermint start
 ```
 
-Once again, you should see blocks streaming by - but now, our
-application is written in Javascript! Try sending some transactions, and
-like before - the results should be the same:
+もう一度、ブロックの流れを確認する必要がありますが、今では
+アプリケーションはJavascriptで書かれています！ いくつかのトランザクションを送信してから
+以前と同じように-結果は同じになるはずです:
 
 ```sh
 # ok

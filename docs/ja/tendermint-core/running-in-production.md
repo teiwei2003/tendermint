@@ -1,3 +1,3 @@
-# Running In Production
+# 本番環境で実行
 
-This file has moved to the [nodes section](../nodes/running-in-production.md).
+このファイルは[ノードセクション](../nodes/running-in-production.md)に移動されました。

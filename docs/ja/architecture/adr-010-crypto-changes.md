@@ -1,77 +1,77 @@
-# ADR 010: Crypto Changes
+# ADR 010:暗号通貨の変更
 
-## Context
+## 環境
 
-Tendermint is a cryptographic protocol that uses and composes a variety of cryptographic primitives.
+Tendermintは、さまざまな暗号化プリミティブを使用および組み合わせた暗号化プロトコルです。
 
-After nearly 4 years of development, Tendermint has recently undergone multiple security reviews to search for vulnerabilities and to assess the the use and composition of cryptographic primitives.
+4年近くの開発の後、Tendermintは最近、脆弱性を見つけ、暗号プリミティブの使用と構成を評価するために、複数のセキュリティレビューを受けました。
 
-### Hash Functions
+### ハッシュ関数
 
-Tendermint uses RIPEMD160 universally as a hash function, most notably in its Merkle tree implementation.
+Tendermintは通常、特にMerkleツリーの実装において、ハッシュ関数としてRIPEMD160を使用します。
 
-RIPEMD160 was chosen because it provides the shortest fingerprint that is long enough to be considered secure (ie. birthday bound of 80-bits).
-It was also developed in the open academic community, unlike NSA-designed algorithms like SHA256.
+RIPEMD160が選択されたのは、指紋が最も短く、安全であると見なされるのに十分な長さであるためです(つまり、80ビットの誕生日の制限)。
+SHA256などのNSAによって設計されたアルゴリズムとは異なり、オープンな学術コミュニティでも開発されています。
 
-That said, the cryptographic community appears to unanimously agree on the security of SHA256. It has become a universal standard, especially now that SHA1 is broken, being required in TLS connections and having optimized support in hardware.
+言い換えれば、暗号化コミュニティはSHA256のセキュリティに同意しているようです。これは一般的な標準になりました。特にSHA1が壊れた今、TLS接続とハードウェアでの最適化されたサポートに必要です。
 
-### Merkle Trees
+### メルケルツリー
 
-Tendermint uses a simple Merkle tree to compute digests of large structures like transaction batches
-and even blockchain headers. The Merkle tree length prefixes byte arrays before concatenating and hashing them.
-It uses RIPEMD160.
+Tendermintは、単純なMerkleツリーを使用して、トランザクションバッチなどの大きな構造の要約を計算します。
+ブロックチェーンのタイトルですら。マークルツリーの長さは、バイト配列を連結してハッシュする前に、バイト配列にプレフィックスを追加します。
+RIPEMD160を使用します。
 
-### Addresses
+### 住所
 
-ED25519 addresses are computed using the RIPEMD160 of the Amino encoding of the public key.
-RIPEMD160 is generally considered an outdated hash function, and is much slower
-than more modern functions like SHA256 or Blake2.
+ED25519アドレスは、公開鍵のアミノ基でコード化されたRIPEMD160を使用して計算されます。
+RIPEMD160は一般に廃止されたハッシュ関数と見なされており、はるかに低速です。
+SHA256やBlake2などの最新の機能よりも。
 
-### Authenticated Encryption
+### 認証暗号化
 
-Tendermint P2P connections use authenticated encryption to provide privacy and authentication in the communications.
-This is done using the simple Station-to-Station protocol with the NaCL Ed25519 library.
+Tendermint P2P接続は、認証された暗号化を使用して、通信におけるプライバシーとIDの検証を提供します。
+これは、NaCLEd25519ライブラリを使用した単純なステーション間プロトコルによって実現されます。
 
-While there have been no vulnerabilities found in the implementation, there are some concerns:
+実装に抜け穴は見つかりませんでしたが、いくつかの問題があります。
 
-- NaCL uses Salsa20, a not-widely used and relatively out-dated stream cipher that has been obsoleted by ChaCha20
-- Connections use RIPEMD160 to compute a value that is used for the encryption nonce with subtle requirements on how it's used
+-NaCLはSalsa20を使用します。これは、広く使用されておらず、比較的古くなっているストリーム暗号であり、ChaCha20によって排除されています。
+-接続はRIPEMD160を使用して、乱数の暗号化に使用される値を計算します。その使用には微妙な要件があります。
 
-## Decision
+## 決定
 
-### Hash Functions
+### ハッシュ関数
 
-Use the first 20-bytes of the SHA256 hash instead of RIPEMD160 for everything
+RIPEMD160の代わりに、すべてにSHA256ハッシュ値の最初の20バイトを使用します
 
-### Merkle Trees
+###メルケルツリー
 
-TODO
+する
 
-### Addresses
+### 住所
 
-Compute ED25519 addresses as the first 20-bytes of the SHA256 of the raw 32-byte public key
+元の32バイトの公開鍵のSHA256の最初の20バイトとしてED25519アドレスを計算します
 
-### Authenticated Encryption
+### 認証暗号化
 
-Make the following changes:
+次の変更を行います。
 
-- Use xChaCha20 instead of xSalsa20 - https://github.com/tendermint/tendermint/issues/1124
-- Use an HKDF instead of RIPEMD160 to compute nonces - https://github.com/tendermint/tendermint/issues/1165
+-xSalsa20の代わりにxChaCha20を使用します-https://github.com/tendermint/tendermint/issues/1124
+-乱数の計算には、RIPEMD160の代わりにHKDFを使用します-https://github.com/tendermint/tendermint/issues/1165
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- More modern and standard cryptographic functions with wider adoption and hardware acceleration
+-幅広い採用とハードウェアアクセラレーションを備えた、より近代的で標準的な暗号化機能
 
-### Negative
+### ネガティブ
 
-- Exact authenticated encryption construction isn't already provided in a well-used library
+-正確で認証された暗号化構造は、よく使用されているライブラリではまだ提供されていません
 
-### Neutral
+### ニュートラル
 
-## References
+## 参照する

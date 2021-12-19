@@ -1,18 +1,18 @@
-# Metrics
+# インジケーター
 
-Tendermint can report and serve the Prometheus metrics, which in their turn can
-be consumed by Prometheus collector(s).
+Tendermintは、Prometheusメトリックをレポートおよび提供できます。これにより、Prometheusメトリックが可能になります。
+プロメテウスコレクターによって消費されます。
 
-This functionality is disabled by default.
+この機能はデフォルトで無効になっています。
 
-To enable the Prometheus metrics, set `instrumentation.prometheus=true` in your
-config file. Metrics will be served under `/metrics` on 26660 port by default.
-Listen address can be changed in the config file (see
-`instrumentation.prometheus\_listen\_addr`).
+Prometheusメトリックを有効にするには、
+構成ファイル。 デフォルトでは、メトリックはポート26660の `/ metrics`の下に提供されます。
+リスニングアドレスは、構成ファイルで変更できます(を参照)。
+`instrumentation.prometheus \ _listen \ _addr`)。
 
-## List of available metrics
+## 利用可能なインジケーターのリスト
 
-The following metrics are available:
+次のインジケーターが利用可能です。
 
 | **Name**                               | **Type**  | **Tags**      | **Description**                                                        |
 | -------------------------------------- | --------- | ------------- | ---------------------------------------------------------------------- |
@@ -32,7 +32,7 @@ The following metrics are available:
 | consensus_num_txs                      | Gauge     |               | Number of transactions                                                 |
 | consensus_total_txs                    | Gauge     |               | Total number of transactions committed                                 |
 | consensus_block_parts                  | counter   | peer_id       | number of blockparts transmitted by peer                               |
-| consensus_latest_block_height          | gauge     |               | /status sync_info number                                               |
+| consensus_latest_block_height          | gauge     |               |/status sync_info number                                               |
 | consensus_fast_syncing                 | gauge     |               | either 0 (not fast syncing) or 1 (syncing)                             |
 | consensus_state_syncing                | gauge     |               | either 0 (not state syncing) or 1 (syncing)                            |
 | consensus_block_size_bytes             | Gauge     |               | Block size in bytes                                                    |
@@ -48,12 +48,12 @@ The following metrics are available:
 | mempool_recheck_times                  | counter   |               | number of transactions rechecked in the mempool                        |
 | state_block_processing_time            | histogram |               | time between BeginBlock and EndBlock in ms                             |
 
-## Useful queries
+## 便利なクエリ
 
-Percentage of missing + byzantine validators:
+欠落している+ビザンチンバリデーターの割合:
 
 ```prometheus
-((consensus_byzantine_validators_power + consensus_missing_validators_power) / consensus_validators_power) * 100
+((consensus_byzantine_validators_power + consensus_missing_validators_power)/consensus_validators_power) * 100
 ```
 
 Rate at which the application is responding to each ABCI method call.

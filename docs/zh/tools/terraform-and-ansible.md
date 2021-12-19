@@ -31,7 +31,7 @@ export SSH_KEY_FILE="$HOME/.ssh/id_rsa.pub"
 
 这些将被 `terraform` 和 `ansible` 使用。
 
-##地形
+## 地形
 
 这一步将创建四个数字海洋水滴。 首先，前往
 正确的目录:

@@ -1,66 +1,66 @@
-# Validators
+# バリデーター
 
-Validators are responsible for committing new blocks in the blockchain.
-These validators participate in the consensus protocol by broadcasting
-_votes_ which contain cryptographic signatures signed by each
-validator's private key.
+ベリファイアは、ブロックチェーン内の新しいブロックを送信する責任があります。
+これらのバリデーターは、ブロードキャストによってコンセンサスプロトコルに参加します
+_votes_には、全員が署名した暗号署名が含まれています
+ベリファイアの秘密鍵。
 
-Some Proof-of-Stake consensus algorithms aim to create a "completely"
-decentralized system where all stakeholders (even those who are not
-always available online) participate in the committing of blocks.
-Tendermint has a different approach to block creation. Validators are
-expected to be online, and the set of validators is permissioned/curated
-by some external process. Proof-of-stake is not required, but can be
-implemented on top of Tendermint consensus. That is, validators may be
-required to post collateral on-chain, off-chain, or may not be required
-to post any collateral at all.
+一部のPoSコンセンサスアルゴリズムは、「完全な」作成を目的としています
+分散型システム、すべての利害関係者(そうでない人も含む)
+いつでもオンラインで利用可能)ブロックの提出に参加します。
+Tendermintには、ブロックを作成する別の方法があります。バリデーターは
+オンラインであることが期待され、バリデーターセットはライセンス/計画されています
+いくつかの外部プロセスを通じて。公平性の証明は必要ありませんが、
+テンダーミントのコンセンサスの上に実装されています。言い換えれば、バリデーターは
+オンチェーンまたはオフチェーンである必要があるか、担保を発行する必要がない場合があります
+担保を発行します。
 
-Validators have a cryptographic key-pair and an associated amount of
-"voting power". Voting power need not be the same.
+オーセンティケーターには、暗号化キーのペアと関連する番号があります。
+"議決権"。議決権は同じである必要はありません。
 
-## Becoming a Validator
+## バリデーターになる
 
-There are two ways to become validator.
+ベリファイアになるには2つの方法があります。
 
-1. They can be pre-established in the [genesis state](../tendermint-core/using-tendermint.md#genesis)
-2. The ABCI app responds to the EndBlock message with changes to the
-   existing validator set.
+1. [Genesis State](../tendermint-core/using-tendermint.md#genesis)で事前に確立できます。
+2. ABCIアプリケーションは、EndBlockメッセージと変更に応答します
+   既存のバリデーターセット。
 
-## Setting up a Validator
+## バリデーターを設定します
 
-When setting up a validator there are countless ways to configure your setup. This guide is aimed at showing one of them, the sentry node design. This design is mainly for DDOS prevention.
+バリデーターを設定する場合、設定を構成する方法は無数にあります。このガイドは、そのうちの1つであるセンチネルリンパ節の設計を示すことを目的としています。この設計は主にDDOSを防ぐためのものです。
 
-### Network Layout
+### ネットワークレイアウト
 
-![ALT Network Layout](./sentry_layout.png)
+！[ALTネットワークレイアウト](./sentry_layout.png)
 
-The diagram is based on AWS, other cloud providers will have similar solutions to design a solution. Running nodes is not limited to cloud providers, you can run nodes on bare metal systems as well. The architecture will be the same no matter which setup you decide to go with.
+この図はAWSに基づいており、他のクラウドプロバイダーも同様のソリューションを設計ソリューションに提供します。ノードの実行はクラウドプロバイダーに限定されず、ベアメタルシステムでノードを実行することもできます。どの設定を使用する場合でも、アーキテクチャは同じです。
 
-The proposed network diagram is similar to the classical backend/frontend separation of services in a corporate environment. The “backend” in this case is the private network of the validator in the data center. The data center network might involve multiple subnets, firewalls and redundancy devices, which is not detailed on this diagram. The important point is that the data center allows direct connectivity to the chosen cloud environment. Amazon AWS has “Direct Connect”, while Google Cloud has “Partner Interconnect”. This is a dedicated connection to the cloud provider (usually directly to your virtual private cloud instance in one of the regions).
+提案されたネットワーク図は、エンタープライズ環境での従来のバックエンド/フロントエンドサービスの分離に似ています。この場合、「バックエンド」はデータセンターベリファイアのプライベートネットワークです。データセンターネットワークには、複数のサブネット、ファイアウォール、および冗長機器が含まれる場合がありますが、この図では詳しく説明していません。重要な点は、データセンターが選択したクラウド環境への直接接続を可能にすることです。 Amazon AWSには「DirectConnect」があり、GoogleCloudには「PartnerInterconnect」があります。これは、クラウドプロバイダーへの専用接続です(通常、いずれかのリージョンの仮想プライベートクラウドインスタンスへの直接接続)。
 
-All sentry nodes (the “frontend”) connect to the validator using this private connection. The validator does not have a public IP address to provide its services.
+すべてのセンチネルノード(「フロントエンド」)は、このプライベート接続を使用してバリデーターに接続します。オーセンティケータには、サービスを提供するためのパブリックIPアドレスがありません。
 
-Amazon has multiple availability zones within a region. One can install sentry nodes in other regions too. In this case the second, third and further regions need to have a private connection to the validator node. This can be achieved by VPC Peering (“VPC Network Peering” in Google Cloud). In this case, the second, third and further region sentry nodes will be directed to the first region and through the direct connect to the data center, arriving to the validator.
+Amazonには、リージョン内に複数のアベイラビリティーゾーンがあります。センチネルリンパ節は他の地域にも設置できます。この場合、2番目、3番目、およびそれ以上のリージョンは、バリデーターノードとのプライベート接続を確立する必要があります。これは、VPCピアリング(Google Cloudの「VPCネットワークピアリング」)を介して実現できます。この場合、2番目、3番目、およびそれ以上の地域のセンチネルノードは最初の地域に転送され、データセンターに直接接続することでバリデーターに到達します。
 
-A more persistent solution (not detailed on the diagram) is to have multiple direct connections to different regions from the data center. This way VPC Peering is not mandatory, although still beneficial for the sentry nodes. This overcomes the risk of depending on one region. It is more costly.
+より耐久性のあるソリューション(図には詳細が示されていません)は、データセンターからさまざまなリージョンへの複数の直接接続を確立することです。このVPCピアリング接続は必須ではありませんが、センチネルノードにはメリットがあります。これにより、1つの領域に依存するリスクが克服されます。それはより高価です。
 
-### Local Configuration
+### ローカル構成
 
-![ALT Local Configuration](./local_config.png)
+！[ALTローカル構成](./local_config.png)
 
-The validator will only talk to the sentry that are provided, the sentry nodes will communicate to the validator via a secret connection and the rest of the network through a normal connection. The sentry nodes do have the option of communicating with each other as well.
+バリデーターは提供された歩哨とのみ通信し、歩哨ノードは秘密の接続を介してバリデーターと通信し、通常の接続を介してネットワークの他の部分と通信します。センチネルノードは、相互に通信することも選択できます。
 
-When initializing nodes there are five parameters in the `config.toml` that may need to be altered.
+ノードを初期化するとき、変更が必要な可能性のある5つのパラメーターが `config.toml`にあります。
 
-- `mode:` (full | validator | seed) Mode of node (default: 'full'). If you want to run the node as validator, change it to 'validator'.
-- `pex:` boolean. This turns the peer exchange reactor on or off for a node. When `pex=false`, only the `persistent-peers` list is available for connection.
-- `persistent-peers:` a comma separated list of `nodeID@ip:port` values that define a list of peers that are expected to be online at all times. This is necessary at first startup because by setting `pex=false` the node will not be able to join the network.
-- `unconditional-peer-ids:` comma separated list of nodeID's. These nodes will be connected to no matter the limits of inbound and outbound peers. This is useful for when sentry nodes have full address books.
-- `private-peer-ids:` comma separated list of nodeID's. These nodes will not be gossiped to the network. This is an important field as you do not want your validator IP gossiped to the network.
-- `addr-book-strict:` boolean. By default nodes with a routable address will be considered for connection. If this setting is turned off (false), non-routable IP addresses, like addresses in a private network can be added to the address book.
-- `double-sign-check-height` int64 height.  How many blocks to look back to check existence of the node's consensus votes before joining consensus When non-zero, the node will panic upon restart if the same consensus key was used to sign {double_sign_check_height} last blocks. So, validators should stop the state machine, wait for some blocks, and then restart the state machine to avoid panic.
+-`mode: `(full | validator | seed)ノードモード(デフォルト: 'full')。ノードをバリデーターとして実行する場合は、「バリデーター」に変更してください。
+-`pex: `ブール値。これにより、ノードのピアツーピア交換リアクターがオンまたはオフになります。 `pex = false`の場合、接続に使用できるのは` persistent-peers`リストのみです。
+-`persistent-peers: `常にオンラインであることが期待されるピアのリストを定義するための` nodeID @ ip:port`値のコンマ区切りリスト。これは、ノードが `pex = false`を設定してネットワークに参加できないため、最初の起動時に必要です。
+-`unconditional-peer-ids: `ノードIDのコンマ区切りのリスト。これらのノードは、インバウンドピアとアウトバウンドピアの制限に関係なく接続されます。これは、センチネルノードに完全なアドレスブックがある場合に役立ちます。
+-`private-peer-ids: `ノードIDのコンマ区切りのリスト。これらのノードはネットワークに送信されません。オーセンティケータIPがネットワークに送信されないようにするため、これは重要な領域です。
+-`addr-book-strict: `ブール値。デフォルトでは、ルーティング可能なアドレスを持つノードが接続の対象と見なされます。この設定がオフ(false)の場合、ルーティング不可能なIPアドレス(プライベートネットワークのアドレスなど)がアドレス帳に追加される可能性があります。
+-`double-sign-check-height`int64の高さ。ノードのコンセンサス投票が存在するかどうかを確認するために、コンセンサスに参加する前にバックトラックする必要があるブロックの数。ゼロ以外の場合、同じコンセンサスキーを使用して{double_sign_check_height}の最後のブロックに署名すると、ノードは再起動時にパニックになります。 。したがって、ベリファイアはステートマシンを停止し、いくつかのブロックを待ってから、パニックを回避するためにステートマシンを再起動する必要があります。
 
-#### Validator Node Configuration
+####バリデーターノードの構成
 
 | Config Option            | Setting                    |
 | ------------------------ | -------------------------- |
@@ -72,9 +72,9 @@ When initializing nodes there are five parameters in the `config.toml` that may 
 | addr-book-strict         | false                      |
 | double-sign-check-height | 10                         |
 
-To run the node as validator ensure `mode=validator`. The validator node should have `pex=false` so it does not gossip to the entire network. The persistent peers will be your sentry nodes. Private peers can be left empty as the validator is not trying to hide who it is communicating with. Setting unconditional peers is optional for a validator because they will not have a full address books.
+ノードをバリデーターとして実行するには、「mode = validator」であることを確認してください。 バリデーターノードは、ネットワーク全体に拡散しないように、 `pex = false`を持っている必要があります。 永続ノードはセンチネルノードになります。 バリデーターは通信相手を隠そうとしないため、プライベートノードは空白のままにすることができます。 無条件ノードの設定は、完全なアドレスブックがないため、バリデーターにとってオプションです。
 
-#### Sentry Node Configuration
+#### センチネルリンパ節の構成
 
 | Config Option          | Setting                                       |
 | ---------------------- | --------------------------------------------- |
@@ -85,29 +85,29 @@ To run the node as validator ensure `mode=validator`. The validator node should 
 | unconditional-peer-ids | validator node ID, optionally sentry node IDs |
 | addr-book-strict       | false                                         |
 
-The sentry nodes should be able to talk to the entire network hence why `pex=true`. The persistent peers of a sentry node will be the validator, and optionally other sentry nodes. The sentry nodes should make sure that they do not gossip the validator's ip, to do this you must put the validators nodeID as a private peer. The unconditional peer IDs will be the validator ID and optionally other sentry nodes.
+センチネルノードはネットワーク全体と通信できるはずなので、なぜ `pex = true`です。センチネルノードの永続的なピアがバリデーターになり、他のセンチネルノードになることもできます。センチネルノードは、ベリファイアのIPについてゴシップしないようにする必要があります。これを行うには、ベリファイアノードIDをプライベートノードとして使用する必要があります。無条件のピアIDは、バリデーターIDとオプションのその他のセンチネルノードになります。
 
-> Note: Do not forget to secure your node's firewalls when setting them up.
+>注:ノードのファイアウォールを設定するときは、それらを保護することを忘れないでください。
 
-More Information can be found at these links:
+詳細については、次のリンクを参照してください。
 
-- <https://kb.certus.one/>
-- <https://forum.cosmos.network/t/sentry-node-architecture-overview/454>
+-<https://kb.certus.one/>
+-<https://forum.cosmos.network/t/sentry-node-architecture-overview/454>
 
-### Validator keys
+### 検証キー
 
-Protecting a validator's consensus key is the most important factor to take in when designing your setup. The key that a validator is given upon creation of the node is called a consensus key, it has to be online at all times in order to vote on blocks. It is **not recommended** to merely hold your private key in the default json file (`priv_validator_key.json`). Fortunately, the [Interchain Foundation](https://interchain.io/) has worked with a team to build a key management server for validators. You can find documentation on how to use it [here](https://github.com/iqlusioninc/tmkms), it is used extensively in production. You are not limited to using this tool, there are also [HSMs](https://safenet.gemalto.com/data-encryption/hardware-security-modules-hsms/), there is not a recommended HSM.
+セットアップを設計するとき、検証者のコンセンサスキーを保護することが最も重要な要素です。ノードの作成時にベリファイアによって提供されるキーはコンセンサスキーと呼ばれ、ブロックに投票するには常にオンラインである必要があります。 **非推奨**デフォルトのjsonファイル( `priv_validator_key.json`)にのみ秘密鍵を保存します。幸い、[Interchain Foundation](https://interchain.io/)はチームと協力して、検証者用の鍵管理サーバーを構築しました。使用方法に関するドキュメントは[こちら](https://github.com/iqlusioninc/tmkms)にあり、本番環境で広く使用されています。このツールの使用に限定されるものではなく、[HSM](https://safenet.gemalto.com/data-encryption/hardware-security-modules-hsms/)があり、推奨されるHSMはありません。
 
-Currently Tendermint uses [Ed25519](https://ed25519.cr.yp.to/) keys which are widely supported across the security sector and HSMs.
+現在、Tendermintは[Ed25519](https://ed25519.cr.yp.to/)キーを使用しています。これらのキーは、セキュリティ部門とHSMによって広くサポートされています。
 
-## Committing a Block
+## ブロックを送信する
 
-> **+2/3 is short for "more than 2/3"**
+> ** +2/3は「2/3以上」の略です**
 
-A block is committed when +2/3 of the validator set sign [precommit
-votes](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#vote) for that block at the same `round`.
-The +2/3 set of precommit votes is called a
-[_commit_](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#commit). While any +2/3 set of
-precommits for the same block at the same height&round can serve as
-validation, the canonical commit is included in the next block (see
-[LastCommit](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#lastcommit)).
+バリデーターがシンボルの+2/3を設定したとき[precommit
+投票](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#vote)同じ「ラウンド」のブロックに投票します。
+事前に提出された投票の+2/3グループが呼び出されます
+[_commit _](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#commit)。そして+2/3セット
+同じ高さとラウンドの同じブロックの事前コミットは、次のように使用できます。
+検証、仕様の提出は次のブロックに含まれます(を参照)
+[LastCommit](https://github.com/tendermint/spec/blob/953523c3cb99fdb8c8f7a2d21e3a99094279e9de/spec/blockchain/blockchain.md#lastcommit))。

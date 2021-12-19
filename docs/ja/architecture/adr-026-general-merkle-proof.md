@@ -1,19 +1,19 @@
-# ADR 026: General Merkle Proof
+# ADR 026:一般的なメルケル認証
 
-## Context
+## 環境
 
-We are using raw `[]byte` for merkle proofs in `abci.ResponseQuery`. It makes hard to handle multilayer merkle proofs and general cases. Here, new interface `ProofOperator` is defined. The users can defines their own Merkle proof format and layer them easily. 
+「abci.ResponseQuery」のメルケル証明として、元の「[] byte」を使用します。 これにより、多層メルケル証明や一般的な状況に対処することが困難になります。 ここでは、新しいインターフェース「ProofOperator」が定義されています。 ユーザーは、独自のMerkleプルーフ形式を定義し、それらを簡単に階層化できます。
 
-Goals:
-- Layer Merkle proofs without decoding/reencoding
-- Provide general way to chain proofs
-- Make the proof format extensible, allowing thirdparty proof types
+目標:
+-デコード/再コーディングなしのレイヤーマークルプルーフ
+-チェーンプルーフの一般的な方法を提供します
+-認証フォーマットを拡張可能にし、サードパーティの認証タイプを許可します
 
-## Decision
+## 決定
 
 ### ProofOperator
 
-`type ProofOperator` is an interface for Merkle proofs. The definition is:
+`type ProofOperator`は、Merkle証明のインターフェースです。 定義は次のとおりです。
 
 ```go
 type ProofOperator interface {
@@ -23,27 +23,27 @@ type ProofOperator interface {
 }
 ```
 
-Since a proof can treat various data type, `Run()` takes `[][]byte` as the argument, not `[]byte`. For example, a range proof's `Run()` can take multiple key-values as its argument. It will then return the root of the tree for the further process, calculated with the input value.
+さまざまなデータ型を処理できることが証明されているため、「Run()」は「[] byte」ではなく「[] [] byte」をパラメータとして取ります。たとえば、範囲証明の「Run()」は、パラメーターとして複数のキー値を取ることができます。その後、ツリーのルートに戻ってさらに処理し、入力値を計算に使用します。
 
-`ProofOperator` does not have to be a Merkle proof - it can be a function that transforms the argument for intermediate process e.g. prepending the length to the `[]byte`.
+`ProofOperator`は、マークルプルーフである必要はありません。`[] byte`に長さを追加するなど、中間プロセスのパラメーターを変換できる関数にすることができます。
 
 ### ProofOp
 
-`type ProofOp` is a protobuf message which is a triple of `Type string`, `Key []byte`, and `Data []byte`. `ProofOperator` and `ProofOp`are interconvertible, using `ProofOperator.ProofOp()` and `OpDecoder()`, where `OpDecoder` is a function that each proof type can register for their own encoding scheme. For example, we can add an byte for encoding scheme before the serialized proof, supporting JSON decoding.
+`type ProofOp`はprotobufメッセージであり、` Type string`、 `Key [] byte`、および` Data [] byte`のトリプルです。 `ProofOperator`と` ProofOp`は、 `ProofOperator.ProofOp()`と `OpDecoder()`を使用して相互に変換可能です。ここで、 `OpDecoder`は関数であり、各プルーフタイプは独自のエンコードスキームに登録できます。たとえば、JSONデコードをサポートするために、シリアル化プルーフの前にエンコードスキームのバイトを追加できます。
 
-## Status
+## ステータス
 
-Implemented
+実装
 
-## Consequences
+## 結果
 
-### Positive
+### ポジティブ
 
-- Layering becomes easier (no encoding/decoding at each step)
-- Thirdparty proof format is available
+-階層化が容易になります(すべてのステップでエンコード/デコードが不要)
+-サードパーティの認証形式が利用可能です
 
-### Negative 
+### ネガティブ
 
-- Larger size for abci.ResponseQuery
-- Unintuitive proof chaining(it is not clear what `Run()` is doing)
-- Additional codes for registering `OpDecoder`s
+-abci.ResponseQueryのサイズが大きい
+-直感的でない証明リンク( `Run()`が何をしているのか不明)
+-`OpDecoder`を登録するための追加コード
