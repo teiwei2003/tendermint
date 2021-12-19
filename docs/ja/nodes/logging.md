@@ -28,7 +28,7 @@ tendermint start --log-level "info"
 以下は、Tendermintログで遭遇する可能性のあるモジュールのリストです。
 彼らが何をしているのかを概説することはめったにありません。
 
--`abci-client` [アプリケーションアーキテクチャガイド](../ app-dev/app-architecture.md)で説明されているように、TendermintはABCIとして機能します
+-`abci-client` [アプリケーションアーキテクチャガイド](../app-dev/app-architecture.md)で説明されているように、TendermintはABCIとして機能します
   クライアントはアプリケーションに関連しており、次の3つの接続を維持します。
   メモリプール、コンセンサス、クエリ。 TendermintCoreで使用されるコードは
   ここ(https://github.com/tendermint/tendermint/tree/master/abci/client)にあります。
@@ -41,7 +41,7 @@ tendermint start --log-level "info"
   クラッシュから。
   [こちら](https://github.com/tendermint/tendermint/blob/master/types/events.go)。
   `subscribe`RPCメソッドを呼び出すことでそれらをサブスクライブできます。参照する
-  詳細については、[RPCドキュメント](../ tendermint-core/rpc.md)にアクセスしてください。
+  詳細については、[RPCドキュメント](../tendermint-core/rpc.md)にアクセスしてください。
 -`mempool`メモリプールモジュールは、いつでもすべての着信トランザクションを処理します
   それらはピアまたはアプリケーションから来ています。
 -`p2p`は、ピアツーピア通信の抽象化を提供します。にとって

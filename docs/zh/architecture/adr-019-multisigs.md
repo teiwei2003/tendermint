@@ -139,7 +139,7 @@ type CryptoBitArray struct {
 如果需要，我们可以对所有 ed25519 密钥使用 ed25519 批量验证。
 这是一个未来的讨论点，但会向后兼容，因为不需要编组这些信息。
 (如果没有 ristretto，甚至可能存在辅因子问题)
-Schnorr sigs / BLS sigs 中公钥 / sigs 的聚合不向后兼容，需要是新的 ASM 类型。
+Schnorr sigs/BLS sigs 中公钥/sigs 的聚合不向后兼容，需要是新的 ASM 类型。
 
 ## 状态
 

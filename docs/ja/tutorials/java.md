@@ -433,7 +433,7 @@ public void commit(RequestCommit req, StreamObserver<ResponseCommit> responseObs
 ### 1.3.5クエリ
 
 これで、クライアントが特定のキー/値がいつ存在するかを知りたい場合、
-Tendermint Core RPC `/ abci_query`エンドポイントを呼び出します。エンドポイントは次に呼び出します
+Tendermint Core RPC `/abci_query`エンドポイントを呼び出します。エンドポイントは次に呼び出します
 アプリケーションの `Query`メソッド。
 
 アプリケーションは独自のAPIを無料で提供できます。 しかし、テンダーミントコアを使用することによって

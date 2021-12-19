@@ -109,7 +109,7 @@ func (app *MyApp) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx 
 ## 参照する
 
 -[ADR 021](./ adr-021-abci-events.md)
--[インデックス作成トランザクション](../ app-dev / indexing-transactions.md)
+-[インデックス作成トランザクション](../app-dev/indexing-transactions.md)
 
 ## 付録A.代替案
 

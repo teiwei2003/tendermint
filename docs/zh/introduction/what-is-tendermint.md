@@ -45,7 +45,7 @@ Tendermint 大致类似于两类软件。首先
 比特币和以太坊，以及替代的分布式账本设计，如
 Hyperledger 的洞穴。
 
-### Zookeeper、etcd、领事
+### Zookeeper、etcd、consul
 
 Zookeeper、etcd 和 consul 都是键值存储的实现
 在经典的非 BFT 共识算法之上。 Zookeeper 使用一个版本
