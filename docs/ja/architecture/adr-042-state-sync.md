@@ -198,7 +198,7 @@ TMからAppStateChunkオブジェクトを作成し、有効な状態ツリー�
         *受領時に確認する
     * IAVL +ツリーからの読み取り/書き込み/
 
-！[StateSyncアーキテクチャ図](img / state-sync.png)
+！[StateSyncアーキテクチャ図](img/state-sync.png)
 
 ## 気付く
 * [#3753](https://github.com/tendermint/tendermint/pull/3753)に基づいてStateSyncリアクターを作成します
@@ -229,6 +229,6 @@ TMからAppStateChunkオブジェクトを作成し、有効な状態ツリー�
 [同期:現在の状態を同期します。アプリケーションを完全に再生する必要はありません](https://github.com/tendermint/tendermint/issues/828)-元の問題
 [テンダーミントステータス同期提案2](https://docs.google.com/document/d/1npGTAa1qxe8EQZ1wG0a0Sip9t5oX2vYZNUDwr_LVRR4/edit)-ackratos提案
 [提案2の実装](https://github.com/tendermint/tendermint/pull/3243)-ackratosの実装
-[WIP General / Lazy State-Sync pseudo-specification](https://github.com/tendermint/tendermint/issues/3639)-Jaeの提案
+[WIP General/Lazy State-Sync pseudo-specification](https://github.com/tendermint/tendermint/issues/3639)-Jaeの提案
 [ワープ同期の実装](https://github.com/tendermint/tendermint/pull/3594)-ackratos
 [チャンク提案](https://github.com/tendermint/tendermint/pull/3799)-バッキー提案

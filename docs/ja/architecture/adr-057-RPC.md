@@ -33,7 +33,7 @@ JSON-RPCは、JSONに基づくRPCプロトコルです。 Tendermintは、[JSON-
 -ドキュメント/仕様に関するツール(Swaggerなど)の方が優れている可能性があります
 -JSONデータが大きい(HTTP圧縮によるオフセット)
 -シリアル化は非常に遅い([〜100％マーシャル、〜400％アンマーシャル](https://github.com/alectomas/go_serialization_benchmarks));絶対値は重要ではありません。
--仕様は2013年に最後に更新されましたが、これはSwagger / OpenAPIよりもはるかに遅れています。
+-仕様は2013年に最後に更新されましたが、これはSwagger/OpenAPIよりもはるかに遅れています。
 
 ### gRPC + gRPCゲートウェイ(REST + Swagger)
 

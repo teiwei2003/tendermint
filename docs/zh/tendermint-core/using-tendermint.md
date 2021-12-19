@@ -52,7 +52,7 @@ TendermintCore 在区块链起源时的状态([参见
         - `time_iota_ms`:未使用。这已被弃用，并将在未来版本中删除。
     -`证据`
         - `max_age_num_blocks`:证据的最大年龄，以块为单位。基本公式
-      计算这个是:MaxAgeDuration / {平均区块时间}。
+      计算这个是:MaxAgeDuration/{平均区块时间}。
         - `max_age_duration`:证据的最大年龄，及时。应该对应
       使用应用程序的“解除绑定期”或其他类似的处理机制
       [无利害关系
