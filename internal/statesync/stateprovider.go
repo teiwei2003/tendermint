@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/libs/log"
@@ -40,10 +40,11 @@ type StateProvider interface {
 }
 
 type stateProviderRPC struct {
-	tmsync.Mutex  // light.Client is not concurrency-safe
+	sync.Mutex    // light.Client is not concurrency-safe
 	lc            *light.Client
 	initialHeight int64
 	providers     map[lightprovider.Provider]string
+	logger        log.Logger
 }
 
 // NewRPCStateProvider creates a new StateProvider using a light client and RPC clients.
@@ -79,6 +80,7 @@ func NewRPCStateProvider(
 		return nil, err
 	}
 	return &stateProviderRPC{
+		logger:        logger,
 		lc:            lc,
 		initialHeight: initialHeight,
 		providers:     providerRemotes,
@@ -176,7 +178,7 @@ func (s *stateProviderRPC) State(ctx context.Context, height uint64) (sm.State, 
 	if err != nil {
 		return sm.State{}, fmt.Errorf("unable to create RPC client: %w", err)
 	}
-	rpcclient := lightrpc.NewClient(primaryRPC, s.lc)
+	rpcclient := lightrpc.NewClient(s.logger, primaryRPC, s.lc)
 	result, err := rpcclient.ConsensusParams(ctx, &currentLightBlock.Height)
 	if err != nil {
 		return sm.State{}, fmt.Errorf("unable to fetch consensus parameters for height %v: %w",
@@ -197,7 +199,7 @@ func rpcClient(server string) (*rpchttp.HTTP, error) {
 }
 
 type stateProviderP2P struct {
-	tmsync.Mutex  // light.Client is not concurrency-safe
+	sync.Mutex    // light.Client is not concurrency-safe
 	lc            *light.Client
 	initialHeight int64
 	paramsSendCh  *p2p.Channel

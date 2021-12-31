@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/proxy"
 	proxymocks "github.com/tendermint/tendermint/internal/proxy/mocks"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -132,7 +131,7 @@ func TestSyncer_SyncAny(t *testing.T) {
 	}).Times(2).Return(&abci.ResponseOfferSnapshot{Result: abci.ResponseOfferSnapshot_ACCEPT}, nil)
 
 	chunkRequests := make(map[uint32]int)
-	chunkRequestsMtx := tmsync.Mutex{}
+	chunkRequestsMtx := sync.Mutex{}
 
 	var wg sync.WaitGroup
 	wg.Add(4)
@@ -750,7 +749,7 @@ func TestSyncer_verifyApp(t *testing.T) {
 			rts := setup(ctx, t, nil, nil, nil, 2)
 
 			rts.connQuery.On("InfoSync", mock.Anything, proxy.RequestInfo).Return(tc.response, tc.err)
-			version, err := rts.syncer.verifyApp(s)
+			version, err := rts.syncer.verifyApp(ctx, s)
 			unwrapped := errors.Unwrap(err)
 			if unwrapped != nil {
 				err = unwrapped

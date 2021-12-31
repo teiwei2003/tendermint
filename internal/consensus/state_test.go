@@ -14,8 +14,8 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	"github.com/tendermint/tendermint/libs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -160,7 +160,7 @@ func TestStateEnterProposeNoPrivValidator(t *testing.T) {
 
 	cs, _, err := randState(ctx, config, log.TestingLogger(), 1)
 	require.NoError(t, err)
-	cs.SetPrivValidator(nil)
+	cs.SetPrivValidator(ctx, nil)
 	height, round := cs.Height, cs.Round
 
 	// Listen for propose timeout event

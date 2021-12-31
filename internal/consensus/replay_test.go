@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"testing"
 	"time"
 
@@ -28,12 +27,12 @@ import (
 	"github.com/tendermint/tendermint/internal/eventbus"
 	"github.com/tendermint/tendermint/internal/mempool"
 	"github.com/tendermint/tendermint/internal/proxy"
+	"github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	sf "github.com/tendermint/tendermint/internal/state/test/factory"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	tmrand "github.com/tendermint/tendermint/libs/rand"
 	"github.com/tendermint/tendermint/privval"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -61,7 +60,7 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 	logger := log.TestingLogger()
 	state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 	require.NoError(t, err)
-	privValidator := loadPrivValidator(consensusReplayConfig)
+	privValidator := loadPrivValidator(t, consensusReplayConfig)
 	blockStore := store.NewBlockStore(dbm.NewMemDB())
 	cs := newStateWithConfigAndBlockStore(
 		ctx,
@@ -93,9 +92,9 @@ func startNewStateAndWaitForBlock(ctx context.Context, t *testing.T, consensusRe
 		Query:    types.EventQueryNewBlock,
 	})
 	require.NoError(t, err)
-	ctx, cancel := context.WithTimeout(ctx, 120*time.Second)
+	ctxto, cancel := context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
-	_, err = newBlockSub.Next(ctx)
+	_, err = newBlockSub.Next(ctxto)
 	if errors.Is(err, context.DeadlineExceeded) {
 		t.Fatal("Timed out waiting for new block (see trace above)")
 	} else if err != nil {
@@ -148,7 +147,7 @@ func TestWALCrash(t *testing.T) {
 	}
 }
 
-func crashWALandCheckLiveness(ctx context.Context, t *testing.T, consensusReplayConfig *config.Config,
+func crashWALandCheckLiveness(rctx context.Context, t *testing.T, consensusReplayConfig *config.Config,
 	initFn func(dbm.DB, *State, context.Context), heightToStop int64) {
 	walPanicked := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPanicked, heightToStop: heightToStop}
@@ -166,9 +165,9 @@ LOOP:
 		blockStore := store.NewBlockStore(blockDB)
 		state, err := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		require.NoError(t, err)
-		privValidator := loadPrivValidator(consensusReplayConfig)
+		privValidator := loadPrivValidator(t, consensusReplayConfig)
 		cs := newStateWithConfigAndBlockStore(
-			ctx,
+			rctx,
 			logger,
 			consensusReplayConfig,
 			state,
@@ -178,7 +177,7 @@ LOOP:
 		)
 
 		// start sending transactions
-		ctx, cancel := context.WithCancel(ctx)
+		ctx, cancel := context.WithCancel(rctx)
 		initFn(stateDB, cs, ctx)
 
 		// clean up WAL file from the previous iteration
@@ -342,7 +341,10 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 		newMockTickerFunc(true),
 		newPersistentKVStoreWithPath)
 	sim.Config = cfg
-	sim.GenesisState, _ = sm.MakeGenesisState(genDoc)
+
+	var err error
+	sim.GenesisState, err = sm.MakeGenesisState(genDoc)
+	require.NoError(t, err)
 	sim.CleanupFunc = cleanup
 
 	partSize := types.BlockPartSizeBytes
@@ -455,7 +457,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	newVss := make([]*validatorStub, nVals+1)
 	copy(newVss, vss[:nVals+1])
-	sort.Sort(ValidatorStubsByPower(newVss))
+	newVss = sortVValidatorStubsByPower(ctx, newVss)
 
 	valIndexFn := func(cssIdx int) int {
 		for i, vs := range newVss {
@@ -500,7 +502,6 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 			tmproto.PrecommitType, rs.ProposalBlock.Hash(),
 			rs.ProposalBlockParts.Header(), newVss[i])
 	}
-
 	ensureNewRound(newRoundCh, height+1, 0)
 
 	// HEIGHT 5
@@ -509,7 +510,8 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	// Reflect the changes to vss[nVals] at height 3 and resort newVss.
 	newVssIdx := valIndexFn(nVals)
 	newVss[newVssIdx].VotingPower = 25
-	sort.Sort(ValidatorStubsByPower(newVss))
+	newVss = sortVValidatorStubsByPower(ctx, newVss)
+
 	selfIndex = valIndexFn(0)
 	ensureNewProposal(proposalCh, height, round)
 	rs = css[0].GetRoundState()
@@ -534,7 +536,7 @@ func setupSimulator(ctx context.Context, t *testing.T) *simulatorTestSuite {
 	blockID = types.BlockID{Hash: propBlock.Hash(), PartSetHeader: propBlockParts.Header()}
 	newVss = make([]*validatorStub, nVals+3)
 	copy(newVss, vss[:nVals+3])
-	sort.Sort(ValidatorStubsByPower(newVss))
+	newVss = sortVValidatorStubsByPower(ctx, newVss)
 
 	selfIndex = valIndexFn(0)
 	proposal = types.NewProposal(vss[1].Height, round, -1, blockID)
@@ -709,7 +711,7 @@ func tempWALWithData(data []byte) string {
 // Make some blocks. Start a fresh app and apply nBlocks blocks.
 // Then restart the app and sync it up with the remaining blocks
 func testHandshakeReplay(
-	ctx context.Context,
+	rctx context.Context,
 	t *testing.T,
 	sim *simulatorTestSuite,
 	nBlocks int,
@@ -721,9 +723,8 @@ func testHandshakeReplay(
 	var store *mockBlockStore
 	var stateDB dbm.DB
 	var genesisState sm.State
-	var cancel context.CancelFunc
 
-	ctx, cancel = context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(rctx)
 	t.Cleanup(cancel)
 
 	cfg := sim.Config
