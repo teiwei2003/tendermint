@@ -5,11 +5,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/p2p"
 	"github.com/tendermint/tendermint/internal/proxy"
 	sm "github.com/tendermint/tendermint/internal/state"
@@ -63,7 +63,7 @@ type syncer struct {
 	fetchers      int32
 	retryTimeout  time.Duration
 
-	mtx     tmsync.RWMutex
+	mtx     sync.RWMutex
 	chunks  *chunkQueue
 	metrics *Metrics
 
@@ -349,7 +349,7 @@ func (s *syncer) Sync(ctx context.Context, snapshot *snapshot, chunks *chunkQueu
 	}
 
 	// Verify app and update app version
-	appVersion, err := s.verifyApp(snapshot)
+	appVersion, err := s.verifyApp(ctx, snapshot)
 	if err != nil {
 		return sm.State{}, nil, err
 	}
@@ -549,8 +549,8 @@ func (s *syncer) requestChunk(ctx context.Context, snapshot *snapshot, chunk uin
 
 // verifyApp verifies the sync, checking the app hash and last block height. It returns the
 // app version, which should be returned as part of the initial state.
-func (s *syncer) verifyApp(snapshot *snapshot) (uint64, error) {
-	resp, err := s.connQuery.InfoSync(context.TODO(), proxy.RequestInfo)
+func (s *syncer) verifyApp(ctx context.Context, snapshot *snapshot) (uint64, error) {
+	resp, err := s.connQuery.InfoSync(ctx, proxy.RequestInfo)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query ABCI app for appHash: %w", err)
 	}

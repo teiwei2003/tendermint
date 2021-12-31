@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"sync"
 	"testing"
 	"time"
@@ -21,15 +22,14 @@ import (
 	"github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/internal/consensus/types"
 	"github.com/tendermint/tendermint/internal/eventbus"
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
 	"github.com/tendermint/tendermint/internal/mempool"
+	tmpubsub "github.com/tendermint/tendermint/internal/pubsub"
 	sm "github.com/tendermint/tendermint/internal/state"
 	"github.com/tendermint/tendermint/internal/store"
 	"github.com/tendermint/tendermint/internal/test/factory"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmtime "github.com/tendermint/tendermint/libs/time"
 	"github.com/tendermint/tendermint/privval"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -196,28 +196,28 @@ func (vss ValidatorStubsByPower) Len() int {
 	return len(vss)
 }
 
-func (vss ValidatorStubsByPower) Less(i, j int) bool {
-	vssi, err := vss[i].GetPubKey(context.TODO())
-	if err != nil {
-		panic(err)
-	}
-	vssj, err := vss[j].GetPubKey(context.TODO())
-	if err != nil {
-		panic(err)
+func sortVValidatorStubsByPower(ctx context.Context, vss []*validatorStub) []*validatorStub {
+	sort.Slice(vss, func(i, j int) bool {
+		vssi, err := vss[i].GetPubKey(ctx)
+		if err != nil {
+			panic(err)
+		}
+		vssj, err := vss[j].GetPubKey(ctx)
+		if err != nil {
+			panic(err)
+		}
+
+		if vss[i].VotingPower == vss[j].VotingPower {
+			return bytes.Compare(vssi.Address(), vssj.Address()) == -1
+		}
+		return vss[i].VotingPower > vss[j].VotingPower
+	})
+
+	for idx, vs := range vss {
+		vs.Index = int32(idx)
 	}
 
-	if vss[i].VotingPower == vss[j].VotingPower {
-		return bytes.Compare(vssi.Address(), vssj.Address()) == -1
-	}
-	return vss[i].VotingPower > vss[j].VotingPower
-}
-
-func (vss ValidatorStubsByPower) Swap(i, j int) {
-	it := vss[i]
-	vss[i] = vss[j]
-	vss[i].Index = int32(i)
-	vss[j] = it
-	vss[j].Index = int32(j)
+	return vss
 }
 
 //-------------------------------------------------------------------------------
@@ -440,9 +440,9 @@ func newStateWithConfigAndBlockStore(
 	blockStore *store.BlockStore,
 ) *State {
 	// one for mempool, one for consensus
-	mtx := new(tmsync.Mutex)
-	proxyAppConnMem := abciclient.NewLocalClient(mtx, app)
-	proxyAppConnCon := abciclient.NewLocalClient(mtx, app)
+	mtx := new(sync.Mutex)
+	proxyAppConnMem := abciclient.NewLocalClient(logger, mtx, app)
+	proxyAppConnCon := abciclient.NewLocalClient(logger, mtx, app)
 
 	// Make Mempool
 
@@ -476,7 +476,7 @@ func newStateWithConfigAndBlockStore(
 		mempool,
 		evpool,
 	)
-	cs.SetPrivValidator(pv)
+	cs.SetPrivValidator(ctx, pv)
 
 	eventBus := eventbus.NewDefault(logger.With("module", "events"))
 	err := eventBus.Start(ctx)
@@ -487,15 +487,13 @@ func newStateWithConfigAndBlockStore(
 	return cs
 }
 
-func loadPrivValidator(cfg *config.Config) *privval.FilePV {
+func loadPrivValidator(t *testing.T, cfg *config.Config) *privval.FilePV {
 	privValidatorKeyFile := cfg.PrivValidator.KeyFile()
 	ensureDir(filepath.Dir(privValidatorKeyFile), 0700)
 	privValidatorStateFile := cfg.PrivValidator.StateFile()
 	privValidator, err := privval.LoadOrGenFilePV(privValidatorKeyFile, privValidatorStateFile)
-	if err != nil {
-		panic(err)
-	}
-	privValidator.Reset()
+	require.NoError(t, err)
+	require.NoError(t, privValidator.Reset())
 	return privValidator
 }
 
@@ -815,7 +813,7 @@ func randConsensusState(
 func randConsensusNetWithPeers(
 	ctx context.Context,
 	cfg *config.Config,
-	nValidators,
+	nValidators int,
 	nPeers int,
 	testName string,
 	tickerFunc func() TimeoutTicker,

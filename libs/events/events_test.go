@@ -3,13 +3,14 @@ package events
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/libs/rand"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 // TestAddListenerForEventFireOnce sets up an EventSwitch, subscribes a single
@@ -18,7 +19,7 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch()
+	evsw := NewEventSwitch(log.TestingLogger())
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -47,7 +48,7 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch()
+	evsw := NewEventSwitch(log.TestingLogger())
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -83,7 +84,7 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch()
+	evsw := NewEventSwitch(log.TestingLogger())
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -145,7 +146,7 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch()
+	evsw := NewEventSwitch(log.TestingLogger())
 	require.NoError(t, evsw.Start(ctx))
 
 	t.Cleanup(evsw.Wait)
@@ -235,7 +236,7 @@ func TestAddAndRemoveListenerConcurrency(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch()
+	evsw := NewEventSwitch(log.TestingLogger())
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -284,7 +285,7 @@ func TestAddAndRemoveListener(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	evsw := NewEventSwitch()
+	evsw := NewEventSwitch(log.TestingLogger())
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -340,7 +341,7 @@ func TestAddAndRemoveListener(t *testing.T) {
 func TestRemoveListener(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	evsw := NewEventSwitch()
+	evsw := NewEventSwitch(log.TestingLogger())
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -397,7 +398,7 @@ func TestRemoveListener(t *testing.T) {
 func TestRemoveListenersAsync(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	evsw := NewEventSwitch()
+	evsw := NewEventSwitch(log.TestingLogger())
 	require.NoError(t, evsw.Start(ctx))
 	t.Cleanup(evsw.Wait)
 
@@ -468,7 +469,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 	// collect received events for event2
 	go sumReceivedNumbers(numbers2, doneSum2)
 	addListenersStress := func() {
-		r1 := rand.NewRand()
+		r1 := rand.New(rand.NewSource(time.Now().Unix()))
 		r1.Seed(time.Now().UnixNano())
 		for k := uint16(0); k < 400; k++ {
 			listenerNumber := r1.Intn(100) + 3
@@ -479,7 +480,7 @@ func TestRemoveListenersAsync(t *testing.T) {
 		}
 	}
 	removeListenersStress := func() {
-		r2 := rand.NewRand()
+		r2 := rand.New(rand.NewSource(time.Now().Unix()))
 		r2.Seed(time.Now().UnixNano())
 		for k := uint16(0); k < 80; k++ {
 			listenerNumber := r2.Intn(100) + 3

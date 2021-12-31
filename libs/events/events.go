@@ -4,8 +4,9 @@ package events
 import (
 	"context"
 	"fmt"
+	"sync"
 
-	tmsync "github.com/tendermint/tendermint/internal/libs/sync"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/service"
 )
 
@@ -56,17 +57,17 @@ type EventSwitch interface {
 type eventSwitch struct {
 	service.BaseService
 
-	mtx        tmsync.RWMutex
+	mtx        sync.RWMutex
 	eventCells map[string]*eventCell
 	listeners  map[string]*eventListener
 }
 
-func NewEventSwitch() EventSwitch {
+func NewEventSwitch(logger log.Logger) EventSwitch {
 	evsw := &eventSwitch{
 		eventCells: make(map[string]*eventCell),
 		listeners:  make(map[string]*eventListener),
 	}
-	evsw.BaseService = *service.NewBaseService(nil, "EventSwitch", evsw)
+	evsw.BaseService = *service.NewBaseService(logger, "EventSwitch", evsw)
 	return evsw
 }
 
@@ -166,7 +167,7 @@ func (evsw *eventSwitch) FireEvent(ctx context.Context, event string, data Event
 
 // eventCell handles keeping track of listener callbacks for a given event.
 type eventCell struct {
-	mtx       tmsync.RWMutex
+	mtx       sync.RWMutex
 	listeners map[string]EventCallback
 }
 
@@ -213,7 +214,7 @@ type EventCallback func(ctx context.Context, data EventData) error
 type eventListener struct {
 	id string
 
-	mtx     tmsync.RWMutex
+	mtx     sync.RWMutex
 	removed bool
 	events  []string
 }

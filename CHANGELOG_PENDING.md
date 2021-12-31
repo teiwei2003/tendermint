@@ -27,6 +27,10 @@ Special thanks to external contributors on this release:
 
 - Go API
 
+  - [rpc] \#7474 Remove the "URI" RPC client. (@creachadair)
+  - [libs/pubsub] \#7451 Internalize the pubsub packages. (@creachadair)
+  - [libs/sync] \#7450 Internalize and remove the library. (@creachadair)
+  - [libs/async] \#7449 Move library to internal. (@creachadair)
   - [pubsub] \#7231 Remove unbuffered subscriptions and rework the Subscription interface. (@creachadair)
   - [eventbus] \#7231 Move the EventBus type to the internal/eventbus package. (@creachadair)
   - [blocksync] \#7046 Remove v2 implementation of the blocksync service and recactor, which was disabled in the previous release. (@tychoish)

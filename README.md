@@ -50,7 +50,7 @@ to notify you of vulnerabilities and fixes in Tendermint Core. You can subscribe
 
 | Requirement | Notes            |
 |-------------|------------------|
-| Go version  | Go1.16 or higher |
+| Go version  | Go1.17 or higher |
 
 ## Documentation
 
@@ -63,7 +63,7 @@ See the [install instructions](/docs/introduction/install.md).
 ### Quick Start
 
 - [Single node](/docs/introduction/quick-start.md)
-- [Local cluster using docker-compose](/docs/networks/docker-compose.md)
+- [Local cluster using docker-compose](/docs/tools/docker-compose.md)
 - [Remote cluster using Terraform and Ansible](/docs/tools/terraform-and-ansible.md)
 - [Join the Cosmos testnet](https://cosmos.network/testnet)
 
