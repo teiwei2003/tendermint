@@ -8,18 +8,18 @@
 
 ## 语境
 
-我们目前通过 2 种方式检查 tx 的有效性。
+我们目前通过 2 种方式检查 tx 的有效性.
 
-1.通过mempool连接中的checkTx。
-2. 通过deliverTx 共识连接。
+1.通过mempool连接中的checkTx.
+2. 通过deliverTx 共识连接.
 
-第一个是在外部 tx 进来时调用，所以这次节点应该是一个提议者。当外部块进入并到达提交阶段时调用第二个，节点不需要是块的提议者，但是它应该检查该块中的 txs。
+第一个是在外部 tx 进来时调用，所以这次节点应该是一个提议者.当外部块进入并到达提交阶段时调用第二个，节点不需要是块的提议者，但是它应该检查该块中的 txs.
 
-第二种情况，如果区块中有很多无效的交易，那么所有节点发现区块中的大部分交易都是无效的就为时已晚，我们最好也不要在区块链中记录无效的交易。
+第二种情况，如果区块中有很多无效的交易，那么所有节点发现区块中的大部分交易都是无效的就为时已晚，我们最好也不要在区块链中记录无效的交易.
 
 ## 建议的解决方案
 
-因此，我们应该在发出预投票之前找到一种方法来检查 txs 的有效性。目前我们有 cs.isProposalComplete() 来判断一个区块是否完整。我们可以有
+因此，我们应该在发出预投票之前找到一种方法来检查 txs 的有效性.目前我们有 cs.isProposalComplete() 来判断一个区块是否完整.我们可以有
 
 ```
 func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
@@ -35,9 +35,9 @@ func (blockExec *BlockExecutor) CheckBlock(block *types.Block) error {
 }
 ```
 
-BlockExecutor 中的这种方法来检查该块中所有交易的有效性。
+BlockExecutor 中的这种方法来检查该块中所有交易的有效性.
 
-但是，这种方法不应该这样实现，因为 checkTx 将共享应用程序内存池中使用的相同状态。 所以我们应该在Application中定义一个新的接口方法checkBlock来指示它使用与deliverTx相同的状态。
+但是，这种方法不应该这样实现，因为 checkTx 将共享应用程序内存池中使用的相同状态. 所以我们应该在Application中定义一个新的接口方法checkBlock来指示它使用与deliverTx相同的状态.
 
 ```
 type Application interface {
@@ -58,7 +58,7 @@ type Application interface {
 }
 ```
 
-所有应用程序都应该实现该方法。 例如，计数器:
+所有应用程序都应该实现该方法. 例如，计数器:
 
 ```
 func (app *CounterApplication) CheckBlock(block types.Request_CheckBlock) types.ResponseCheckBlock {
@@ -97,9 +97,9 @@ func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 }
 ```
 
-txCount 就像ethermint 中的nonce，在进入deliverTx 阶段时应该恢复。而一些操作，如检查 tx 签名不需要再次执行。所以deliverTx可以专注于如何应用一个tx，而忽略对tx的检查，因为之前所有的检查都已经在checkBlock阶段完成了。
+txCount 就像ethermint 中的nonce，在进入deliverTx 阶段时应该恢复.而一些操作，如检查 tx 签名不需要再次执行.所以deliverTx可以专注于如何应用一个tx，而忽略对tx的检查，因为之前所有的检查都已经在checkBlock阶段完成了.
 
-一个可选的优化是将 deliveryTx 更改为 deliveryBlock。因为块已经被checkBlock检查过，所以里面的所有交易都是有效的。所以app可以缓存block，在deliverBlock阶段，只需要在缓存中应用block即可。这种优化可以节省deliverTx 中的网络电流。
+一个可选的优化是将 deliveryTx 更改为 deliveryBlock.因为块已经被checkBlock检查过，所以里面的所有交易都是有效的.所以app可以缓存block，在deliverBlock阶段，只需要在缓存中应用block即可.这种优化可以节省deliverTx 中的网络电流.
 
 
 
@@ -109,17 +109,17 @@ txCount 就像ethermint 中的nonce，在进入deliverTx 阶段时应该恢复�
 
 ## 决定
 
-性能影响被认为太大。见[#2384](https://github.com/tendermint/tendermint/issues/2384)
+性能影响被认为太大.见[#2384](https://github.com/tendermint/tendermint/issues/2384)
 
 ## 结果
 
 ### 积极的
 
-- 更稳健地保护对手提出一个充满无效交易的区块。
+- 更稳健地保护对手提出一个充满无效交易的区块.
 
 ### 消极的
 
-- 添加新的接口方法。应用程序逻辑需要调整以吸引它。
+- 添加新的接口方法.应用程序逻辑需要调整以吸引它.
 - 通过 ABCI 发送所有 tx 数据两次
 - 潜在的冗余验证(例如 CheckBlock 和
   DeliverTx)

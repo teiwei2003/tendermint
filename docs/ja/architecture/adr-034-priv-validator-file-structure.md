@@ -6,9 +6,9 @@
 
 ## 環境
 
-現在、PrivValidatorファイル「priv_validator.json」には可変部分と不変部分が含まれています。
+現在、PrivValidatorファイル「priv_validator.json」には可変部分と不変部分が含まれています.
 ディスク上の秘密鍵が暗号化されていない安全でないモードでも、分離は合理的です
-可変部分と不変部分。
+可変部分と不変部分.
 
 参照する:
 [#1181](https://github.com/tendermint/tendermint/issues/1181)
@@ -17,7 +17,7 @@
 
 ## 推奨される解決策
 
-可変部分と不変部分を2つの構造で分割できます。
+可変部分と不変部分を2つの構造で分割できます.
 ```go
 // FilePVKey stores the immutable part of PrivValidator
 type FilePVKey struct {
@@ -41,7 +41,7 @@ type FilePVLastSignState struct {
 }
 ```
 
-次に、 `FilePVKey`と` FilePVLastSignState`を組み合わせて、元の `FilePV`を取得できます。
+次に、 `FilePVKey`と` FilePVLastSignState`を組み合わせて、元の `FilePV`を取得できます.
 
 ```go
 type FilePV struct {
@@ -50,10 +50,10 @@ type FilePV struct {
 }
 ```
 
-前述のように、 `FilePV`は` config`に配置し、 `FilePVLastSignState`は` data`に保存する必要があります。 この
-各ファイルのストレージパスは `config.yml`で指定する必要があります。
+前述のように、 `FilePV`は` config`に配置し、 `FilePVLastSignState`は` data`に保存する必要があります. この
+各ファイルのストレージパスは `config.yml`で指定する必要があります.
 
-次に行う必要があるのは、 `FilePV`のメソッドを変更することです。
+次に行う必要があるのは、 `FilePV`のメソッドを変更することです.
 
 ## ステータス
 

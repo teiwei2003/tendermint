@@ -2,39 +2,39 @@
 
 ## ガイド仮説
 
-このガイドは、テンダーミントを使い始めたい初心者を対象としています。
-ゼロからのコアアプリケーション。以前に持っていることを前提とはしていません
-TendermintCoreの使用経験。
+このガイドは、テンダーミントを使い始めたい初心者を対象としています.
+ゼロからのコアアプリケーション.以前に持っていることを前提とはしていません
+TendermintCoreの使用経験.
 
-Tendermint Coreは、状態を採用するビザンチンフォールトトレラント(BFT)ミドルウェアです。
+Tendermint Coreは、状態を採用するビザンチンフォールトトレラント(BFT)ミドルウェアです.
 翻訳者(あなたのアプリケーション)-あらゆるプログラミング言語で書かれています-そして安全です
-多くのマシンにコピーします。
+多くのマシンにコピーします.
 
 このガイドに従うことで、Tendermintコアプロジェクトを作成します
-kvstoreと呼ばれる、(非常に)単純な分散BFTキー値ストア。アプリケーション(
-ブロックリンクインターフェース(ABCI)の実現はJavaで書かれます。
+kvstoreと呼ばれる、(非常に)単純な分散BFTキー値ストア.アプリケーション(
+ブロックリンクインターフェース(ABCI)の実現はJavaで書かれます.
 
-このガイドは、あなたがJVMの世界に精通していることを前提としています。初心者の場合は、[JVM最小サバイバルガイド](https://hadihariri.com/2013/12/29/jvm-minimal-survival-guide-for-the-dotnet-developer/#java-the -language -java-the-ecosystem-java-the-jvm)および[Gradle Docs](https://docs.gradle.org/current/userguide/userguide.html)。
+このガイドは、あなたがJVMの世界に精通していることを前提としています.初心者の場合は、[JVM最小サバイバルガイド](https://hadihariri.com/2013/12/29/jvm-minimal-survival-guide-for-the-dotnet-developer/#java-the -language -java-the-ecosystem-java-the-jvm)および[Gradle Docs](https://docs.gradle.org/current/userguide/userguide.html).
 
 ## 組み込みアプリケーションと外部アプリケーション
 
-Golangを使用する場合は、アプリケーションとTendermintCoreを同じプロセスで実行して最大のパフォーマンスを得ることができます。
-[Cosmos SDK](https://github.com/cosmos/cosmos-sdk)は次のように記述されています。
-詳細については、[Goでの組み込みTendermint Coreアプリケーションの作成](./go-built-in.md)ガイドを参照してください。
+Golangを使用する場合は、アプリケーションとTendermintCoreを同じプロセスで実行して最大のパフォーマンスを得ることができます.
+[Cosmos SDK](https://github.com/cosmos/cosmos-sdk)は次のように記述されています.
+詳細については、[Goでの組み込みTendermint Coreアプリケーションの作成](./go-built-in.md)ガイドを参照してください.
 
-このガイドで行ったように、別の言語を選択する場合は、別のアプリケーションを作成する必要があります。
-ソケット(UNIXまたはTCP)またはgRPCを介してTendermintCoreと通信します。
-このガイドでは、RPCサーバーを使用して外部アプリケーションを構築する方法を説明します。
+このガイドで行ったように、別の言語を選択する場合は、別のアプリケーションを作成する必要があります.
+ソケット(UNIXまたはTCP)またはgRPCを介してTendermintCoreと通信します.
+このガイドでは、RPCサーバーを使用して外部アプリケーションを構築する方法を説明します.
 
 別のアプリケーションを使用すると、セキュリティがより確実に保証される場合があります
-プロセスは、確立されたバイナリプロトコルを介して通信します。肌の若返り
-コアはアプリケーションの状態にアクセスできなくなります。
+プロセスは、確立されたバイナリプロトコルを介して通信します.肌の若返り
+コアはアプリケーションの状態にアクセスできなくなります.
 
 ## 1.1JavaとGradleをインストールする
 
-[OracleのJDKインストールガイド](https://www.oracle.com/technetwork/java/javase/downloads/index.html)を参照してください。
+[OracleのJDKインストールガイド](https://www.oracle.com/technetwork/java/javase/downloads/index.html)を参照してください.
 
-Javaが正常にインストールされたことを確認します。
+Javaが正常にインストールされたことを確認します.
 
 ```bash
 $ java -version
@@ -43,8 +43,8 @@ Java(TM) SE Runtime Environment (build 12.0.2+10)
 Java HotSpot(TM) 64-Bit Server VM (build 12.0.2+10, mixed mode, sharing)
 ```
 
-您可以选择任何高于或等于 8 的 Java 版本。
-本指南使用 Java SE Development Kit 12 编写。
+您可以选择任何高于或等于 8 的 Java 版本.
+本指南使用 Java SE Development Kit 12 编写.
 
 确保您设置了 `$JAVA_HOME` 环境变量:
 
@@ -53,11 +53,11 @@ $ echo $JAVA_HOME
 /Library/Java/JavaVirtualMachines/jdk-12.0.2.jdk/Contents/Home
 ```
 
-Gradleのインストールについては、[公式ガイド](https://gradle.org/install/)を参照してください。
+Gradleのインストールについては、[公式ガイド](https://gradle.org/install/)を参照してください.
 
 ## 1.2新しいJavaプロジェクトを作成する
 
-まず、新しいGradleプロジェクトを作成します。
+まず、新しいGradleプロジェクトを作成します.
 
 ```bash
 export KVSTORE_HOME=~/kvstore
@@ -65,13 +65,13 @@ mkdir $KVSTORE_HOME
 cd $KVSTORE_HOME
 ```
 
-サンプルディレクトリで実行します。
+サンプルディレクトリで実行します.
 
 ```bash
 gradle init --dsl groovy --package io.example --project-name example --type java-application --test-framework junit
 ```
 
-これにより、新しいプロジェクトが作成されます。 ファイルツリーは次のようになります。
+これにより、新しいプロジェクトが作成されます. ファイルツリーは次のようになります.
 
 ```bash
 $ tree
@@ -99,7 +99,7 @@ $ tree
         `-- resources
 ```
 
-実行すると、「Helloworld」が出力されます。 標準出力へ。
+実行すると、「Helloworld」が出力されます. 標準出力へ.
 
 ```bash
 $ ./gradlew run
@@ -110,14 +110,14 @@ Hello world.
 ## 1.3Tendermintコアアプリケーションの作成
 
 Tendermint Coreは、アプリケーションを介してアプリケーションと通信します
-ブロックリンクポート(ABCI)。 すべてのメッセージタイプは[protobuf
-ファイル](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto)。
-これにより、TendermintCoreはプログラムで記述されたアプリケーションを実行できます。
-言語。
+ブロックリンクポート(ABCI). すべてのメッセージタイプは[protobuf
+ファイル](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
+これにより、TendermintCoreはプログラムで記述されたアプリケーションを実行できます.
+言語.
 
 ### 1.3.1.protoファイルをコンパイルする
 
-`build.gradle`の先頭に次のセクションを追加します。
+`build.gradle`の先頭に次のセクションを追加します.
 
 ```groovy
 buildscript {
@@ -130,7 +130,7 @@ buildscript {
 }
 ```
 
-build.gradleのプラグインセクションでprotobufプラグインを有効にします。
+build.gradleのプラグインセクションでprotobufプラグインを有効にします.
 
 ```groovy
 plugins {
@@ -158,9 +158,9 @@ protobuf {
 }
 ```
 
-これで、 `* .proto`ファイルをコンパイルする準備が整いました。
+これで、 `* .proto`ファイルをコンパイルする準備が整いました.
 
-必要な `.proto`ファイルをプロジェクトにコピーします。
+必要な `.proto`ファイルをプロジェクトにコピーします.
 
 ```bash
 mkdir -p \
@@ -191,7 +191,7 @@ cp $GOPATH/src/github.com/gogo/protobuf/gogoproto/gogo.proto \
    $KVSTORE_HOME/src/main/proto/github.com/gogo/protobuf/gogoproto/gogo.proto
 ```
 
-これらの依存関係を `build.gradle`に追加します。
+これらの依存関係を `build.gradle`に追加します.
 
 ```groovy
 dependencies {
@@ -207,7 +207,7 @@ To generate all protobuf-type classes run:
 ./gradlew generateProto
 ```
 
-すべてがうまくいったことを確認するために、 `build/generated/`ディレクトリをチェックすることができます。
+すべてがうまくいったことを確認するために、 `build/generated/`ディレクトリをチェックすることができます.
 
 ```bash
 $ tree build/generated/
@@ -234,9 +234,9 @@ build/generated/
 ### 1.3.2ABCIを実装する
 
 生成された `$ KVSTORE_HOME/build/generated/source/proto/main/grpc/types/ABCIApplicationGrpc.java`ファイル
-実装する必要のあるインターフェースである抽象クラス「ABCIApplicationImplBase」が含まれています。
+実装する必要のあるインターフェースである抽象クラス「ABCIApplicationImplBase」が含まれています.
 
-次の内容の `$ KVSTORE_HOME/src/main/java/io/example/KVStoreApp.java`ファイルを作成します。
+次の内容の `$ KVSTORE_HOME/src/main/java/io/example/KVStoreApp.java`ファイルを作成します.
 
 ```java
 package io.example;
@@ -252,13 +252,13 @@ class KVStoreApp extends ABCIApplicationGrpc.ABCIApplicationImplBase {
 }
 ```
 
-次に、ABCIApplicationImplBaseの各メソッドを介して呼び出され、追加されるタイミングについて説明します。
-必要なビジネスロジック。
+次に、ABCIApplicationImplBaseの各メソッドを介して呼び出され、追加されるタイミングについて説明します.
+必要なビジネスロジック.
 
 ### 1.3.3 CheckTx
 
 新しいトランザクションがTendermintCoreに追加されると、
-それをチェックするためのアプリケーション(フォーマット、署名などを確認します)。
+それをチェックするためのアプリケーション(フォーマット、署名などを確認します).
 
 ```java
 @Override
@@ -308,21 +308,21 @@ private List<byte[]> split(ByteString tx, char separator) {
 }
 ```
 
-これがまだコンパイルされていない場合でも、心配する必要はありません。
+これがまだコンパイルされていない場合でも、心配する必要はありません.
 
-トランザクションの形式が `{bytes} = {bytes}`でない場合は、 `1`を返します。
-コード。 同じkey = valueがすでに存在する場合(同じkeyとvalue)、 `2`を返します
-コード。 その他の場合は、有効であることを示すゼロコードを返します。
+トランザクションの形式が `{bytes} = {bytes}`でない場合は、 `1`を返します.
+コード. 同じkey = valueがすでに存在する場合(同じkeyとvalue)、 `2`を返します
+コード. その他の場合は、有効であることを示すゼロコードを返します.
 
 ゼロ以外のコードを含むコンテンツは無効と見なされることに注意してください( `-1`、` 100`、
-など)テンダーミントコアによる。
+など)テンダーミントコアによる.
 
 有効なトランザクションは、大きすぎず、
-十分なガス。 天然ガスの詳細については、["
-仕様 "](https://docs.tendermint.com/master/spec/abci/apps.html#gas)。
+十分なガス. 天然ガスの詳細については、["
+仕様 "](https://docs.tendermint.com/master/spec/abci/apps.html#gas).
 
 基になるKey-Valueストアには、
-[JetBrains Xodus](https://github.com/JetBrains/xodus)、これはトランザクションモードなしでJavaで記述された組み込みの高性能データベースです。
+[JetBrains Xodus](https://github.com/JetBrains/xodus)、これはトランザクションモードなしでJavaで記述された組み込みの高性能データベースです.
 
 `build.gradle`:
 
@@ -369,8 +369,8 @@ class KVStoreApp extends ABCIApplicationGrpc.ABCIApplicationImplBase {
 
 Tendermint Coreがブロックを決定すると、ブロックはに転送されます
 アプリケーションは3つの部分に分かれています: `BeginBlock`、トランザクションごとに1つの` DeliverTx`、
-最後は `EndBlock`です。 `DeliverTx`は非同期で送信していますが、
-整然とした対応が期待されます。
+最後は `EndBlock`です. `DeliverTx`は非同期で送信していますが、
+整然とした対応が期待されます.
 
 ```java
 @Override
@@ -405,18 +405,18 @@ public void deliverTx(RequestDeliverTx req, StreamObserver<ResponseDeliverTx> re
 ```
 
 トランザクション形式が間違っているか、同じkey = valueがすでに存在する場合、
-ゼロ以外のコードが再び返されます。 それ以外の場合は、ストアに追加します。
+ゼロ以外のコードが再び返されます. それ以外の場合は、ストアに追加します.
 
 現在の設計では、ブロックに誤ったトランザクションが含まれている可能性があります(これらのトランザクション
 「CheckTx」は渡されましたが、「DeliverTx」に含まれるトランザクションまたは提案者が失敗しました
-直接)。 これは、パフォーマンス上の理由から行われます。
+直接). これは、パフォーマンス上の理由から行われます.
 
 この場合、 `DeliverTx`内でトランザクションをコミットできないことに注意してください
 並行して呼び出すことができるクエリは、一貫性のないデータを返します(つまり、
 実際のブロックが存在しない場合でも、特定の値がすでに存在していることが報告されます
-まだ提出されていません)。
+まだ提出されていません).
 
-`Commit`は、新しい状態を維持するようにアプリケーションに指示します。
+`Commit`は、新しい状態を維持するようにアプリケーションに指示します.
 
 ```java
 @Override
@@ -433,16 +433,16 @@ public void commit(RequestCommit req, StreamObserver<ResponseCommit> responseObs
 ### 1.3.5クエリ
 
 これで、クライアントが特定のキー/値がいつ存在するかを知りたい場合、
-Tendermint Core RPC `/abci_query`エンドポイントを呼び出します。エンドポイントは次に呼び出します
-アプリケーションの `Query`メソッド。
+Tendermint Core RPC `/abci_query`エンドポイントを呼び出します.エンドポイントは次に呼び出します
+アプリケーションの `Query`メソッド.
 
-アプリケーションは独自のAPIを無料で提供できます。 しかし、テンダーミントコアを使用することによって
+アプリケーションは独自のAPIを無料で提供できます. しかし、テンダーミントコアを使用することによって
 プロキシとして、クライアント([ライトクライアントを含む
 パッケージ](https://godoc.org/github.com/tendermint/tendermint/light))が利用可能
-さまざまなアプリケーションにまたがる統合API。 さらに、彼らは電話する必要はありません
-それ以外の場合は、追加の証明のために別のTendermintコアAPIが使用されます。
+さまざまなアプリケーションにまたがる統合API. さらに、彼らは電話する必要はありません
+それ以外の場合は、追加の証明のために別のTendermintコアAPIが使用されます.
 
-ここには証拠が含まれていないことに注意してください。
+ここには証拠が含まれていないことに注意してください.
 
 ```java
 @Override
@@ -463,11 +463,11 @@ public void query(RequestQuery req, StreamObserver<ResponseQuery> responseObserv
 ```
 
 完全な仕様は見つけることができます
-[こちら](https://docs.tendermint.com/master/spec/abci/)。
+[こちら](https://docs.tendermint.com/master/spec/abci/).
 
 ## 1.4アプリケーションとTendermintCoreインスタンスを起動します
 
-次のコードを `$ KVSTORE_HOME/src/main/java/io/example/App.java`ファイルに配置します。
+次のコードを `$ KVSTORE_HOME/src/main/java/io/example/App.java`ファイルに配置します.
 
 ```java
 package io.example;
@@ -489,11 +489,11 @@ public class App {
 }
 ```
 
-これは、アプリケーションのエントリポイントです。
-ここでは、アプリケーションの状態を格納する場所を認識する特別なオブジェクト「Environment」を作成しました。
-次に、GRPCサーバーを作成して起動し、TendermintCoreリクエストを処理します。
+これは、アプリケーションのエントリポイントです.
+ここでは、アプリケーションの状態を格納する場所を認識する特別なオブジェクト「Environment」を作成しました.
+次に、GRPCサーバーを作成して起動し、TendermintCoreリクエストを処理します.
 
-次の内容の `$ KVSTORE_HOME/src/main/java/io/example/GrpcServer.java`ファイルを作成します。
+次の内容の `$ KVSTORE_HOME/src/main/java/io/example/GrpcServer.java`ファイルを作成します.
 ```java
 package io.example;
 
@@ -538,8 +538,8 @@ class GrpcServer {
 ## 1.5起動して実行
 
 デフォルト構成、nodeKey、およびプライベートバリデーターファイルを作成するには、
-`tendermintinit`を実行します。 ただし、その前に、インストールする必要があります
-テンダーミントコア。
+`tendermintinit`を実行します. ただし、その前に、インストールする必要があります
+テンダーミントコア.
 
 ```bash
 $ rm -rf/tmp/example
@@ -565,8 +565,8 @@ We are ready to start our application:
 gRPC server started, listening on 26658
 ```
 
-次に、Tendermint Coreを起動して、アプリケーションをポイントする必要があります。 止まる
-アプリケーションディレクトリで実行します。
+次に、Tendermint Coreを起動して、アプリケーションをポイントする必要があります. 止まる
+アプリケーションディレクトリで実行します.
 
 ```bash
 $ TMHOME="/tmp/example" tendermint node --abci grpc --proxy-app tcp://127.0.0.1:26658
@@ -614,13 +614,13 @@ $ curl -s 'localhost:26657/abci_query?data="tendermint"'
 }
 ```
 
-`dGVuZGVybWludA==` 和 `cm9ja3M=` 分别是 `tendermint` 和 `rocks` 的 ASCII 码的 base64 编码。
+`dGVuZGVybWludA==` 和 `cm9ja3M=` 分别是 `tendermint` 和 `rocks` 的 ASCII 码的 base64 编码.
 
 ## 終わり
 
 私はすべてがうまくいくことを願っています、あなたの最初ですが、最後ではないことを願っています、
-TendermintCoreアプリケーションが稼働しています。 そうでない場合は、[質問を開いてください
-Github](https://github.com/tendermint/tendermint/issues/new/choose)。 掘る
-[ドキュメント](https://docs.tendermint.com/master/)を詳しく読んでください。
+TendermintCoreアプリケーションが稼働しています. そうでない場合は、[質問を開いてください
+Github](https://github.com/tendermint/tendermint/issues/new/choose). 掘る
+[ドキュメント](https://docs.tendermint.com/master/)を詳しく読んでください.
 
-このサンプルプロジェクトの完全なソースコードは[ここ](https://github.com/climber73/tendermint-abci-grpc-java)にあります。
+このサンプルプロジェクトの完全なソースコードは[ここ](https://github.com/climber73/tendermint-abci-grpc-java)にあります.

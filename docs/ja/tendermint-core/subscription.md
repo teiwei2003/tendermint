@@ -1,20 +1,20 @@
 # Websocketを介してイベントをサブスクライブする
 
-Tendermintはさまざまなイベントを発行します。次の方法でサブスクライブできます
-[Websocket](https://en.wikipedia.org/wiki/WebSocket)。 これは便利です
-サードパーティのアプリケーション(分析用)またはステータスの確認に使用されます。
+Tendermintはさまざまなイベントを発行します.次の方法でサブスクライブできます
+[Websocket](https://en.wikipedia.org/wiki/WebSocket). これは便利です
+サードパーティのアプリケーション(分析用)またはステータスの確認に使用されます.
 
 [イベントリスト](https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants)
 
-CLIからWebSocketを介してノードに接続するには、次のようなものを使用できます。
+CLIからWebSocketを介してノードに接続するには、次のようなものを使用できます.
 [wscat](https://github.com/websockets/wscat)そして実行:
 
 ```sh
 wscat ws://127.0.0.1:26657/websocket
 ```
 
-`subscribe` RPCを呼び出すことで、上記のイベントのいずれかをサブスクライブできます。
-Websocketと効果的なクエリによるメソッド。
+`subscribe` RPCを呼び出すことで、上記のイベントのいずれかをサブスクライブできます.
+Websocketと効果的なクエリによるメソッド.
 
 ```json
 {
@@ -28,19 +28,19 @@ Websocketと効果的なクエリによるメソッド。
 ```
 
 [APIドキュメント](https://docs.tendermint.com/master/rpc/)を表示する
-クエリ構文およびその他のオプションに関する詳細情報。
+クエリ構文およびその他のオプションに関する詳細情報.
 
-DeliverTxにタグを含めていれば、タグを使用することもできます。
-応答、トランザクション結果を照会します。 [インデックス]を参照してください
-詳細については、トランザクション](../app-dev/indexing-transactions.md)を参照してください。
+DeliverTxにタグを含めていれば、タグを使用することもできます.
+応答、トランザクション結果を照会します. [インデックス]を参照してください
+詳細については、トランザクション](../app-dev/indexing-transactions.md)を参照してください.
 
 ## バリデーターセットの更新
 
-バリデーターセットが変更されると、ValidatorSetUpdatesイベントが通知されます。 この
-このイベントには、公開鍵と電源のペアのリストが含まれています。 リストは同じです
+バリデーターセットが変更されると、ValidatorSetUpdatesイベントが通知されます. この
+このイベントには、公開鍵と電源のペアのリストが含まれています. リストは同じです
 テンダーミントはABCIアプリケーションから受信されます([EndBlockを参照]
 パート)(https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#endblock)
-ABCI仕様)。
+ABCI仕様).
 
 返事:
 

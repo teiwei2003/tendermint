@@ -1,6 +1,6 @@
 # Docker構成
 
-Docker Composeを使用すると、1つのコマンドでローカルテストネットを起動できます。
+Docker Composeを使用すると、1つのコマンドでローカルテストネットを起動できます.
 
 ## 必須
 
@@ -11,10 +11,10 @@ Docker Composeを使用すると、1つのコマンドでローカルテスト�
 ## 我慢する
 
 `tendermint`バイナリとオプションの` tendermint/localnode`をビルドします
-Dockerイメージ。
+Dockerイメージ.
 
-バイナリファイルはコンテナにマウントされるため、更新は必要ありません。
-画像を再構成します。
+バイナリファイルはコンテナにマウントされるため、更新は必要ありません.
+画像を再構成します.
 
 ```sh
 # Build the linux binary in ./build
@@ -33,19 +33,19 @@ make localnet-start
 ```
 
 ノードは、RPCサーバーをポート26657、26660、26662、および26664にバインドします
-ホスト。
+ホスト.
 
-このファイルは、ローカルノードイメージを使用して4ノードネットワークを作成します。
+このファイルは、ローカルノードイメージを使用して4ノードネットワークを作成します.
 
 ネットワークノードは、P2Pお​​よびRPCエンドポイントをホストに公開します
-ポート26656-26657、26659-26660、26661-26662、および26663-26664でそれぞれ。
+ポート26656-26657、26659-26660、26661-26662、および26663-26664でそれぞれ.
 
-最初のノード( `node0`)は、2つの追加ポートを公開します。分析用の6060
+最初のノード( `node0`)は、2つの追加ポートを公開します.分析用の6060
 [`pprof`](https://golang.org/pkg/net/http/pprof)および` 9090`-Prometheusの場合
 サーバー(チェックアウトの開始方法がわからない場合["最初のステップ|
-Prometheus "](https://prometheus.io/docs/introduction/first_steps/))。
+Prometheus "](https://prometheus.io/docs/introduction/first_steps/)).
 
-バイナリを更新するには、バイナリを再構築してノードを再起動します。
+バイナリを更新するには、バイナリを再構築してノードを再起動します.
 
 ```sh
 make build-linux
@@ -54,11 +54,11 @@ make localnet-start
 
 ## 構成
 
-`make localnet-start`は、`。/build`に4ノードのテストネット用のファイルを作成します
-`tenderminttestnet`コマンドを呼び出します。
+`make localnet-start`は、`./build`に4ノードのテストネット用のファイルを作成します
+`tenderminttestnet`コマンドを呼び出します.
 
-`。/build`ディレクトリを`/tendermint`マウントポイントにマウントしてアタッチします
-コンテナへのバイナリファイルと構成ファイル。
+`./build`ディレクトリを`/tendermint`マウントポイントにマウントしてアタッチします
+コンテナへのバイナリファイルと構成ファイル.
 
 バリデーター/非バリデーターの数を変更するには、 `localnet-start` Makefileターゲットを変更してください[ここ](../../Makefile):
 
@@ -68,9 +68,9 @@ localnet-start: localnet-stop
   docker-compose up
 ```
 
-このコマンドは、5つのバリデーターと3つのバリデーターの構成ファイルを生成します。
-非検証者。 新しい構成ファイルを生成することに加えて、docker-composeファイルも編集する必要があります。
-生成された構成ファイルを最大限に活用するには、さらに4つのノードを追加する必要があります。
+このコマンドは、5つのバリデーターと3つのバリデーターの構成ファイルを生成します.
+非検証者. 新しい構成ファイルを生成することに加えて、docker-composeファイルも編集する必要があります.
+生成された構成ファイルを最大限に活用するには、さらに4つのノードを追加する必要があります.
 
 ```yml
   node3: # bump by 1 for every node
@@ -97,7 +97,7 @@ rm -rf ./build/node*
 
 ## ABCIコンテナを構成する
 
-4ノードのセットアップで独自のABCIアプリケーションを使用するには、[docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml)ファイルを編集して画像を追加しますABCIアプリケーションに追加します。
+4ノードのセットアップで独自のABCIアプリケーションを使用するには、[docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml)ファイルを編集して画像を追加しますABCIアプリケーションに追加します.
 
 ```yml
  abci0:
@@ -146,7 +146,7 @@ rm -rf ./build/node*
 
 ```
 
-各ノードの[コマンド](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12)を上書きして、そのABCIに接続します。
+各ノードの[コマンド](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12)を上書きして、そのABCIに接続します.
 
 ```yml
   node0:
@@ -169,12 +169,12 @@ node1、node2、node3についても同じことを行い、[run testnet](https:
 
 ## 記録
 
-ログは、添付ボリュームの下の「tendermint.log」ファイルに保存されます。 もしも
-起動時に `LOG`環境変数は` stdout`に設定され、ログは保存されません。
-しかし、画面に印刷されます。
+ログは、添付ボリュームの下の「tendermint.log」ファイルに保存されます. もしも
+起動時に `LOG`環境変数は` stdout`に設定され、ログは保存されません.
+しかし、画面に印刷されます.
 
 ## 特別なバイナリファイル
 
 異なる名前のバイナリファイルが複数ある場合は、どれを指定できますか
-`BINARY`環境変数を使用して実行します。 バイナリパスは相対的です
-付属のボリュームに。
+`BINARY`環境変数を使用して実行します. バイナリパスは相対的です
+付属のボリュームに.

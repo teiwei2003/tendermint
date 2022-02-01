@@ -6,9 +6,9 @@
 
 ## 语境
 
-目前，PrivValidator 文件“priv_validator.json”包含可变和不可变部分。
+目前，PrivValidator 文件“priv_validator.json”包含可变和不可变部分.
 即使在不加密磁盘上的私钥的不安全模式下，分离也是合理的
-可变部分和不可变部分。
+可变部分和不可变部分.
 
 参考:
 [#1181](https://github.com/tendermint/tendermint/issues/1181)
@@ -41,7 +41,7 @@ type FilePVLastSignState struct {
 }
 ```
 
-然后我们可以将`FilePVKey` 和`FilePVLastSignState` 结合起来，就可以得到原来的`FilePV`。
+然后我们可以将`FilePVKey` 和`FilePVLastSignState` 结合起来，就可以得到原来的`FilePV`.
 
 ```go
 type FilePV struct {
@@ -50,10 +50,10 @@ type FilePV struct {
 }
 ```
 
-如前所述，`FilePV` 应该位于`config` 中，而`FilePVLastSignState` 应该存储在`data` 中。 这
-每个文件的存储路径应该在`config.yml`中指定。
+如前所述，`FilePV` 应该位于`config` 中，而`FilePVLastSignState` 应该存储在`data` 中. 这
+每个文件的存储路径应该在`config.yml`中指定.
 
-接下来我们需要做的是改变`FilePV`的方法。
+接下来我们需要做的是改变`FilePV`的方法.
 
 ## 状态
 

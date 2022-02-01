@@ -3,13 +3,13 @@
 Blocksync Reactor 的高层职责是让那些
 远远落后于当前的共识状态，通过下载快速赶上
 许多块并行，验证它们的提交，并针对它们执行它们
-ABCI 申请。
+ABCI 申请.
 
 Tendermint 全节点运行 Blocksync Reactor 作为提供区块的服务
-到新节点。新节点以“fast_sync”模式运行 Blocksync Reactor，
-他们主动请求更多块，直到它们同步。
+到新节点.新节点以“fast_sync”模式运行 Blocksync Reactor，
+他们主动请求更多块，直到它们同步.
 一旦赶上，“fast_sync”模式被禁用，节点切换到
-使用(并打开)Consensus Reactor。
+使用(并打开)Consensus Reactor.
 
 ## 架构和算法
 
@@ -17,15 +17,15 @@ Blocksync 反应器被组织为一组并发任务:
 
 - Blocksync Reactor的接收例程
 - 创建请求者的任务
-- 一组请求者任务和 - 控制器任务。
+- 一组请求者任务和 - 控制器任务.
 
 ![Blocksync Reactor 架构图](img/bc-reactor.png)
 
 ### 数据结构
 
-这些是提供 Blocksync Reactor 逻辑所必需的核心数据结构。
+这些是提供 Blocksync Reactor 逻辑所必需的核心数据结构.
 
-请求者数据结构用于跟踪对位置“height”处的“block”的请求分配给 id 等于“peerID”的对等方。
+请求者数据结构用于跟踪对位置“height”处的“block”的请求分配给 id 等于“peerID”的对等方.
 
 ```go
 type Requester {
@@ -37,7 +37,7 @@ type Requester {
 }
 ```
 
-Pool 是一个核心数据结构，它存储最后执行的块(`height`)、对peer的请求分配(`requesters`)、每个peer的当前高度和每个peer的待处理请求数(`peers`)、最大peer高度 ， 等等。
+Pool 是一个核心数据结构，它存储最后执行的块(`height`)、对peer的请求分配(`requesters`)、每个peer的当前高度和每个peer的待处理请求数(`peers`)、最大peer高度 ， 等等.
 
 ```go
 type Pool {
@@ -53,7 +53,7 @@ type Pool {
 }
 ```
 
-Peer 数据结构存储每个 Peer 当前的“高度”和发送到对等点的待处理请求数(“numPending”)等。
+Peer 数据结构存储每个 Peer 当前的“高度”和发送到对等点的待处理请求数(“numPending”)等.
 
 ```go
 type Peer struct {
@@ -65,7 +65,7 @@ type Peer struct {
 }
 ```
 
-BlockRequest 是内部数据结构，用于表示当前对某个“高度”的块的请求到对等方(“PeerID”)的映射。
+BlockRequest 是内部数据结构，用于表示当前对某个“高度”的块的请求到对等方(“PeerID”)的映射.
 
 ```go
 type BlockRequest {
@@ -76,7 +76,7 @@ type BlockRequest {
 
 ### Receive routine of Blocksync Reactor
 
-它在 p2p 接收例程内的 BlocksyncChannel 上接收消息时执行。 有一个单独的 p2p 接收例程(因此是 Blocksync Reactor 的接收例程)为每个对等点执行。 请注意，如果传出缓冲区已满，则尝试发送不会阻塞(立即返回)。
+它在 p2p 接收例程内的 BlocksyncChannel 上接收消息时执行. 有一个单独的 p2p 接收例程(因此是 Blocksync Reactor 的接收例程)为每个对等点执行. 请注意，如果传出缓冲区已满，则尝试发送不会阻塞(立即返回).
 
 ```go
 handleMsg(pool, m):
@@ -132,7 +132,7 @@ onTimeout(p):
 
 ### 请求者任务
 
-请求者任务负责在“height”位置获取单个块。
+请求者任务负责在“height”位置获取单个块.
 
 ```go
 fetchBlock(height, pool):
@@ -179,7 +179,7 @@ pickAvailablePeer(height):
 
 ### 创建请求者的任务
 
-此任务负责不断创建和启动请求者任务。
+此任务负责不断创建和启动请求者任务.
 
 ```go
 createRequesters(pool):
@@ -268,8 +268,8 @@ redoRequestsForPeer(pool, peerId):
 
 为传入消息的最大大小定义 `maxMsgSize`，
 `SendQueueCapacity` 和 `RecvBufferCapacity` 用于最大发送和
-分别接收缓冲区。 这些应该是为了防止放大
+分别接收缓冲区. 这些应该是为了防止放大
 通过设置我们可以接收和发送多少数据的上限来进行攻击
-一个梨。
+一个梨.
 
-发送错误编码的数据将导致停止对等点。
+发送错误编码的数据将导致停止对等点.

@@ -9,39 +9,39 @@
 
 ## 语境
 
-区块链反应器负责两个高级过程:发送/接收来自对等方的块和快速同步块以赶上远远落后的upnode。 [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) 的目标是通过分离业务来重构这两个流程当前包含在 go-channels 中的逻辑到纯 `handle*` 函数中。虽然 ADR 指定了反应堆的最终形式可能是什么样子，但它缺乏关于实现中间步骤的指导。
-下图说明了 [blockchain-reorg](https://github.com/tendermint/tendermint/pull/3561) 反应器的状态，该反应器将被称为“v1”。
+区块链反应器负责两个高级过程:发送/接收来自对等方的块和快速同步块以赶上远远落后的upnode. [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md) 的目标是通过分离业务来重构这两个流程当前包含在 go-channels 中的逻辑到纯 `handle*` 函数中.虽然 ADR 指定了反应堆的最终形式可能是什么样子，但它缺乏关于实现中间步骤的指导.
+下图说明了 [blockchain-reorg](https://github.com/tendermint/tendermint/pull/3561) 反应器的状态，该反应器将被称为“v1”.
 
 ![v1 区块链反应器架构
 图](https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689b​​dadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v1.png)
 
-虽然区块链反应器的“v1”在简化并发模型方面显示出显着改进，但当前的 PR 遇到了一些障碍。
+虽然区块链反应器的“v1”在简化并发模型方面显示出显着改进，但当前的 PR 遇到了一些障碍.
 
-- 当前公关大且难以审查。
-- 块八卦和快速同步过程与共享的“池”数据结构高度耦合。
-- 对等通信分布在多个组件上，创建复杂的依赖图，必须在测试期间模拟。
+- 当前公关大且难以审查.
+- 块八卦和快速同步过程与共享的“池”数据结构高度耦合.
+- 对等通信分布在多个组件上，创建复杂的依赖图，必须在测试期间模拟.
 - 建模为有状态代码的超时在测试中引入了不确定性
 
-此 ADR 旨在指定实现 [ADR-40] (https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor. MD)。
+此 ADR 旨在指定实现 [ADR-40] (https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor. MD).
 
 ## 决定
 
-将区块链反应器的职责划分为一组专门与事件通信的组件。事件将包含时间戳，允许每个组件将时间作为内部状态进行跟踪。内部状态将被一组将产生事件的`handle*` 改变。组件之间的集成将发生在反应器中，然后反应器测试将成为组件之间的集成测试。这种设计将被称为“v2”。
+将区块链反应器的职责划分为一组专门与事件通信的组件.事件将包含时间戳，允许每个组件将时间作为内部状态进行跟踪.内部状态将被一组将产生事件的`handle*` 改变.组件之间的集成将发生在反应器中，然后反应器测试将成为组件之间的集成测试.这种设计将被称为“v2”.
 
 ![v2 区块链反应器架构
 图](https://github.com/tendermint/tendermint/blob/584e67ac3fac220c5c3e0652e3582eca8231e8​​14/docs/architecture/img/blockchain-reactor-v2.png)
 
 ### 快速同步相关的通信渠道
 
-下图显示了快速同步例程以及用于相互通信的通道和队列的类型。
-此外，还显示了 sendRoutine 用于通过 Peer MConnection 发送消息的每个反应器通道。
+下图显示了快速同步例程以及用于相互通信的通道和队列的类型.
+此外，还显示了 sendRoutine 用于通过 Peer MConnection 发送消息的每个反应器通道.
 
 ![v2 区块链通道和队列
 图](https://github.com/tendermint/tendermint/blob/5cf570690f989646fb3b615b734da503f038891f/docs/architecture/img/blockchain-v2-channels.png)
 
 ### Reactor 改动详解
 
-反应器将包括一个多路分解程序，它将每个消息发送到每个子程序进行独立处理。然后每个子例程将选择它感兴趣的消息并调用 [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain) 中指定的句柄特定函数-reactor-refactor.md)。 demuxRoutine 充当“起搏器”，设置预期处理事件的时间。
+反应器将包括一个多路分解程序，它将每个消息发送到每个子程序进行独立处理.然后每个子例程将选择它感兴趣的消息并调用 [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain) 中指定的句柄特定函数-reactor-refactor.md). demuxRoutine 充当“起搏器”，设置预期处理事件的时间.
 
 ```go
 func demuxRoutine(msgs, scheduleMsgs, processorMsgs, ioMsgs) {
@@ -99,7 +99,7 @@ func scheduleRoutine(input chan Message, output chan Message) {
 
 ## 生命周期管理
 
-一组用于各个流程的例程允许流程与清晰的生命周期管理并行运行。 当前存在于反应器中的 `Start`、`Stop` 和 `AddPeer` 钩子将委托给子例程，允许它们独立管理内部状态，而无需进一步耦合到反应器。
+一组用于各个流程的例程允许流程与清晰的生命周期管理并行运行. 当前存在于反应器中的 `Start`、`Stop` 和 `AddPeer` 钩子将委托给子例程，允许它们独立管理内部状态，而无需进一步耦合到反应器.
 
 ```go
 func (r *BlockChainReactor) Start() {
@@ -144,7 +144,7 @@ func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
 
 ## IO 处理
 
-反应器内的 io 处理例程将隔离对等通信。 通过 ioRoutine 的消息通常是一种方式，使用 `p2p` API。 在诸如“trySend”之类的“p2p”API 返回错误的情况下，ioRoutine 可以将这些消息汇集回 demuxRoutine 以分发给其他例程。 例如，来自 ioRoutine 的错误可以被调度程序消耗以通知更好的对等选择实现。
+反应器内的 io 处理例程将隔离对等通信. 通过 ioRoutine 的消息通常是一种方式，使用 `p2p` API. 在诸如“trySend”之类的“p2p”API 返回错误的情况下，ioRoutine 可以将这些消息汇集回 demuxRoutine 以分发给其他例程. 例如，来自 ioRoutine 的错误可以被调度程序消耗以通知更好的对等选择实现.
 
 ```go
 func (r *BlockchainReacor) ioRoutine(ioMesgs chan Message, outMsgs chan Message) {
@@ -173,7 +173,7 @@ func (r *BlockchainReacor) ioRoutine(ioMesgs chan Message, outMsgs chan Message)
 
 ### 处理器内部
 
-处理器负责排序、验证和执行块。 处理器将维护一个内部光标“高度”，指的是最后一个处理的块。 当一组块无序到达时，处理器将检查它是否有处理下一个块所需的“高度+1”。 处理器还维护对等点到高度的映射“blockPeers”，以跟踪哪个对等点在“高度”处提供了块。 `blockPeers` 可以在 `handleRemovePeer(...)` 中使用，以重新安排由出错的对等方提供的所有未处理的块。
+处理器负责排序、验证和执行块. 处理器将维护一个内部光标“高度”，指的是最后一个处理的块. 当一组块无序到达时，处理器将检查它是否有处理下一个块所需的“高度+1”. 处理器还维护对等点到高度的映射“blockPeers”，以跟踪哪个对等点在“高度”处提供了块. `blockPeers` 可以在 `handleRemovePeer(...)` 中使用，以重新安排由出错的对等方提供的所有未处理的块.
 
 ```go
 type Processor struct {
@@ -232,7 +232,7 @@ func handleTimeCheckEv(time) {
 
 ## 日程
 
-Schedule根据一些调度算法维护用于调度blockRequestMessages的内部状态。 日程表需要在以下方面保持状态:
+Schedule根据一些调度算法维护用于调度blockRequestMessages的内部状态. 日程表需要在以下方面保持状态:
 
 - 每个块的状态 `blockState` 似乎达到 maxHeight 的高度
 - 一组对等点及其对等状态`peerState`
@@ -315,7 +315,7 @@ type scPeer struct {
 调度程序被配置为在飞行中维护目标`n`
 消息并将使用来自`_blockResponseMessage`的反馈，
 `_statusResponseMessage` 和 `_peerError` 产生最佳分配
-在每个 `timeCheckEv` 的 scBlockRequestMessage。
+在每个 `timeCheckEv` 的 scBlockRequestMessage.
 
 ```
 
@@ -359,7 +359,7 @@ func handleTimeCheckEv(time) {
 
 ## 同行
 
-Peer 根据调度程序接收到的消息存储每个对等状态。
+Peer 根据调度程序接收到的消息存储每个对等状态.
 
 ```go
 type Peer struct {

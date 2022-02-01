@@ -1,6 +1,6 @@
 # 概要
 
-このセクションでは、Go-Tendermintの内部構造について詳しく説明します。
+このセクションでは、Go-Tendermintの内部構造について詳しく説明します.
 
 -[テンダーミントの使用](./using-tendermint.md)
 -[サブスクリプションイベント](./subscription.md)
@@ -14,4 +14,4 @@
 -[ピア交換(PEX)](./pex/README.md)
 -[エビデンス](./evidence/README.md)
 
-完全な仕様については、[仕様リポジトリ](https://github.com/tendermint/spec)を参照してください。/
+完全な仕様については、[仕様リポジトリ](https://github.com/tendermint/spec)を参照してください./
