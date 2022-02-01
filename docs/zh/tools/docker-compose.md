@@ -1,6 +1,6 @@
 # Docker 撰写
 
-使用 Docker Compose，您可以使用单个命令启动本地测试网。
+使用 Docker Compose，您可以使用单个命令启动本地测试网.
 
 ## 要求
 
@@ -11,10 +11,10 @@
 ## 建造
 
 构建 `tendermint` 二进制文件和可选的 `tendermint/localnode`
-码头工人形象。
+码头工人形象.
 
 请注意，二进制文件将挂载到容器中，因此无需进行更新即可
-重建图像。
+重建图像.
 
 ```sh
 # Build the linux binary in ./build
@@ -33,17 +33,17 @@ make localnet-start
 ```
 
 节点将它们的 RPC 服务器绑定到端口 26657、26660、26662 和 26664 上
-主持人。
+主持人.
 
-此文件使用 localnode 映像创建一个 4 节点网络。
+此文件使用 localnode 映像创建一个 4 节点网络.
 
 网络节点将其 P2P 和 RPC 端点暴露给主机
-分别在端口 26656-26657、26659-26660、26661-26662 和 26663-26664 上。
+分别在端口 26656-26657、26659-26660、26661-26662 和 26663-26664 上.
 
 第一个节点(`node0`)公开了两个额外的端口:6060 用于分析使用
 [`pprof`](https://golang.org/pkg/net/http/pprof) 和 `9090` - 用于普罗米修斯
 服务器(如果您不知道如何开始结帐 ["第一步 |
-普罗米修斯"](https://prometheus.io/docs/introduction/first_steps/))。
+普罗米修斯"](https://prometheus.io/docs/introduction/first_steps/)).
 
 要更新二进制文件，只需重建它并重新启动节点:
 
@@ -55,10 +55,10 @@ make localnet-start
 ## 配置
 
 `make localnet-start` 为 `./build` 中的 4 节点测试网创建文件
-调用 `tendermint testnet` 命令。
+调用 `tendermint testnet` 命令.
 
 将`./build`目录挂载到`/tendermint`挂载点进行attach
-二进制文件和配置文件到容器。
+二进制文件和配置文件到容器.
 
 要更改验证器/非验证器的数量，请更改 `localnet-start` Makefile 目标 [此处](../../Makefile):
 
@@ -69,8 +69,8 @@ localnet-start: localnet-stop
 ```
 
 该命令现在将为 5 个验证器和 3 个生成配置文件
-非验证者。 除了生成新的配置文件，还需要编辑 docker-compose 文件。
-需要再添加 4 个节点才能充分利用生成的配置文件。
+非验证者. 除了生成新的配置文件，还需要编辑 docker-compose 文件.
+需要再添加 4 个节点才能充分利用生成的配置文件.
 
 ```yml
   node3: # bump by 1 for every node
@@ -97,7 +97,7 @@ rm -rf ./build/node*
 
 ## 配置 ABCI 容器
 
-要在 4 节点设置中使用您自己的 ABCI 应用程序，请编辑 [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml) 文件并将图像添加到您的 ABCI 应用。
+要在 4 节点设置中使用您自己的 ABCI 应用程序，请编辑 [docker-compose.yaml](https://github.com/tendermint/tendermint/blob/master/docker-compose.yml) 文件并将图像添加到您的 ABCI 应用.
 
 ```yml
  abci0:
@@ -146,7 +146,7 @@ rm -rf ./build/node*
 
 ```
 
-覆盖每个节点中的 [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) 以连接到它的 ABCI。
+覆盖每个节点中的 [command](https://github.com/tendermint/tendermint/blob/master/networks/local/localnode/Dockerfile#L12) 以连接到它的 ABCI.
 
 ```yml
   node0:
@@ -169,12 +169,12 @@ rm -rf ./build/node*
 
 ## 记录
 
-日志保存在附加卷下的“tendermint.log”文件中。 如果
+日志保存在附加卷下的“tendermint.log”文件中. 如果
 `LOG` 环境变量在启动时设置为 `stdout`，不保存日志，
-但印在屏幕上。
+但印在屏幕上.
 
 ## 特殊二进制文件
 
 如果您有多个名称不同的二进制文件，您可以指定哪一个
-使用 `BINARY` 环境变量运行。 二进制的路径是相对的
-到附加的卷。
+使用 `BINARY` 环境变量运行. 二进制的路径是相对的
+到附加的卷.

@@ -9,39 +9,39 @@
 
 ## 環境
 
-ブロックチェーンリアクターは、ピアからのブロックの送受信と、ブロックをすばやく同期してアップノードのはるか後ろに追いつくという2つの高レベルのプロセスを担当します。 [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md)目標は、ビジネスを分離することにより、これら2つをリファクタリングすることです。純粋な `handle *`関数へのgo-channelsに現在含まれているフローのロジック。 ADRは、リアクターの最終的な形式がどのように見えるかを指定しますが、中間ステップの実装に関するガイダンスが不足しています。
-次の図は、[blockchain-reorg](https://github.com/tendermint/tendermint/pull/3561)リアクターの状態を示しています。これは「v1」と呼ばれます。
+ブロックチェーンリアクターは、ピアからのブロックの送受信と、ブロックをすばやく同期してアップノードのはるか後ろに追いつくという2つの高レベルのプロセスを担当します. [ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.md)目標は、ビジネスを分離することにより、これら2つをリファクタリングすることです.純粋な `handle *`関数へのgo-channelsに現在含まれているフローのロジック. ADRは、リアクターの最終的な形式がどのように見えるかを指定しますが、中間ステップの実装に関するガイダンスが不足しています.
+次の図は、[blockchain-reorg](https://github.com/tendermint/tendermint/pull/3561)リアクターの状態を示しています.これは「v1」と呼ばれます.
 
 ！[v1ブロックチェーンリアクタアーキテクチャ
 図)(https://github.com/tendermint/tendermint/blob/f9e556481654a24aeb689b​​ dadaf5eab3ccd66829/docs/architecture/img/blockchain-reactor-v1.png)
 
-ブロックチェーンリアクターの「v1」は、並行性モデルを単純化する上で大幅な改善を示していますが、現在のPRにはいくつかの障害があります。
+ブロックチェーンリアクターの「v1」は、並行性モデルを単純化する上で大幅な改善を示していますが、現在のPRにはいくつかの障害があります.
 
--現在の広報活動は大きく、レビューが困難です。
--ブロックゴシップと高速同期プロセスは、共有「プール」データ構造と高度に結合されています。
--ピアツーピア通信は複数のコンポーネントに分散され、テスト中にシミュレートする必要がある複雑な依存関係グラフを作成します。
+-現在の広報活動は大きく、レビューが困難です.
+-ブロックゴシップと高速同期プロセスは、共有「プール」データ構造と高度に結合されています.
+-ピアツーピア通信は複数のコンポーネントに分散され、テスト中にシミュレートする必要がある複雑な依存関係グラフを作成します.
 -ステートフルコードとしてモデル化されたタイムアウトは、テストに不確実性をもたらします
 
-このADRは、実装[ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.MD)を指定することを目的としています。
+このADRは、実装[ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain-reactor-refactor.MD)を指定することを目的としています.
 
 ## 決定
 
-ブロックチェーンリアクターの責任は、イベントとの通信専用の一連のコンポーネントに分割されます。イベントにはタイムスタンプが含まれ、各コンポーネントが内部状態として時間を追跡できるようにします。内部状態は、イベントを生成する一連の `handle *`によって変更されます。コンポーネント間の統合はリアクター内で発生し、リアクターテストはコンポーネント間の統合テストになります。このデザインは「v2」と呼ばれます。
+ブロックチェーンリアクターの責任は、イベントとの通信専用の一連のコンポーネントに分割されます.イベントにはタイムスタンプが含まれ、各コンポーネントが内部状態として時間を追跡できるようにします.内部状態は、イベントを生成する一連の `handle *`によって変更されます.コンポーネント間の統合はリアクター内で発生し、リアクターテストはコンポーネント間の統合テストになります.このデザインは「v2」と呼ばれます.
 
 ！[v2ブロックチェーンリアクターアーキテクチャ
 図)(https://github.com/tendermint/tendermint/blob/584e67ac3fac220c5c3e0652e3582eca8231e8​​14/docs/architecture/img/blockchain-reactor-v2.png)
 
 ### 関連する通信チャネルをすばやく同期する
 
-次の図は、高速同期ルーチンと、相互の通信に使用されるチャネルとキューのタイプを示しています。
-さらに、sendRoutineがPeerMConnectionを介してメッセージを送信するために使用する各リアクタチャネルが表示されます。
+次の図は、高速同期ルーチンと、相互の通信に使用されるチャネルとキューのタイプを示しています.
+さらに、sendRoutineがPeerMConnectionを介してメッセージを送信するために使用する各リアクタチャネルが表示されます.
 
 ！[v2ブロックチェーンチャネルとキュー
 図)(https://github.com/tendermint/tendermint/blob/5cf570690f989646fb3b615b734da503f038891f/docs/architecture/img/blockchain-v2-channels.png)
 
 ### リアクターの詳細の変更
 
-リアクタには、独立した処理のために各メッセージを各サブルーチンに送信する逆多重化プログラムが含まれます。次に、各サブルーチンは関心のあるメッセージを選択し、[ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain)で指定されたハンドルを呼び出します。 function-reactor-refactor.md)。 demuxRoutineは「ペースメーカー」として機能し、イベントを処理するための予想時間を設定します。
+リアクタには、独立した処理のために各メッセージを各サブルーチンに送信する逆多重化プログラムが含まれます.次に、各サブルーチンは関心のあるメッセージを選択し、[ADR-40](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-040-blockchain)で指定されたハンドルを呼び出します. function-reactor-refactor.md). demuxRoutineは「ペースメーカー」として機能し、イベントを処理するための予想時間を設定します.
 
 ```go
 func demuxRoutine(msgs, scheduleMsgs, processorMsgs, ioMsgs) {
@@ -99,7 +99,7 @@ func scheduleRoutine(input chan Message, output chan Message) {
 
 ## ライフサイクル管理
 
-各プロセスの一連のルーチンにより、プロセスを明確なライフサイクル管理と並行して実行できます。 現在reactorに存在する `Start`、` Stop`、および `AddPeer`フックはサブルーチンに委任され、reactorにさらに結合することなく内部状態を独立して管理できるようになります。
+各プロセスの一連のルーチンにより、プロセスを明確なライフサイクル管理と並行して実行できます. 現在reactorに存在する `Start`、` Stop`、および `AddPeer`フックはサブルーチンに委任され、reactorにさらに結合することなく内部状態を独立して管理できるようになります.
 
 ```go
 func (r *BlockChainReactor) Start() {
@@ -144,7 +144,7 @@ func (r *BlockchainReactor) AddPeer(peer p2p.Peer) {
 
 ## IO処理
 
-リアクターのIO処理ルーチンは、ピアツーピア通信を分離します。 ioRoutineを介したメッセージは通常、 `p2p`APIを使用する方法です。 「trySend」などの「p2p」APIがエラーを返す場合、ioRoutineはこれらのメッセージを集約してdemuxRoutineに戻し、他のルーチンに配布できます。 たとえば、ioRoutineからのエラーは、より適切なピア選択の実装を通知するためにスケジューラーによって消費される可能性があります。
+リアクターのIO処理ルーチンは、ピアツーピア通信を分離します. ioRoutineを介したメッセージは通常、 `p2p`APIを使用する方法です. 「trySend」などの「p2p」APIがエラーを返す場合、ioRoutineはこれらのメッセージを集約してdemuxRoutineに戻し、他のルーチンに配布できます. たとえば、ioRoutineからのエラーは、より適切なピア選択の実装を通知するためにスケジューラーによって消費される可能性があります.
 
 ```go
 func (r *BlockchainReacor) ioRoutine(ioMesgs chan Message, outMsgs chan Message) {
@@ -173,7 +173,7 @@ func (r *BlockchainReacor) ioRoutine(ioMesgs chan Message, outMsgs chan Message)
 
 ### プロセッサ内部
 
-プロセッサは、ブロックの並べ替え、検証、および実行を担当します。 プロセッサは、最後に処理されたブロックを参照して、内部カーソルの「高さ」を維持します。 ブロックのグループが順不同で到着すると、プロセッサは次のブロックを処理するために必要な「高さ+1」があるかどうかを確認します。 プロセッサは、ピアから高さへのマッピング「blockPeers」も維持して、「高さ」でブロックを提供したピアを追跡します。 `blockPeers`を` handleRemovePeer(...) `で使用して、障害のあるピアによって提供されたすべての未処理のブロックを再配置できます。
+プロセッサは、ブロックの並べ替え、検証、および実行を担当します. プロセッサは、最後に処理されたブロックを参照して、内部カーソルの「高さ」を維持します. ブロックのグループが順不同で到着すると、プロセッサは次のブロックを処理するために必要な「高さ+1」があるかどうかを確認します. プロセッサは、ピアから高さへのマッピング「blockPeers」も維持して、「高さ」でブロックを提供したピアを追跡します. `blockPeers`を` handleRemovePeer(...) `で使用して、障害のあるピアによって提供されたすべての未処理のブロックを再配置できます.
 
 ```go
 type Processor struct {
@@ -232,7 +232,7 @@ func handleTimeCheckEv(time) {
 
 ## スケジュール
 
-Scheduleは、いくつかのスケジューリングアルゴリズムに従って、blockRequestMessagesをスケジューリングするための内部状態を維持します。 スケジュールは、次の領域で維持する必要があります。
+Scheduleは、いくつかのスケジューリングアルゴリズムに従って、blockRequestMessagesをスケジューリングするための内部状態を維持します. スケジュールは、次の領域で維持する必要があります.
 
 -各ブロックの状態 `blockState`はmaxHeightの高さに達しているようです
 -ピアのセットとそのピア状態 `peerState`
@@ -313,9 +313,9 @@ type scPeer struct {
 ## スケジューラ
 
 スケジューラーは、飛行中のターゲット `n`を維持するように構成されています
-メッセージと `_blockResponseMessage`からのフィードバックを使用します。
+メッセージと `_blockResponseMessage`からのフィードバックを使用します.
 `_statusResponseMessage`と` _peerError`が最適な割り当てを生成します
-`timeCheckEv`のすべてのscBlockRequestMessageで。
+`timeCheckEv`のすべてのscBlockRequestMessageで.
 
 ```
 
@@ -359,7 +359,7 @@ func handleTimeCheckEv(time) {
 
 ## ピア
 
-ピアは、スケジューラが受信したメッセージに従って、各ピアのステータスを保存します。
+ピアは、スケジューラが受信したメッセージに従って、各ピアのステータスを保存します.
 
 ```go
 type Peer struct {

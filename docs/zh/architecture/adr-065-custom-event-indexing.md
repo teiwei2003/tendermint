@@ -34,84 +34,84 @@
 ## 语境
 
 目前，Tendermint Core 支持通过区块和交易事件索引
-`tx_index.indexer` 配置。事件在事务中被捕获，并且
-通过“TxIndexer”类型进行索引。事件是在块中捕获的，特别是
+`tx_index.indexer` 配置.事件在事务中被捕获，并且
+通过“TxIndexer”类型进行索引.事件是在块中捕获的，特别是
 来自“BeginBlock”和“EndBlock”应用程序响应，并通过
-`BlockIndexer` 类型。这两种类型都由单个“IndexerService”管理
+`BlockIndexer` 类型.这两种类型都由单个“IndexerService”管理
 它负责消费事件并将这些事件发送出去
-按相应类型索引。
+按相应类型索引.
 
 除了索引之外，Tendermint Core 还支持查询
-通过 Tendermint 的 RPC 层索引交易和区块事件。能力，技能
+通过 Tendermint 的 RPC 层索引交易和区块事件.能力，技能
 查询这些索引事件有助于大量上游客户端
 和应用能力，例如区块浏览器、IBC 中继器和辅助
-数据可用性和索引服务。
+数据可用性和索引服务.
 
 目前，Tendermint 仅支持通过 `kv` 索引器进行索引，该索引器受支持
-通过底层嵌入式键/值存储数据库。 `kv` 索引器实现
-它自己的索引和查询机制。虽然前者有些微不足道，
+通过底层嵌入式键/值存储数据库. `kv` 索引器实现
+它自己的索引和查询机制.虽然前者有些微不足道，
 提供丰富而灵活的查询层并非易事，并且已经引起了许多
-上游客户端和应用程序的问题和用户体验问题。
+上游客户端和应用程序的问题和用户体验问题.
 
 专有的“kv”查询引擎的脆弱性和潜力
 当大量消费者使用时出现的性能和扩展问题
 引入，激发对更健壮和灵活的索引和查询的需求
-解决方案。
+解决方案.
 ## 替代方法
 
 关于更强大的解决方案的替代方法，唯一严重的
-被考虑的竞争者是过渡到使用 [SQLite](https://www.sqlite.org/index.html)。
+被考虑的竞争者是过渡到使用 [SQLite](https://www.sqlite.org/index.html).
 
 虽然该方法可行，但它会将我们锁定在特定的查询语言中
-存储层，所以在某些方面它只比我们目前的方法好一点。
+存储层，所以在某些方面它只比我们目前的方法好一点.
 此外，实施将需要将 CGO 引入
 Tendermint 核心堆栈，而现在 CGO 仅根据
-使用的数据库。
+使用的数据库.
 
 ## 决定
 
 我们将采用与 Cosmos SDK 的 `KVStore` 状态类似的方法
-[ADR-038](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-038-state-listening.md) 中描述的聆听。
+[ADR-038](https://github.com/cosmos/cosmos-sdk/blob/master/docs/architecture/adr-038-state-listening.md) 中描述的聆听.
 
 我们将实施以下更改:
 
-- 引入一个新接口`EventSink`，所有数据接收器都必须实现该接口。
+- 引入一个新接口`EventSink`，所有数据接收器都必须实现该接口.
 - 增加现有的`tx_index.indexer` 配置，现在接受一个系列
-  一种或多种索引器类型，即接收器。
+  一种或多种索引器类型，即接收器.
 - 将当前的`TxIndexer` 和`BlockIndexer` 组合成一个`KVEventSink`
-  实现了`EventSink`接口。
+  实现了`EventSink`接口.
 - 引入一个额外的`EventSink` 实现，该实现由
-  [PostgreSQL](https://www.postgresql.org/)。
-  - 实施必要的模式以支持块和交易事件索引。
-- 更新 `IndexerService` 以使用一系列 `EventSinks`。
+  [PostgreSQL](https://www.postgresql.org/).
+  - 实施必要的模式以支持块和交易事件索引.
+- 更新 `IndexerService` 以使用一系列 `EventSinks`.
 
 此外:
 
 - Postgres 索引器实现将_不_实现专有的`kv`
-  查询语言。希望针对 Postgres 索引器编写查询的用户
+  查询语言.希望针对 Postgres 索引器编写查询的用户
   将直接连接到底层 DBMS 并使用基于
-  索引模式。
+  索引模式.
 
   未来的自定义索引器实现将不需要支持
-  专有查询语言。
+  专有查询语言.
 
 - 目前，现有的 `kv` 索引器将保留在其当前位置
   查询支持，但将在后续版本中标记为已弃用，并且
   文档将更新以鼓励需要查询的用户
-  要迁移到 Postgres 索引器的事件索引。
+  要迁移到 Postgres 索引器的事件索引.
 
 - 将来我们可能会完全移除 `kv` 索引器，或者将其替换为
-  不同的实现；该决定被推迟为今后的工作。
+  不同的实现；该决定被推迟为今后的工作.
 
 - 将来，我们可能会从 RPC 服务中删除索引查询端点
-  完全;该决定被推迟为未来的工作，但建议。
+  完全;该决定被推迟为未来的工作，但建议.
 
 
 ## 详细设计
 
 ### 事件接收器
 
-我们介绍了所有支持的接收器必须实现的 `EventSink` 接口类型。
+我们介绍了所有支持的接收器必须实现的 `EventSink` 接口类型.
 接口定义如下:
 
 ```go
@@ -130,37 +130,37 @@ type EventSink interface {
 }
 ```
 
-`IndexerService` 将接受一个或多个 `EventSink` 类型的列表。中
+`IndexerService` 将接受一个或多个 `EventSink` 类型的列表.中
 `OnStart` 方法它将在每个 `EventSink` 上调用适当的 API 以
-索引块和交易事件。
+索引块和交易事件.
 
 ### 支持的接收器
 
-我们最初将支持两种开箱即用的“EventSink”类型。
+我们最初将支持两种开箱即用的“EventSink”类型.
 
 ####`KVEventSink`
 
 这种类型的`EventSink`是`TxIndexer`和`BlockIndexer`的组合
-索引器，两者都由单个嵌入式键/值数据库支持。
+索引器，两者都由单个嵌入式键/值数据库支持.
 
 大部分现有业务逻辑将保持不变，但现有 API
-映射到新的`EventSink` API。两种类型都将被删除以支持单一
-`KVEventSink` 类型。
+映射到新的`EventSink` API.两种类型都将被删除以支持单一
+`KVEventSink` 类型.
 
 `KVEventSink` 将是唯一默认启用的 `EventSink`，因此从 UX
 从角度来看，操作员不应注意到配置之外的差异
-改变。
+改变.
 
 我们省略了 EventSink 实现细节，因为它应该相当简单
-将现有业务逻辑映射到新 API。
+将现有业务逻辑映射到新 API.
 
 ####`PSQLEventSink`
 
-这种类型的 `EventSink` 将区块和交易事件索引到 [PostgreSQL](https://www.postgresql.org/) 中。
-数据库。我们定义并自动迁移以下架构时
-`IndexerService` 启动。
+这种类型的 `EventSink` 将区块和交易事件索引到 [PostgreSQL](https://www.postgresql.org/) 中.
+数据库.我们定义并自动迁移以下架构时
+`IndexerService` 启动.
 
-postgres 事件接收器将不支持 `tx_search`、`block_search`、`GetTxByHash` 和 `HasBlock`。
+postgres 事件接收器将不支持 `tx_search`、`block_search`、`GetTxByHash` 和 `HasBlock`.
 
 ```sql
 -- Table Definition ----------------------------------------------
@@ -354,7 +354,7 @@ func (es *EventSink) HasBlock(h int64) (bool, error)
 ### 配置
 
 当前的 `tx_index.indexer` 配置将更改为接受列表
-支持的`EventSink` 类型而不是单个值。
+支持的`EventSink` 类型而不是单个值.
 
 例子:
 
@@ -368,11 +368,11 @@ indexer = [
 ```
 
 如果 `indexer` 列表包含 `null` 索引器，则不会使用任何索引器
-不管可能存在什么其他值。
+不管可能存在什么其他值.
 
 根据事件的不同，可能需要其他配置参数
-sinks 被提供给 `tx_index.indexer`。 `psql` 将需要一个额外的
-连接配置。
+sinks 被提供给 `tx_index.indexer`. `psql` 将需要一个额外的
+连接配置.
 
 ```toml
 [tx_index]
@@ -386,34 +386,34 @@ pqsql_conn = "postgresql://<user>:<password>@<host>:<port>/<db>?<opts>"
 ```
 
 任何无效或错误配置的 `tx_index` 配置都应该产生一个错误
-尽早。
+尽早.
 
 ## 未来的改进
 
 虽然在技术上不需要保持与当前的功能相同
 现有的 Tendermint 索引器，对于运营商来说有一个方法是有益的
-执行“重新索引”。具体来说，Tendermint 运营商可以调用
+执行“重新索引”.具体来说，Tendermint 运营商可以调用
 RPC 方法，允许 Tendermint 节点执行所有块的重新索引
 以及两个给定高度 H<sub>1</sub> 和 H<sub>2</sub> 之间的交易事件，
 只要块存储包含所有的块和交易结果
-在给定范围内指定的高度。
+在给定范围内指定的高度.
 
 ## 结果
 
 ### 积极的
 
 - 用于索引和搜索的更强大和灵活的索引和查询引擎
-  块和交易事件。
+  块和交易事件.
 - 不必支持自定义索引和查询引擎的能力
-  传统的 `kv` 类型。
-- 卸载/代理索引和查询到底层接收器的能力。
+  传统的 `kv` 类型.
+- 卸载/代理索引和查询到底层接收器的能力.
 - 可扩展性和可靠性基本上从底层“免费”而来
-  下沉，如果它支持它。
+  下沉，如果它支持它.
 
 ### 消极的
 
 - 需要支持多个且可能不断增长的自定义`EventSink`
-  类型。
+  类型.
 
 ### 中性的
 

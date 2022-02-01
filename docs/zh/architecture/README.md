@@ -1,8 +1,8 @@
 # 架构决策记录 (ADR)
 
-这是记录tendermint项目中所有高级架构决策的位置。
+这是记录tendermint项目中所有高级架构决策的位置.
 
-您可以在此 [博客文章](https://product.reverb.com/documenting-architecture-decisions-the-reverb-way-a3563bb24bd0#.78xhdix6t) 中阅读有关 ADR 概念的更多信息。
+您可以在此 [博客文章](https://product.reverb.com/documenting-architecture-decisions-the-reverb-way-a3563bb24bd0#.78xhdix6t) 中阅读有关 ADR 概念的更多信息.
 
 ADR 应提供:
 
@@ -12,14 +12,14 @@ ADR 应提供:
 - 参考
 - 变更日志
 
-请注意 ADR 和规范之间的区别。 ADR 提供上下文、直觉、推理和
+请注意 ADR 和规范之间的区别. ADR 提供上下文、直觉、推理和
 改变架构的理由，或某物的架构
-新的。该规范对所有内容进行了更加压缩和简化的总结，因为
-它今天站立。
+新的.该规范对所有内容进行了更加压缩和简化的总结，因为
+它今天站立.
 
-如果发现缺少记录的决策，请召集讨论，在此处记录新决策，然后修改代码以匹配。
+如果发现缺少记录的决策，请召集讨论，在此处记录新决策，然后修改代码以匹配.
 
-注意上下文/背景应该用现在时写。
+注意上下文/背景应该用现在时写.
 
 ## 目录
 

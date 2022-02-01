@@ -2,11 +2,11 @@
 
 ## バイナリから
 
-ビルド済みのバイナリをダウンロードするには、[リリースページ](https://github.com/tendermint/tendermint/releases)を参照してください。
+ビルド済みのバイナリをダウンロードするには、[リリースページ](https://github.com/tendermint/tendermint/releases)を参照してください.
 
 ## 自作を使用する
 
-自作ソフトウェアを使用するだけでTendermintバイナリをインストールすることもできます。
+自作ソフトウェアを使用するだけでTendermintバイナリをインストールすることもできます.
 
 ```
 brew install tendermint
@@ -15,40 +15,40 @@ brew install tendermint
 ## ソースコードから
 
 `go` [インストール済み](https://golang.org/doc/install)と必要なものが必要です
-環境変数を設定するには、次のコマンドを使用して完了します。
+環境変数を設定するには、次のコマンドを使用して完了します.
 
 ```sh
 echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
 echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
 ```
 
-ソースコードを取得します。
+ソースコードを取得します.
 
 ```sh
 git clone https://github.com/tendermint/tendermint.git
 cd tendermint
 ```
 
-次に、以下を実行します。
+次に、以下を実行します.
 
 ```sh
 make install
 ```
 
-バイナリファイルを `$ GOPATH/bin`に入れるか、次を使用します。
+バイナリファイルを `$ GOPATH/bin`に入れるか、次を使用します.
 
 ```sh
 make build
 ```
 
-バイナリファイルを `。/build`に置きます。
+バイナリファイルを `./build`に置きます.
 
 _免責事項_Tendermintのバイナリは、DWARFなしでビルド/インストールされます
-シンボルテーブル。 DWARFを使用してTendermintをビルド/インストールする場合
+シンボルテーブル. DWARFを使用してTendermintをビルド/インストールする場合
 シンボルとデバッグ情報、makeの `BUILD_FLAGS`から` -s-w`を削除します
-資料。
+資料.
 
-最新のテンダーミントがインストールされました。 インストールを確認するには、
+最新のテンダーミントがインストールされました. インストールを確認するには、
 ランニング:
 
 ```sh
@@ -81,9 +81,9 @@ make install
 
 ## コンパイルをサポートするためにCLevelDBを使用する
 
-[LevelDB](https://github.com/google/leveldb)をインストールします(最小バージョンは1.7です)。
+[LevelDB](https://github.com/google/leveldb)をインストールします(最小バージョンは1.7です).
 
-snappy(オプション)を使用してLevelDBをインストールします。 以下はUbuntuのコマンドです。
+snappy(オプション)を使用してLevelDBをインストールします. 以下はUbuntuのコマンドです.
 
 ```sh
 sudo apt-get update
@@ -102,14 +102,14 @@ wget https://github.com/google/leveldb/archive/v1.20.tar.gz && \
   rm -f v1.20.tar.gz
 ```
 
-データベースバックエンドを `cleveldb`に設定します。
+データベースバックエンドを `cleveldb`に設定します.
 
 ```toml
 # config/config.toml
 db_backend = "cleveldb"
 ```
 
-Tendermintをインストールするには、次のコマンドを実行します。
+Tendermintをインストールするには、次のコマンドを実行します.
 
 ```sh
 CGO_LDFLAGS="-lsnappy" make install TENDERMINT_BUILD_OPTIONS=cleveldb

@@ -2,7 +2,7 @@
 
 ## 来自二进制
 
-要下载预构建的二进制文件，请参阅 [发布页面](https://github.com/tendermint/tendermint/releases)。
+要下载预构建的二进制文件，请参阅 [发布页面](https://github.com/tendermint/tendermint/releases).
 
 ## 使用自制软件
 
@@ -41,14 +41,14 @@ make install
 make build
 ```
 
-将二进制文件放入`./build`。
+将二进制文件放入`./build`.
 
 _免责声明_ Tendermint 的二进制文件是在没有 DWARF 的情况下构建/安装的
-符号表。 如果您想使用 DWARF 构建/安装 Tendermint
+符号表. 如果您想使用 DWARF 构建/安装 Tendermint
 符号和调试信息，从make中的`BUILD_FLAGS`中删除`-s -w`
-文件。
+文件.
 
-现在安装了最新的 Tendermint。 您可以通过以下方式验证安装
+现在安装了最新的 Tendermint. 您可以通过以下方式验证安装
 跑步:
 
 ```sh
@@ -81,9 +81,9 @@ make install
 
 ## 使用 CLevelDB 支持编译
 
-安装 [LevelDB](https://github.com/google/leveldb)(最低版本为 1.7)。
+安装 [LevelDB](https://github.com/google/leveldb)(最低版本为 1.7).
 
-使用 snappy(可选)安装 LevelDB。 以下是 Ubuntu 的命令:
+使用 snappy(可选)安装 LevelDB. 以下是 Ubuntu 的命令:
 
 ```sh
 sudo apt-get update

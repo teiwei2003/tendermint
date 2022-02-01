@@ -1,14 +1,14 @@
 ## 記録
 
-ロギングにより詳細が追加され、ノードオペレーターは探しているものをより適切に識別できます。 Tendermintは、グローバルおよびモジュールごとのログレベルをサポートします。 これにより、ノードオペレーターは必要な情報のみを確認でき、開発者は作業中の特定の変更に集中できます。
+ロギングにより詳細が追加され、ノードオペレーターは探しているものをより適切に識別できます. Tendermintは、グローバルおよびモジュールごとのログレベルをサポートします. これにより、ノードオペレーターは必要な情報のみを確認でき、開発者は作業中の特定の変更に集中できます.
 
 ## ログレベルを設定する
 
-ログレベルには、 `info`、` debug`、 `error`の3つがあります。 これらは、コマンドラインから `tendermint start --log-level" "`または `config.toml`ファイルで設定できます。
+ログレベルには、 `info`、` debug`、 `error`の3つがあります. これらは、コマンドラインから `tendermint start --log-level" "`または `config.toml`ファイルで設定できます.
 
--`info`情報は情報メッセージを意味します。 これは、モジュールが開始、停止、およびそれらがどのように実行されているかを示すために使用されます。
--`debug`デバッグは、さまざまな呼び出しや問題を追跡するために使用されます。 デバッグはコードベース全体で広く使用されており、ロギングが非常に長くなる可能性があります。
--`error`エラーは、エラーが発生したことを意味します。 エラーログは、ノードを停止させる可能性のある潜在的な問題を表している可能性があります。
+-`info`情報は情報メッセージを意味します. これは、モジュールが開始、停止、およびそれらがどのように実行されているかを示すために使用されます.
+-`debug`デバッグは、さまざまな呼び出しや問題を追跡するために使用されます. デバッグはコードベース全体で広く使用されており、ロギングが非常に長くなる可能性があります.
+-`error`エラーは、エラーが発生したことを意味します. エラーログは、ノードを停止させる可能性のある潜在的な問題を表している可能性があります.
 
 在 `config.toml` 中:
 
@@ -25,38 +25,38 @@ tendermint start --log-level "info"
 
 ## モジュールリスト
 
-以下は、Tendermintログで遭遇する可能性のあるモジュールのリストです。
-彼らが何をしているのかを概説することはめったにありません。
+以下は、Tendermintログで遭遇する可能性のあるモジュールのリストです.
+彼らが何をしているのかを概説することはめったにありません.
 
 -`abci-client` [アプリケーションアーキテクチャガイド](../app-dev/app-architecture.md)で説明されているように、TendermintはABCIとして機能します
-  クライアントはアプリケーションに関連しており、次の3つの接続を維持します。
-  メモリプール、コンセンサス、クエリ。 TendermintCoreで使用されるコードは
-  ここ(https://github.com/tendermint/tendermint/tree/master/abci/client)にあります。
+  クライアントはアプリケーションに関連しており、次の3つの接続を維持します.
+  メモリプール、コンセンサス、クエリ. TendermintCoreで使用されるコードは
+  ここ(https://github.com/tendermint/tendermint/tree/master/abci/client)にあります.
 -`blockchain`は、ストレージ、プール(ピアのセット)、およびリアクターを提供します
-  ピア間でブロックを保存および交換するために使用されます。
+  ピア間でブロックを保存および交換するために使用されます.
 -`コンセンサス `テンダーミントコアのコア、
-  コンセンサスアルゴリズムの実装。 2つ含まれています
+  コンセンサスアルゴリズムの実装. 2つ含まれています
   「サブモジュール」: `wal`(先行書き込みロギング)はデータを確保するために使用されます
   整合性と「再生」再生ブロックおよび回復時のメッセージ
-  クラッシュから。
-  [こちら](https://github.com/tendermint/tendermint/blob/master/types/events.go)。
-  `subscribe`RPCメソッドを呼び出すことでそれらをサブスクライブできます。参照する
-  詳細については、[RPCドキュメント](../tendermint-core/rpc.md)にアクセスしてください。
+  クラッシュから.
+  [こちら](https://github.com/tendermint/tendermint/blob/master/types/events.go).
+  `subscribe`RPCメソッドを呼び出すことでそれらをサブスクライブできます.参照する
+  詳細については、[RPCドキュメント](../tendermint-core/rpc.md)にアクセスしてください.
 -`mempool`メモリプールモジュールは、いつでもすべての着信トランザクションを処理します
-  それらはピアまたはアプリケーションから来ています。
--`p2p`は、ピアツーピア通信の抽象化を提供します。にとって
+  それらはピアまたはアプリケーションから来ています.
+-`p2p`は、ピアツーピア通信の抽象化を提供します.にとって
   詳しくはご確認ください
-  [Readme](https://github.com/tendermint/spec/tree/master/spec/p2p)。
--`rpc-server`RPCサーバー。実装の詳細については、以下をお読みください
-  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go)。
--`state`は、最新の状態と実行サブモジュールを表します。ここで、
-  アプリケーションでブロックを実行します。
--`statesync`は、ノードをプルーニングされた履歴とすばやく同期する方法を提供します。
+  [Readme](https://github.com/tendermint/spec/tree/master/spec/p2p).
+-`rpc-server`RPCサーバー.実装の詳細については、以下をお読みください
+  [doc.go](https://github.com/tendermint/tendermint/blob/master/rpc/jsonrpc/doc.go).
+-`state`は、最新の状態と実行サブモジュールを表します.ここで、
+  アプリケーションでブロックを実行します.
+-`statesync`は、ノードをプルーニングされた履歴とすばやく同期する方法を提供します.
 
 ### ウォーキングの例
 
-まず、3つの接続(メモリプール、コンセンサス、クエリ)を作成します。
-アプリケーション(この場合、ローカルで `kvstore`を実行します)。
+まず、3つの接続(メモリプール、コンセンサス、クエリ)を作成します.
+アプリケーション(この場合、ローカルで `kvstore`を実行します).
 
 ```sh
 I[10-04|13:54:27.364] Starting multiAppConn                        module=proxy impl=multiAppConn
@@ -65,7 +65,7 @@ I[10-04|13:54:27.366] Starting localClient                         module=abci-c
 I[10-04|13:54:27.367] Starting localClient                         module=abci-client connection=consensus impl=localClient
 ```
 
-次に、TendermintCoreとアプリケーションがハンドシェイクを実行します。
+次に、TendermintCoreとアプリケーションがハンドシェイクを実行します.
 
 ```sh
 I[10-04|13:54:27.367] ABCI Handshake                               module=consensus appHeight=90 appHash=E0FBAFBF6FCED8B9786DDFEB1A0D4FA2501BADAD
@@ -74,7 +74,7 @@ I[10-04|13:54:27.368] Completed ABCI Handshake - Tendermint and App are synced m
 ```
 
 その後、イベントスイッチ、リアクター、
-そして、UPNPディスカバリーを実行してIPアドレスを検出します。
+そして、UPNPディスカバリーを実行してIPアドレスを検出します.
 
 ```sh
 I[10-04|13:54:27.374] Starting EventSwitch                         module=types impl=EventSwitch
@@ -94,10 +94,10 @@ I[10-04|13:54:30.387] Starting WAL                                 module=consen
 I[10-04|13:54:30.388] Starting TimeoutTicker                       module=consensus impl=TimeoutTicker
 ```
 
-TendermintCoreレポートの2行目に注意してください。「このノードは
-バリデーター」。単なるオブザーバー(通常のノード)にすることもできます。
+TendermintCoreレポートの2行目に注意してください.「このノードは
+バリデーター」.単なるオブザーバー(通常のノード)にすることもできます.
 
-次に、WALからのすべてのメッセージを再生します。
+次に、WALからのすべてのメッセージを再生します.
 
 ```sh
 I[10-04|13:54:30.390] Catchup by replaying consensus messages      module=consensus height=91
@@ -105,18 +105,18 @@ I[10-04|13:54:30.390] Replay: New Step                             module=consen
 I[10-04|13:54:30.390] Replay: Done                                 module=consensus
 ```
 
-「開始ノード」メッセージは、すべての準備ができていることを意味します。
+「開始ノード」メッセージは、すべての準備ができていることを意味します.
 
 ```sh
 I[10-04|13:54:30.391] Starting RPC HTTP server on tcp socket 0.0.0.0:26657 module=rpc-server
 I[10-04|13:54:30.392] Started node                                 module=main nodeInfo="NodeInfo{id: DF22D7C92C91082324A1312F092AA1DA197FA598DBBFB6526E, moniker: anonymous, network: test-chain-3MNw2N [remote , listen 10.0.2.15:26656], version: 0.11.0-10f361fc ([wire_version=0.6.2 p2p_version=0.5.0 consensus_version=v1/0.2.2 rpc_version=0.7.0/3 tx_index=on rpc_addr=tcp://0.0.0.0:26657])}"
 ```
 
-次は標準のブロック作成サイクルです。新しいブロックを入力します
+次は標準のブロック作成サイクルです.新しいブロックを入力します
 ラウンドし、ブロックを提案し、投票の2/3以上を獲得してから、
-事前にコミットし、最終的にブロックを送信する機会があります。 詳細については、
+事前にコミットし、最終的にブロックを送信する機会があります. 詳細については、
 [ビザンチンのコンセンサスを参照してください
-アルゴリズム](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md)。
+アルゴリズム](https://github.com/tendermint/spec/blob/master/spec/consensus/consensus.md).
 
 ```sh
 I[10-04|13:54:30.393] enterNewRound(91/0). Current: 91/0/RoundStepNewHeight module=consensus

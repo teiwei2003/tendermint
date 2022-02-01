@@ -3,37 +3,37 @@
 ## 指南假设
 
 本指南专为想要开始使用 Tendermint 的初学者而设计
-从头开始的核心应用程序。它并不假设您有任何先前
-使用 Tendermint Core 的经验。
+从头开始的核心应用程序.它并不假设您有任何先前
+使用 Tendermint Core 的经验.
 
 Tendermint Core 是采用状态的拜占庭容错 (BFT) 中间件
 转换机 - 用任何编程语言编写 - 并且安全
-在许多机器上复制它。
+在许多机器上复制它.
 
 虽然 Tendermint Core 是用 Golang 编程语言编写的，但之前
-本指南不需要了解它。你可以在我们到期时学习它
-它的简单性。但是，您可能希望通过 [Learn X in Y 分钟
+本指南不需要了解它.你可以在我们到期时学习它
+它的简单性.但是，您可能希望通过 [Learn X in Y 分钟
 Where X=Go](https://learnxinyminutes.com/docs/go/) 先来熟悉一下
-自己的语法。
+自己的语法.
 
 通过遵循本指南，您将创建一个 Tendermint 核心项目
-称为 kvstore，一个(非常)简单的分布式 BFT 键值存储。
+称为 kvstore，一个(非常)简单的分布式 BFT 键值存储.
 
 ## 内置应用与外部应用
 
 为了获得最佳性能，最好与您的应用程序一起运行
-Tendermint 核心。 [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) 编写
-这边走。请参考[编写内置 Tendermint Core 应用程序]
-Go](./go-built-in.md) 指南了解详情。
+Tendermint 核心. [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) 编写
+这边走.请参考[编写内置 Tendermint Core 应用程序]
+Go](./go-built-in.md) 指南了解详情.
 
 拥有一个单独的应用程序可能会给你更好的安全保证
-进程将通过已建立的二进制协议进行通信。嫩肤
-核心将无法访问应用程序的状态。
+进程将通过已建立的二进制协议进行通信.嫩肤
+核心将无法访问应用程序的状态.
 
 ## 1.1 安装 Go
 
 请参考[官方安装指南]
-去](https://golang.org/doc/install)。
+去](https://golang.org/doc/install).
 
 验证您是否安装了最新版本的 Go:
 
@@ -44,7 +44,7 @@ go version go1.16.x darwin/amd64
 
 ## 1.2 创建一个新的 Go 项目
 
-我们将首先创建一个新的 Go 项目。
+我们将首先创建一个新的 Go 项目.
 
 ```bash
 mkdir kvstore
@@ -65,7 +65,7 @@ func main() {
 }
 ```
 
-运行时，这应该将“Hello, Tendermint Core”打印到标准输出。
+运行时，这应该将“Hello, Tendermint Core”打印到标准输出.
 
 ```bash
 go run main.go
@@ -75,10 +75,10 @@ Hello, Tendermint Core
 ## 1.3 编写 Tendermint Core 应用程序
 
 Tendermint Core 通过应用程序与应用程序通信
-区块链接口(ABCI)。 所有消息类型都在 [protobuf
-文件](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto)。
+区块链接口(ABCI). 所有消息类型都在 [protobuf
+文件](https://github.com/tendermint/tendermint/blob/master/proto/tendermint/abci/types.proto).
 这允许 Tendermint Core 运行以任何编程方式编写的应用程序
-语。
+语.
 
 创建一个名为“app.go”的文件，内容如下:
 
@@ -231,8 +231,8 @@ func NewKVStoreApplication(db *badger.DB) *KVStoreApplication {
 
 当 Tendermint Core 决定区块时，它会被转移到
 应用程序分为 3 个部分:`BeginBlock`，每笔交易一个 `DeliverTx` 和
-最后是`EndBlock`。 DeliverTx 正在异步传输，但
-预计响应将有序进行。
+最后是`EndBlock`. DeliverTx 正在异步传输，但
+预计响应将有序进行.
 
 ```go
 func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcitypes.ResponseBeginBlock {
@@ -241,7 +241,7 @@ func (app *KVStoreApplication) BeginBlock(req abcitypes.RequestBeginBlock) abcit
 }
 ```
 
-在这里我们创建一个批处理，它将存储块的交易。
+在这里我们创建一个批处理，它将存储块的交易.
 
 ```go
 func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcitypes.ResponseDeliverTx {
@@ -263,18 +263,18 @@ func (app *KVStoreApplication) DeliverTx(req abcitypes.RequestDeliverTx) abcityp
 ```
 
 如果交易格式错误或相同的 key=value 已经存在，我们
-再次返回非零代码。 否则，我们将其添加到当前批次中。
+再次返回非零代码. 否则，我们将其添加到当前批次中.
 
 在当前的设计中，一个区块可能包含不正确的交易(那些
 通过 CheckTx，但未通过 DeliverTx 或提议者包含的交易
-直接地)。 这样做是出于性能原因。
+直接地). 这样做是出于性能原因.
 
 请注意，我们不能在 `DeliverTx` 内提交事务，因为在这种情况下
 可以并行调用的 `Query` 将返回不一致的数据(即
 即使实际块不存在，它也会报告某些值已经存在
-尚未提交)。
+尚未提交).
 
-`Commit` 指示应用程序保持新状态。
+`Commit` 指示应用程序保持新状态.
 
 ```go
 func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
@@ -287,15 +287,15 @@ func (app *KVStoreApplication) Commit() abcitypes.ResponseCommit {
 
 现在，当客户端想知道特定键/值何时存在时，它
 将调用 Tendermint Core RPC `/abci_query` 端点，后者又会调用
-应用程序的`Query` 方法。
+应用程序的`Query` 方法.
 
-应用程序可以免费提供自己的 API。 但是通过使用 Tendermint Core
+应用程序可以免费提供自己的 API. 但是通过使用 Tendermint Core
 作为代理，客户端(包括[轻客户端
 包](https://godoc.org/github.com/tendermint/tendermint/light)) 可以利用
-跨不同应用程序的统一 API。 此外，他们将不必致电
-否则单独的 Tendermint 核心 API 用于额外的证明。
+跨不同应用程序的统一 API. 此外，他们将不必致电
+否则单独的 Tendermint 核心 API 用于额外的证明.
 
-请注意，我们在此处不包含证明。
+请注意，我们在此处不包含证明.
 
 ```go
 func (app *KVStoreApplication) Query(reqQuery abcitypes.RequestQuery) (resQuery abcitypes.ResponseQuery) {
@@ -380,7 +380,7 @@ func main() {
 }
 ```
 
-这是一大堆代码，让我们把它分解成几部分。
+这是一大堆代码，让我们把它分解成几部分.
 
 首先，我们初始化 Badger 数据库并创建一个应用程序实例:
 
@@ -394,7 +394,7 @@ defer db.Close()
 app := NewKVStoreApplication(db)
 ```
 
-对于 **Windows** 用户，重新启动此应用程序将使獾抛出错误，因为它需要截断值日志。 有关这方面的更多信息，请访问 [此处](https://github.com/dgraph-io/badger/issues/744)。
+对于 **Windows** 用户，重新启动此应用程序将使獾抛出错误，因为它需要截断值日志. 有关这方面的更多信息，请访问 [此处](https://github.com/dgraph-io/badger/issues/744).
 这可以通过将 truncate 选项设置为 true 来避免，如下所示:
 
 ```go
@@ -402,8 +402,8 @@ db, err := badger.Open(badger.DefaultOptions("/tmp/badger").WithTruncate(true))
 ```
 
 然后我们启动 ABCI 服务器并添加一些信号处理以优雅地停止
-它在收到 SIGTERM 或 Ctrl-C 后。 Tendermint Core 将充当客户端，
-它连接到我们的服务器并向我们发送交易和其他消息。
+它在收到 SIGTERM 或 Ctrl-C 后. Tendermint Core 将充当客户端，
+它连接到我们的服务器并向我们发送交易和其他消息.
 
 ```go
 server := abciserver.NewSocketServer(socketAddr, app)
@@ -423,14 +423,14 @@ os.Exit(0)
 ## 1.5 启动和运行
 
 我们将使用 [Go modules](https://github.com/golang/go/wiki/Modules)
-依赖管理。
+依赖管理.
 
 ```bash
 export GO111MODULE=on
 go mod init github.com/me/example
 ```
 
-这应该创建一个 `go.mod` 文件。 当前教程仅适用于
+这应该创建一个 `go.mod` 文件. 当前教程仅适用于
 Tendermint 的 master 分支，所以让我们确保我们使用的是最新版本:
 
 ```sh
@@ -457,12 +457,12 @@ go build
 ```
 
 要创建默认配置、nodeKey 和私有验证器文件，让我们
-执行 `tendermint init 验证器`。 但在我们这样做之前，我们需要安装
-Tendermint 核心。 请参考[官方
-指南](https://docs.tendermint.com/master/introduction/install.html)。 如果你是
+执行 `tendermint init 验证器`. 但在我们这样做之前，我们需要安装
+Tendermint 核心. 请参考[官方
+指南](https://docs.tendermint.com/master/introduction/install.html). 如果你是
 从源代码安装，不要忘记检查最新版本(`git
-结帐 vX.Y.Z`)。 不要忘记检查应用程序是否使用相同的
-主要版本。
+结帐 vX.Y.Z`). 不要忘记检查应用程序是否使用相同的
+主要版本.
 
 ```bash
 rm -rf /tmp/example
@@ -475,8 +475,8 @@ I[2019-07-16|18:20:36.483] Generated config                             module=m
 ```
 
 随意探索生成的文件，可以在
-`/tmp/example/config` 目录。 可以找到有关配置的文档
-[此处](https://docs.tendermint.com/master/tendermint-core/configuration.html)。
+`/tmp/example/config` 目录. 可以找到有关配置的文档
+[此处](https://docs.tendermint.com/master/tendermint-core/configuration.html).
 
 我们准备开始我们的应用程序:
 
@@ -490,7 +490,7 @@ badger 2019/07/16 18:25:11 INFO: Replay took: 300.4s
 I[2019-07-16|18:25:11.523] Starting ABCIServer                          impl=ABCIServ
 ```
 
-然后我们需要启动 Tendermint Core 并将其指向我们的应用程序。 住宿
+然后我们需要启动 Tendermint Core 并将其指向我们的应用程序. 住宿
 在应用程序目录中执行:
 
 ```bash
@@ -532,7 +532,7 @@ curl -s 'localhost:26657/broadcast_tx_commit?tx="tendermint=rocks"'
 }
 ```
 
-响应应包含提交此事务的高度。
+响应应包含提交此事务的高度.
 
 现在让我们检查给定的键现在是否存在及其值:
 
@@ -552,11 +552,11 @@ curl -s 'localhost:26657/abci_query?data="tendermint"'
 ```
 
 "dGVuZGVybWludA==" 和 "cm9ja3M=" 是 ASCII 的 base64 编码
-相应地“tendermint”和“rocks”。
+相应地“tendermint”和“rocks”.
 
 ##结尾
 
 我希望一切顺利，你的第一个，但希望不是最后一个，
-Tendermint Core 应用程序已启动并正在运行。 如果没有，请[打开一个问题
-Github](https://github.com/tendermint/tendermint/issues/new/choose)。 挖
-更深入地阅读 [文档](https://docs.tendermint.com/master/)。
+Tendermint Core 应用程序已启动并正在运行. 如果没有，请[打开一个问题
+Github](https://github.com/tendermint/tendermint/issues/new/choose). 挖
+更深入地阅读 [文档](https://docs.tendermint.com/master/).

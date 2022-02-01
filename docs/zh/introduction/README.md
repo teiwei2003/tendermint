@@ -6,7 +6,7 @@
 
 ## 安装
 
-详细[安装说明](./install.md)。
+详细[安装说明](./install.md).
 
 ## 什么是Tendermint
 

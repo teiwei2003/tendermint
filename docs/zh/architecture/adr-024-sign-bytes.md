@@ -5,13 +5,13 @@
 目前，tendermint 和(可能是远程的)签名者/验证者之间交换的消息，
 即投票、提案和心跳，被编码为 JSON 字符串
 (例如，通过`Vote.SignBytes(...)`)然后
-签 。 JSON 编码对于硬件钱包来说都是次优的
-并用于以太坊智能合约。两者都在 [issue#1622] 中有详细规定。
+签 . JSON 编码对于硬件钱包来说都是次优的
+并用于以太坊智能合约.两者都在 [issue#1622] 中有详细规定.
 
-此外，目前签名请求和回复之间没有区别。还有，没有可能
-让远程签名者包含错误代码或消息，以防出现问题。
+此外，目前签名请求和回复之间没有区别.还有，没有可能
+让远程签名者包含错误代码或消息，以防出现问题.
 目前，tendermint 和远程签名者之间交换的消息位于
-[privval/socket.go] 并将相应的类型封装在[types] 中。
+[privval/socket.go] 并将相应的类型封装在[types] 中.
 
 
 [privval/socket.go]:https://github.com/tendermint/tendermint/blob/d419fffe18531317c28c29a292ad7d253f6cafdf/privval/socket.go#L496-L502
@@ -51,9 +51,9 @@ SignedXReply {
 }
 ```
 
-TODO:或者，类型“X”可能直接包含签名。 很多地方都期待投票
-签名，不一定处理“回复”。
-仍在探索什么在这里最有效。
+TODO:或者，类型“X”可能直接包含签名. 很多地方都期待投票
+签名，不一定处理“回复”.
+仍在探索什么在这里最有效.
 这看起来像(以 X = Vote 为例):
 
 ```
@@ -78,8 +78,8 @@ SignedVoteReply {
 
 **注意:** 有一个相关的讨论，包括包含整个公钥的指纹或整个公钥
 进入每个签名请求，告诉签名者对应的私钥
-用于对消息进行签名。 这在 KMS 的背景下尤其重要
-但目前不在本 ADR 中考虑。
+用于对消息进行签名. 这在 KMS 的背景下尤其重要
+但目前不在本 ADR 中考虑.
 
 
 [氨基]:https://github.com/tendermint/go-amino/
@@ -123,9 +123,9 @@ message Error {
 
 ```
 
-`ChainID` 被直接移动到投票消息中。 以前是注射的
-使用 [Signable] 接口方法 `SignBytes(chainID string) []byte`。 此外，该
-签名不会被直接包含，只会包含在相应的“SignedVoteReply”消息中。
+`ChainID` 被直接移动到投票消息中. 以前是注射的
+使用 [Signable] 接口方法 `SignBytes(chainID string) []byte`. 此外，该
+签名不会被直接包含，只会包含在相应的“SignedVoteReply”消息中.
 
 [可签名]:https://github.com/tendermint/tendermint/blob/d419fffe18531317c28c29a292ad7d253f6cafdf/types/signable.go#L9-L11
 
@@ -218,7 +218,7 @@ func (tp *T) SignBytes() []byte {
 ### 积极的
 
 最相关的积极影响是签名字节可以很容易地被解析
-硬件模块和智能合约。 除此之外:
+硬件模块和智能合约. 除此之外:
 
 - 请求和响应之间更清晰的分离
 - 添加的错误消息可以更好地处理错误

@@ -1,14 +1,14 @@
 # 指标
 
 Tendermint 可以报告和提供 Prometheus 指标，而这些指标反过来可以
-被 Prometheus 收集器消耗。
+被 Prometheus 收集器消耗.
 
-默认情况下禁用此功能。
+默认情况下禁用此功能.
 
 要启用 Prometheus 指标，请在您的
-配置文件。 默认情况下，指标将在 26660 端口上的 `/metrics` 下提供。
+配置文件. 默认情况下，指标将在 26660 端口上的 `/metrics` 下提供.
 可以在配置文件中更改侦听地址(请参阅
-`instrumentation.prometheus\_listen\_addr`)。
+`instrumentation.prometheus\_listen\_addr`).
 
 ## 可用指标列表
 

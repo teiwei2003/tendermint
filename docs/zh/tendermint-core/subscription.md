@@ -1,8 +1,8 @@
 # 通过 Websocket 订阅事件
 
 Tendermint 发出不同的事件，您可以通过以下方式订阅
-[Websocket](https://en.wikipedia.org/wiki/WebSocket)。 这很有用
-用于第三方应用程序(用于分析)或用于检查状态。
+[Websocket](https://en.wikipedia.org/wiki/WebSocket). 这很有用
+用于第三方应用程序(用于分析)或用于检查状态.
 
 [活动列表](https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants)
 
@@ -14,7 +14,7 @@ wscat ws://127.0.0.1:26657/websocket
 ```
 
 您可以通过调用 `subscribe` RPC 来订阅上述任何事件
-方法通过 Websocket 以及有效的查询。
+方法通过 Websocket 以及有效的查询.
 
 ```json
 {
@@ -28,19 +28,19 @@ wscat ws://127.0.0.1:26657/websocket
 ```
 
 查看 [API 文档](https://docs.tendermint.com/master/rpc/)
-有关查询语法和其他选项的更多信息。
+有关查询语法和其他选项的更多信息.
 
 您也可以使用标签，前提是您已将它们包含在 DeliverTx 中
-response，查询交易结果。 请参阅 [索引
-交易](../app-dev/indexing-transactions.md) 了解详情。
+response，查询交易结果. 请参阅 [索引
+交易](../app-dev/indexing-transactions.md) 了解详情.
 
 ## 验证器集更新
 
-当验证器集更改时，将发布 ValidatorSetUpdates 事件。 这
-事件携带公钥/权力对的列表。 名单是一样的
+当验证器集更改时，将发布 ValidatorSetUpdates 事件. 这
+事件携带公钥/权力对的列表. 名单是一样的
 Tendermint 从 ABCI 应用程序接收(参见 [EndBlock
 部分](https://github.com/tendermint/spec/blob/master/spec/abci/abci.md#endblock)在
-ABCI 规范)。
+ABCI 规范).
 
 回复:
 
